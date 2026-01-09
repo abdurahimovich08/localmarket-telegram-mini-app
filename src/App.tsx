@@ -30,10 +30,13 @@ function App() {
         // Get Telegram user data
         const telegramUser = getTelegramUser()
         if (!telegramUser) {
-          console.warn('No Telegram user data found')
+          console.warn('No Telegram user data found - app will work in limited mode')
+          // Continue even without user data for testing
           setLoading(false)
           return
         }
+        
+        console.log('Telegram user found:', telegramUser)
 
         // Check if user exists in database
         let dbUser = await getUser(telegramUser.id)

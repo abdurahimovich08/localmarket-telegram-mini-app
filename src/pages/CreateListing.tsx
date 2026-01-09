@@ -37,9 +37,9 @@ export default function CreateListing() {
       
       webApp.MainButton.onClick(handleMainButtonClick)
 
-      // Set up Back Button
-      webApp.BackButton.show()
-      webApp.BackButton.onClick(() => navigate(-1))
+      // Back Button is not supported in version 6.0, using header back button instead
+      // webApp.BackButton.show()
+      // webApp.BackButton.onClick(() => navigate(-1))
 
       // Request location
       requestLocation().then((loc) => {

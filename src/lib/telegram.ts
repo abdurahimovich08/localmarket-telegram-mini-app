@@ -118,7 +118,18 @@ export const initTelegram = () => {
 // Get Telegram user data
 export const getTelegramUser = (): TelegramWebApp['initDataUnsafe']['user'] | null => {
   const webApp = initTelegram()
-  return webApp?.initDataUnsafe?.user || null
+  if (!webApp) return null
+  
+  // Try multiple ways to get user data
+  const user = webApp?.initDataUnsafe?.user
+  if (user) return user
+  
+  // Fallback: try to get from window object directly
+  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
+    return (window as any).Telegram.WebApp.initDataUnsafe.user
+  }
+  
+  return null
 }
 
 // Open Telegram chat with user
@@ -151,38 +162,28 @@ export const shareListing = (listingId: string, title: string, price?: number) =
 // Request location
 export const requestLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
   return new Promise((resolve) => {
-    const webApp = initTelegram()
-    if (!webApp) {
-      resolve(null)
-      return
-    }
-
-    // Use Telegram's location API if available
-    if ((window as any).Telegram?.WebApp?.LocationManager) {
-      const locationManager = (window as any).Telegram.WebApp.LocationManager
-      locationManager.init()
-      
-      locationManager.getLocation((location: { latitude: number; longitude: number }) => {
-        resolve(location)
-      }, (error: Error) => {
-        console.error('Location error:', error)
-        resolve(null)
-      })
+    // Use browser geolocation API (LocationManager is not supported in version 6.0)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          })
+        },
+        (error) => {
+          console.warn('Location access denied or unavailable:', error.message)
+          resolve(null)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      )
     } else {
-      // Fallback to browser geolocation
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            })
-          },
-          () => resolve(null)
-        )
-      } else {
-        resolve(null)
-      }
+      console.warn('Geolocation is not supported by this browser')
+      resolve(null)
     }
   })
 }
