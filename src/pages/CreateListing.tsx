@@ -12,6 +12,7 @@ export default function CreateListing() {
   const navigate = useNavigate()
   const { user } = useUser()
   const [loading, setLoading] = useState(false)
+  const [userLoading, setUserLoading] = useState(true)
   const [photos, setPhotos] = useState<string[]>([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -53,7 +54,7 @@ export default function CreateListing() {
         webApp.BackButton.hide()
       }
     }
-  }, [handleSubmit, navigate])
+  }, [handleSubmit, navigate, user])
 
   useEffect(() => {
     const webApp = initTelegram()
@@ -67,6 +68,23 @@ export default function CreateListing() {
       }
     }
   }, [user, title, description, photos])
+
+  // Show loading if user is still loading
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect if no user
+  if (!user) {
+    return null
+  }
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')

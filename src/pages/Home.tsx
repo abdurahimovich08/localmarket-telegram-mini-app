@@ -6,7 +6,7 @@ import { requestLocation } from '../lib/telegram'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import BottomNav from '../components/BottomNav'
-import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, FunnelIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
 
 export default function Home() {
   const { user } = useUser()
@@ -45,6 +45,13 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
             <div className="flex items-center gap-2">
+              <Link
+                to="/create"
+                className="p-2 text-primary hover:text-primary/80 transition-colors"
+                title="Create Listing"
+              >
+                <PlusCircleIcon className="w-6 h-6" />
+              </Link>
               <Link
                 to="/search"
                 className="p-2 text-gray-600 hover:text-primary transition-colors"
