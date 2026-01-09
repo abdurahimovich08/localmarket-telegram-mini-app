@@ -90,7 +90,7 @@ export default function ListingDetail() {
             onClick={() => navigate('/')}
             className="text-primary hover:underline"
           >
-            Go back home
+            Bosh sahifaga qaytish
           </button>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function ListingDetail() {
 
   const category = CATEGORIES.find(c => c.value === listing.category)
   const condition = CONDITIONS.find(c => c.value === listing.condition)
-  const priceText = listing.is_free ? 'Free' : `$${listing.price?.toLocaleString()}`
+  const priceText = listing.is_free ? 'Bepul' : `${listing.price?.toLocaleString()} so'm`
 
   return (
     <div className="min-h-screen bg-white pb-20">
@@ -112,7 +112,7 @@ export default function ListingDetail() {
           >
             <ArrowLeftIcon className="w-6 h-6" />
           </button>
-          <h1 className="flex-1 text-center font-semibold text-gray-900">Listing Details</h1>
+          <h1 className="flex-1 text-center font-semibold text-gray-900">E'lon Tafsilotlari</h1>
           <div className="w-10"></div>
         </div>
       </header>
@@ -174,7 +174,7 @@ export default function ListingDetail() {
 
         {/* Description */}
         <div>
-          <h2 className="font-semibold text-gray-900 mb-2">Description</h2>
+          <h2 className="font-semibold text-gray-900 mb-2">Tavsif</h2>
           <p className="text-gray-700 whitespace-pre-wrap">{listing.description}</p>
         </div>
 
@@ -182,24 +182,24 @@ export default function ListingDetail() {
         <div className="grid grid-cols-2 gap-4">
           {condition && (
             <div>
-              <p className="text-sm text-gray-500 mb-1">Condition</p>
+              <p className="text-sm text-gray-500 mb-1">Holati</p>
               <p className="font-medium">{condition.label}</p>
             </div>
           )}
           {listing.neighborhood && (
             <div>
-              <p className="text-sm text-gray-500 mb-1">Location</p>
+              <p className="text-sm text-gray-500 mb-1">Joylashuv</p>
               <p className="font-medium">{listing.neighborhood}</p>
             </div>
           )}
           {listing.distance !== undefined && (
             <div>
-              <p className="text-sm text-gray-500 mb-1">Distance</p>
+              <p className="text-sm text-gray-500 mb-1">Masofa</p>
               <p className="font-medium">{formatDistance(listing.distance)}</p>
             </div>
           )}
           <div>
-            <p className="text-sm text-gray-500 mb-1">Posted</p>
+            <p className="text-sm text-gray-500 mb-1">Qo'shilgan</p>
             <p className="font-medium">
               {new Date(listing.created_at).toLocaleDateString()}
             </p>
@@ -232,7 +232,7 @@ export default function ListingDetail() {
                 </p>
                 {listing.seller.rating_average > 0 && (
                   <p className="text-sm text-gray-600">
-                    ⭐ {listing.seller.rating_average.toFixed(1)} ({listing.seller.total_reviews} reviews)
+                    ⭐ {listing.seller.rating_average.toFixed(1)} ({listing.seller.total_reviews} sharh)
                   </p>
                 )}
               </div>
@@ -255,14 +255,14 @@ export default function ListingDetail() {
             ) : (
               <HeartIcon className="w-5 h-5" />
             )}
-            <span className="font-medium">{favorited ? 'Saved' : 'Save'}</span>
+            <span className="font-medium">{favorited ? 'Saqlangan' : 'Saqlash'}</span>
           </button>
           <button
             onClick={handleShare}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-gray-200 text-gray-700 hover:border-gray-300 transition-colors"
           >
             <ShareIcon className="w-5 h-5" />
-            <span className="font-medium">Share</span>
+            <span className="font-medium">Ulashish</span>
           </button>
           <button className="p-3 rounded-lg border-2 border-gray-200 text-gray-700 hover:border-gray-300 transition-colors">
             <FlagIcon className="w-5 h-5" />
@@ -275,7 +275,7 @@ export default function ListingDetail() {
             onClick={handleMessageSeller}
             className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
           >
-            💬 Message Seller
+            💬 Sotuvchiga Yozish
           </button>
         )}
       </div>

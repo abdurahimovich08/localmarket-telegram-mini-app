@@ -13,7 +13,7 @@ interface ListingCardProps {
 
 export default function ListingCard({ listing, isFavorite = false, onToggleFavorite }: ListingCardProps) {
   const category = CATEGORIES.find(c => c.value === listing.category)
-  const priceText = listing.is_free ? 'Free' : `$${listing.price?.toLocaleString()}`
+  const priceText = listing.is_free ? 'Bepul' : `${listing.price?.toLocaleString()} so'm`
 
   return (
     <Link
@@ -29,12 +29,12 @@ export default function ListingCard({ listing, isFavorite = false, onToggleFavor
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <span>No photo</span>
+            <span>Rasm yo'q</span>
           </div>
         )}
         {listing.is_boosted && (
           <div className="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded">
-            🚀 Boosted
+            🚀 Targ'ib qilingan
           </div>
         )}
         {onToggleFavorite && (

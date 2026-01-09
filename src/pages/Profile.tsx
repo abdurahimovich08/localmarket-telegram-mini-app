@@ -181,7 +181,7 @@ export default function Profile() {
                   to="/create"
                   className="inline-block mt-4 text-primary hover:underline"
                 >
-                  Create your first listing
+                  Birinchi e'loningizni yarating
                 </Link>
               )}
             </div>
@@ -196,7 +196,7 @@ export default function Profile() {
           <div className="space-y-4">
             {reviews.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-600">No reviews yet</p>
+                <p className="text-gray-600">Hali sharhlar yo'q</p>
               </div>
             ) : (
               reviews.map((review) => (

@@ -44,7 +44,7 @@ export default function Favorites() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
-          <h1 className="text-xl font-bold text-gray-900">Saved Items</h1>
+          <h1 className="text-xl font-bold text-gray-900">Sevimlilar</h1>
         </div>
       </header>
 
@@ -55,9 +55,9 @@ export default function Favorites() {
       ) : favorites.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">❤️</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Hali sevimlilar yo'q</h2>
           <p className="text-gray-600 text-center">
-            Save items you're interested in by tapping the heart icon
+            Qiziqarli buyumlarni qo'shish uchun yurak ikonkasini bosing
           </p>
         </div>
       ) : (

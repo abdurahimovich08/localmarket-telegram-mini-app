@@ -99,12 +99,12 @@ export default function CreateListing() {
 
   const handleSubmit = useCallback(async () => {
     if (!user) {
-      alert('Please wait, user information is loading...')
+      alert('Foydalanuvchi ma\'lumotlari yuklanmoqda. Iltimos, kuting...')
       return
     }
 
     if (!title.trim() || !description.trim() || photos.length === 0) {
-      alert('Please fill in all required fields (title, description, and at least one photo)')
+      alert('Iltimos, barcha majburiy maydonlarni to\'ldiring (sarlavha, tavsif va kamida bitta rasm)')
       return
     }
 
@@ -151,12 +151,12 @@ export default function CreateListing() {
         // Navigate to home page after successful creation
         navigate('/')
       } else {
-        alert('Failed to create listing. Please check browser console for details.')
+        alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
       }
     } catch (error: any) {
       console.error('Error creating listing:', error)
       const errorMessage = error?.message || 'Unknown error occurred'
-      alert(`Failed to create listing: ${errorMessage}. Please check browser console for details.`)
+      alert(`E'lon yaratilmadi: ${errorMessage}. Iltimos, brauzer konsolini tekshiring.`)
     } finally {
       setLoading(false)
     }
@@ -173,7 +173,7 @@ export default function CreateListing() {
           >
             <ArrowLeftIcon className="w-6 h-6" />
           </button>
-          <h1 className="flex-1 text-center font-semibold text-gray-900">Create Listing</h1>
+          <h1 className="flex-1 text-center font-semibold text-gray-900">E'lon Yaratish</h1>
           <div className="w-10"></div>
         </div>
       </header>
@@ -181,7 +181,7 @@ export default function CreateListing() {
       {!user && (
         <div className="mx-4 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-yellow-800 text-sm">
-            ⚠️ User authentication required. Please wait for user data to load or refresh the page.
+            ⚠️ Foydalanuvchi ma'lumotlari yuklanmoqda. Iltimos, biroz kuting yoki sahifani yangilang.
           </p>
         </div>
       )}
@@ -190,7 +190,7 @@ export default function CreateListing() {
         {/* Photo Upload */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Photos (up to 10) *
+            Rasmlar (10 tagacha) *
           </label>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((photo, index) => (
@@ -210,7 +210,7 @@ export default function CreateListing() {
                 className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
               >
                 <PhotoIcon className="w-8 h-8 mb-1" />
-                <span className="text-xs">Add Photo</span>
+                <span className="text-xs">Rasm Qo'shish</span>
               </button>
             )}
           </div>
@@ -226,7 +226,7 @@ export default function CreateListing() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={80}
-            placeholder="What are you selling?"
+            placeholder="Nima sotmoqchisiz?"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">{title.length}/80</p>
@@ -242,7 +242,7 @@ export default function CreateListing() {
             onChange={(e) => setDescription(e.target.value)}
             maxLength={500}
             rows={4}
-            placeholder="Describe your item..."
+            placeholder="Mahsulotingizni tasvirlang..."
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
           />
           <p className="text-xs text-gray-500 mt-1">{description.length}/500</p>
@@ -261,7 +261,7 @@ export default function CreateListing() {
                 onChange={(e) => setIsFree(e.target.checked)}
                 className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
               />
-              <span className="text-sm text-gray-700">Free</span>
+              <span className="text-sm text-gray-700">Bepul</span>
             </label>
             {!isFree && (
               <div className="flex-1 flex items-center gap-2">
@@ -272,7 +272,7 @@ export default function CreateListing() {
                   onChange={(e) => setPrice(e.target.value)}
                   min="0"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="0"
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -283,7 +283,7 @@ export default function CreateListing() {
         {/* Category */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Category
+            Kategoriya
           </label>
           <select
             value={category}
@@ -301,7 +301,7 @@ export default function CreateListing() {
         {/* Condition */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Condition
+            Holati
           </label>
           <select
             value={condition}
@@ -319,13 +319,13 @@ export default function CreateListing() {
         {/* Neighborhood */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Neighborhood (optional)
+            Mahalla (ixtiyoriy)
           </label>
           <input
             type="text"
             value={neighborhood}
             onChange={(e) => setNeighborhood(e.target.value)}
-            placeholder="e.g., Downtown, Midtown"
+            placeholder="Masalan: Yunusobod, Chilonzor"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
@@ -335,7 +335,7 @@ export default function CreateListing() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-gray-600">Creating listing...</p>
+            <p className="mt-4 text-gray-600">E'lon yaratilmoqda...</p>
           </div>
         </div>
       )}

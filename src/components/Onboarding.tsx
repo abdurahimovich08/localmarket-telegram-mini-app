@@ -148,7 +148,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 ? 'w-8 h-2 bg-blue-500'
                 : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
             }`}
-            aria-label={`Go to page ${index + 1}`}
+            aria-label={`${index + 1}-sahifaga o'tish`}
           />
         ))}
       </div>

@@ -48,7 +48,7 @@ export default function Home() {
               <Link
                 to="/create"
                 className="p-2 text-primary hover:text-primary/80 transition-colors"
-                title="Create Listing"
+                title="E'lon Yaratish"
               >
                 <PlusCircleIcon className="w-6 h-6" />
               </Link>
@@ -71,21 +71,21 @@ export default function Home() {
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading listings...</p>
+            <p className="mt-4 text-gray-600">E'lonlar yuklanmoqda...</p>
           </div>
         </div>
       ) : listings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">🏪</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No listings yet</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Hali e'lonlar yo'q</h2>
           <p className="text-gray-600 text-center mb-6">
-            Be the first to post something in your neighborhood!
+            Mahallangizda birinchi bo'lib e'lon qo'shing!
           </p>
           <Link
             to="/create"
             className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
-            Create Listing
+            E'lon Yaratish
           </Link>
         </div>
       ) : (

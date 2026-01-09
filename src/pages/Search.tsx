@@ -51,7 +51,7 @@ export default function Search() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search items..."
+                placeholder="Qidiruv..."
                 className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 autoFocus
               />
@@ -76,18 +76,18 @@ export default function Search() {
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">🔍</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {searchQuery ? 'No results found' : 'Start searching'}
+            {searchQuery ? 'Natijalar topilmadi' : 'Qidiruvni boshlang'}
           </h2>
           <p className="text-gray-600 text-center">
             {searchQuery
-              ? 'Try different keywords or check your filters'
-              : 'Search for items in your neighborhood'}
+              ? 'Boshqa kalit so\'zlarni sinab ko\'ring yoki filtrlarni tekshiring'
+              : 'Mahallangizdagi buyumlarni qidiring'}
           </p>
         </div>
       ) : (
         <div className="p-4">
           <p className="text-sm text-gray-600 mb-4">
-            Found {listings.length} {listings.length === 1 ? 'result' : 'results'}
+            {listings.length} {listings.length === 1 ? 'natija' : 'natija'} topildi
           </p>
           <div className="grid grid-cols-2 gap-4">
             {listings.map((listing) => (

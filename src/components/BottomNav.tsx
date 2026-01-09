@@ -8,11 +8,11 @@ export default function BottomNav() {
   const isActive = (path: string) => location.pathname === path
 
   const navItems = [
-    { path: '/', icon: HomeIcon, iconSolid: HomeIconSolid, label: 'Home' },
-    { path: '/search', icon: MagnifyingGlassIcon, iconSolid: MagnifyingGlassIconSolid, label: 'Search' },
-    { path: '/create', icon: PlusCircleIcon, iconSolid: PlusCircleIconSolid, label: 'Sell' },
-    { path: '/favorites', icon: HeartIcon, iconSolid: HeartIconSolid, label: 'Saved' },
-    { path: '/profile', icon: UserIcon, iconSolid: UserIconSolid, label: 'Profile' },
+    { path: '/', icon: HomeIcon, iconSolid: HomeIconSolid, label: 'Bosh' },
+    { path: '/search', icon: MagnifyingGlassIcon, iconSolid: MagnifyingGlassIconSolid, label: 'Qidiruv' },
+    { path: '/create', icon: PlusCircleIcon, iconSolid: PlusCircleIconSolid, label: 'Sotish' },
+    { path: '/favorites', icon: HeartIcon, iconSolid: HeartIconSolid, label: 'Sevimlilar' },
+    { path: '/profile', icon: UserIcon, iconSolid: UserIconSolid, label: 'Profil' },
   ]
 
   return (
