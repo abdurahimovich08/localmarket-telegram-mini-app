@@ -87,7 +87,6 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
   }, [])
 
-  const page = pages[currentPage]
   const isLastPage = currentPage === pages.length - 1
 
   return (

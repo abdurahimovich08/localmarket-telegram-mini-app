@@ -22,6 +22,71 @@ export default function CreateListing() {
   const [neighborhood, setNeighborhood] = useState('')
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
+  const handleSubmit = useCallback(async () => {
+    if (!user) {
+      alert('Foydalanuvchi ma\'lumotlari yuklanmoqda. Iltimos, kuting...')
+      return
+    }
+
+    if (!title.trim() || !description.trim() || photos.length === 0) {
+      alert('Iltimos, barcha majburiy maydonlarni to\'ldiring (sarlavha, tavsif va kamida bitta rasm)')
+      return
+    }
+
+    setLoading(true)
+    try {
+      // Upload photos
+      console.log('Starting photo upload...')
+      const photoFiles = photos.map((dataUrl, index) => {
+        // Convert data URL to File object
+        const arr = dataUrl.split(',')
+        const mime = arr[0].match(/:(.*?);/)?.[1]
+        const bstr = atob(arr[1])
+        let n = bstr.length
+        const u8arr = new Uint8Array(n)
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n)
+        }
+        return new File([u8arr], `photo-${Date.now()}-${index}.jpg`, { type: mime || 'image/jpeg' })
+      })
+
+      console.log(`Uploading ${photoFiles.length} photos...`)
+      const photoUrls = await uploadImages(photoFiles)
+      console.log('Photos uploaded:', photoUrls)
+
+      console.log('Creating listing...')
+      const listing = await createListing({
+        seller_telegram_id: user.telegram_user_id,
+        title: title.trim(),
+        description: description.trim(),
+        price: isFree ? undefined : parseFloat(price) || 0,
+        is_free: isFree,
+        category,
+        condition,
+        photos: photoUrls,
+        neighborhood: neighborhood.trim() || undefined,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        status: 'active',
+        is_boosted: false
+      })
+
+      if (listing) {
+        console.log('Listing created successfully:', listing.listing_id)
+        // Navigate to home page after successful creation
+        navigate('/')
+      } else {
+        alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
+      }
+    } catch (error: any) {
+      console.error('Error creating listing:', error)
+      const errorMessage = error?.message || 'Unknown error occurred'
+      alert(`E'lon yaratilmadi: ${errorMessage}. Iltimos, brauzer konsolini tekshiring.`)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, navigate])
+
   useEffect(() => {
     const webApp = initTelegram()
     if (webApp) {
@@ -96,71 +161,6 @@ export default function CreateListing() {
   const handleRemovePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
-
-  const handleSubmit = useCallback(async () => {
-    if (!user) {
-      alert('Foydalanuvchi ma\'lumotlari yuklanmoqda. Iltimos, kuting...')
-      return
-    }
-
-    if (!title.trim() || !description.trim() || photos.length === 0) {
-      alert('Iltimos, barcha majburiy maydonlarni to\'ldiring (sarlavha, tavsif va kamida bitta rasm)')
-      return
-    }
-
-    setLoading(true)
-    try {
-      // Upload photos
-      console.log('Starting photo upload...')
-      const photoFiles = photos.map((dataUrl, index) => {
-        // Convert data URL to File object
-        const arr = dataUrl.split(',')
-        const mime = arr[0].match(/:(.*?);/)?.[1]
-        const bstr = atob(arr[1])
-        let n = bstr.length
-        const u8arr = new Uint8Array(n)
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n)
-        }
-        return new File([u8arr], `photo-${Date.now()}-${index}.jpg`, { type: mime || 'image/jpeg' })
-      })
-
-      console.log(`Uploading ${photoFiles.length} photos...`)
-      const photoUrls = await uploadImages(photoFiles)
-      console.log('Photos uploaded:', photoUrls)
-
-      console.log('Creating listing...')
-      const listing = await createListing({
-        seller_telegram_id: user.telegram_user_id,
-        title: title.trim(),
-        description: description.trim(),
-        price: isFree ? undefined : parseFloat(price) || 0,
-        is_free: isFree,
-        category,
-        condition,
-        photos: photoUrls,
-        neighborhood: neighborhood.trim() || undefined,
-        latitude: location?.latitude,
-        longitude: location?.longitude,
-        status: 'active',
-        is_boosted: false
-      })
-
-      if (listing) {
-        console.log('Listing created successfully:', listing.listing_id)
-        // Navigate to home page after successful creation
-        navigate('/')
-      } else {
-        alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
-      }
-    } catch (error: any) {
-      console.error('Error creating listing:', error)
-      const errorMessage = error?.message || 'Unknown error occurred'
-      alert(`E'lon yaratilmadi: ${errorMessage}. Iltimos, brauzer konsolini tekshiring.`)
-    } finally {
-      setLoading(false)
-    }
-  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
