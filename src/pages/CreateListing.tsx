@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { createListing } from '../lib/supabase'
@@ -28,7 +28,13 @@ export default function CreateListing() {
       // Set up Main Button
       webApp.MainButton.setText('Post Listing')
       webApp.MainButton.show()
-      webApp.MainButton.onClick(handleSubmit)
+      
+      const handleMainButtonClick = () => {
+        console.log('MainButton clicked')
+        handleSubmit()
+      }
+      
+      webApp.MainButton.onClick(handleMainButtonClick)
 
       // Set up Back Button
       webApp.BackButton.show()
@@ -42,24 +48,25 @@ export default function CreateListing() {
       })
 
       return () => {
+        webApp.MainButton.offClick(handleMainButtonClick)
         webApp.MainButton.hide()
         webApp.BackButton.hide()
       }
     }
-  }, [])
+  }, [handleSubmit, navigate])
 
   useEffect(() => {
     const webApp = initTelegram()
     if (webApp) {
       // Enable/disable Main Button based on form validity
-      const isValid = title.trim().length > 0 && description.trim().length > 0 && photos.length > 0
+      const isValid = user && title.trim().length > 0 && description.trim().length > 0 && photos.length > 0
       if (isValid) {
         webApp.MainButton.enable()
       } else {
         webApp.MainButton.disable()
       }
     }
-  }, [title, description, photos])
+  }, [user, title, description, photos])
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -86,7 +93,7 @@ export default function CreateListing() {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!user) {
       alert('Please wait, user information is loading...')
       return
@@ -137,7 +144,8 @@ export default function CreateListing() {
 
       if (listing) {
         console.log('Listing created successfully:', listing.listing_id)
-        navigate(`/listing/${listing.listing_id}`)
+        // Navigate to home page after successful creation
+        navigate('/')
       } else {
         alert('Failed to create listing. Please check browser console for details.')
       }
@@ -148,7 +156,7 @@ export default function CreateListing() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
