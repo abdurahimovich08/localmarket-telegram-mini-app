@@ -78,9 +78,9 @@ export default function CreateListing() {
       } else {
         alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating listing:', error)
-      const errorMessage = error?.message || 'Unknown error occurred'
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       alert(`E'lon yaratilmadi: ${errorMessage}. Iltimos, brauzer konsolini tekshiring.`)
     } finally {
       setLoading(false)
@@ -119,7 +119,7 @@ export default function CreateListing() {
         // webApp.BackButton.hide()
       }
     }
-  }, [handleSubmit, navigate, user])
+  }, [handleSubmit, navigate])
 
   useEffect(() => {
     const webApp = initTelegram()
