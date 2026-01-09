@@ -175,7 +175,7 @@ export default function Profile() {
         {activeTab === 'listings' ? (
           listings.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No listings yet</p>
+              <p className="text-gray-600">Hali e'lonlar yo'q</p>
               {isOwnProfile && (
                 <Link
                   to="/create"
