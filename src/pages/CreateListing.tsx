@@ -51,7 +51,8 @@ export default function CreateListing() {
       return () => {
         webApp.MainButton.offClick(handleMainButtonClick)
         webApp.MainButton.hide()
-        webApp.BackButton.hide()
+        // BackButton is not supported in version 6.0
+        // webApp.BackButton.hide()
       }
     }
   }, [handleSubmit, navigate, user])
