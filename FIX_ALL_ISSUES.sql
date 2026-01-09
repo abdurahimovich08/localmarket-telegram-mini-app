@@ -25,6 +25,9 @@ DROP POLICY IF EXISTS "Allow authenticated uploads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public reads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated reads" ON storage.objects;
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public can view listing images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload listing images" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete own images" ON storage.objects;
 
 -- YANGI: Public read access (barcha foydalanuvchilar rasm ko'ra olishi uchun)
 CREATE POLICY "Public can view listing images"
@@ -33,18 +36,18 @@ FOR SELECT
 TO public
 USING (bucket_id = 'listings');
 
--- YANGI: Authenticated users upload qilishlari uchun
-CREATE POLICY "Authenticated users can upload listing images"
+-- YANGI: Public users upload qilishlari uchun (Telegram Mini App anonymous bo'lgani uchun)
+CREATE POLICY "Public can upload listing images"
 ON storage.objects
 FOR INSERT
-TO authenticated
+TO public
 WITH CHECK (bucket_id = 'listings');
 
 -- YANGI: O'z rasm'larini o'chirishlari uchun (optional)
-CREATE POLICY "Authenticated users can delete own images"
+CREATE POLICY "Public can delete listing images"
 ON storage.objects
 FOR DELETE
-TO authenticated
+TO public
 USING (bucket_id = 'listings');
 
 -- ============================================
@@ -56,6 +59,7 @@ DROP POLICY IF EXISTS "Users can insert listings" ON listings;
 DROP POLICY IF EXISTS "Anyone can read active listings" ON listings;
 DROP POLICY IF EXISTS "Users can update own listings" ON listings;
 DROP POLICY IF EXISTS "Users can delete own listings" ON listings;
+DROP POLICY IF EXISTS "Anyone can create listings" ON listings;
 
 -- YANGI: Active listing'larni barcha o'qishlari uchun
 CREATE POLICY "Anyone can read active listings"
@@ -64,15 +68,14 @@ FOR SELECT
 TO public
 USING (status = 'active');
 
--- YANGI: Authenticated users listing yaratishlari uchun
--- Note: authenticated role Telegram Mini App'da ishlamaydi, shuning uchun service role yoki anonymous ishlatamiz
+-- YANGI: Public users listing yaratishlari uchun
 CREATE POLICY "Anyone can create listings"
 ON listings
 FOR INSERT
 TO public
 WITH CHECK (true);
 
--- YANGI: Listing'ni yangilash (faqat o'z listing'ini)
+-- YANGI: Listing'ni yangilash
 CREATE POLICY "Users can update own listings"
 ON listings
 FOR UPDATE
@@ -95,6 +98,9 @@ USING (true);
 DROP POLICY IF EXISTS "Users can insert own data" ON users;
 DROP POLICY IF EXISTS "Users can read own data" ON users;
 DROP POLICY IF EXISTS "Users can update own data" ON users;
+DROP POLICY IF EXISTS "Anyone can read users" ON users;
+DROP POLICY IF EXISTS "Anyone can create users" ON users;
+DROP POLICY IF EXISTS "Anyone can update users" ON users;
 
 -- YANGI: Barcha user ma'lumotlarini o'qish (public profiles)
 CREATE POLICY "Anyone can read users"
@@ -124,6 +130,8 @@ WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Users can manage own favorites" ON favorites;
 DROP POLICY IF EXISTS "Users can read favorites" ON favorites;
+DROP POLICY IF EXISTS "Anyone can read favorites" ON favorites;
+DROP POLICY IF EXISTS "Anyone can manage favorites" ON favorites;
 
 CREATE POLICY "Anyone can read favorites"
 ON favorites
@@ -144,6 +152,7 @@ WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Anyone can read reviews" ON reviews;
 DROP POLICY IF EXISTS "Users can create reviews" ON reviews;
+DROP POLICY IF EXISTS "Anyone can create reviews" ON reviews;
 
 CREATE POLICY "Anyone can read reviews"
 ON reviews
@@ -162,6 +171,7 @@ WITH CHECK (true);
 -- ============================================
 
 DROP POLICY IF EXISTS "Users can manage transactions" ON transactions;
+DROP POLICY IF EXISTS "Anyone can manage transactions" ON transactions;
 
 CREATE POLICY "Anyone can manage transactions"
 ON transactions
@@ -175,6 +185,8 @@ WITH CHECK (true);
 -- ============================================
 
 DROP POLICY IF EXISTS "Users can create reports" ON reports;
+DROP POLICY IF EXISTS "Anyone can create reports" ON reports;
+DROP POLICY IF EXISTS "Anyone can read reports" ON reports;
 
 CREATE POLICY "Anyone can create reports"
 ON reports
