@@ -186,26 +186,51 @@ export const shareListing = (listingId: string, title: string, price?: number) =
   }))
 }
 
-// Request location
+// Request location with caching (5 minutes)
 export const requestLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
   return new Promise((resolve) => {
+    // Check cache first (5 minutes old location is still valid)
+    const cachedLocation = localStorage.getItem('localmarket_user_location')
+    if (cachedLocation) {
+      try {
+        const { location, timestamp } = JSON.parse(cachedLocation)
+        const age = Date.now() - timestamp
+        // Use cached location if less than 5 minutes old
+        if (age < 5 * 60 * 1000) {
+          console.log('Using cached location (age:', Math.round(age / 1000), 'seconds)')
+          resolve(location)
+          return
+        }
+      } catch (e) {
+        // Invalid cache, continue to request new location
+      }
+    }
+
     // Use browser geolocation API (LocationManager is not supported in version 6.0)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          resolve({
+          const location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
-          })
+          }
+          
+          // Cache location for 5 minutes
+          localStorage.setItem('localmarket_user_location', JSON.stringify({
+            location,
+            timestamp: Date.now()
+          }))
+          
+          resolve(location)
         },
         (error) => {
           console.warn('Location access denied or unavailable:', error.message)
           resolve(null)
         },
         {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
+          enableHighAccuracy: false, // Use less battery
+          timeout: 10000, // 10 seconds timeout
+          maximumAge: 5 * 60 * 1000 // Accept location up to 5 minutes old
         }
       )
     } else {

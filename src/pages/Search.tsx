@@ -14,21 +14,32 @@ export default function Search() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    let isMounted = true
+
     const loadListings = async () => {
       setLoading(true)
       try {
+        // Request location (will use cache if available)
         const location = await requestLocation()
+        
+        if (!isMounted) return
+
         const data = await getListings({
           search: searchQuery || undefined,
           radius: user?.search_radius_miles || 10,
           userLat: location?.latitude,
           userLon: location?.longitude
         })
-        setListings(data)
+        
+        if (isMounted) {
+          setListings(data)
+        }
       } catch (error) {
         console.error('Error loading listings:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -36,8 +47,11 @@ export default function Search() {
       loadListings()
     }, 300)
 
-    return () => clearTimeout(debounceTimer)
-  }, [searchQuery, user])
+    return () => {
+      isMounted = false
+      clearTimeout(debounceTimer)
+    }
+  }, [searchQuery, user?.search_radius_miles]) // Only reload if search query or radius changes
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

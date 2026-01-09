@@ -126,12 +126,14 @@ export default function CreateListing() {
       
       webApp.MainButton.onClick(handleMainButtonClick)
 
-      // Request location
-      requestLocation().then((loc) => {
-        if (loc) {
-          setLocation(loc)
-        }
-      })
+      // Request location only once (will use cache if available)
+      if (!location) {
+        requestLocation().then((loc) => {
+          if (loc) {
+            setLocation(loc)
+          }
+        })
+      }
 
       return () => {
         webApp.MainButton.offClick(handleMainButtonClick)

@@ -14,11 +14,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
+
     const loadListings = async () => {
       setLoading(true)
       try {
-        // Request location
+        // Request location (will use cache if available)
         const location = await requestLocation()
+
+        if (!isMounted) return
 
         // Load listings
         const data = await getListings({
@@ -26,16 +30,25 @@ export default function Home() {
           userLat: location?.latitude,
           userLon: location?.longitude
         })
-        setListings(data)
+        
+        if (isMounted) {
+          setListings(data)
+        }
       } catch (error) {
         console.error('Error loading listings:', error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     loadListings()
-  }, [user])
+
+    return () => {
+      isMounted = false
+    }
+  }, [user?.search_radius_miles]) // Only reload if search radius changes
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
