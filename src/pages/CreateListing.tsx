@@ -20,7 +20,7 @@ export default function CreateListing() {
   const [category, setCategory] = useState<ListingCategory>('other')
   const [condition, setCondition] = useState<ListingCondition>('good')
   const [neighborhood, setNeighborhood] = useState('')
-  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null)
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
   useEffect(() => {
     const webApp = initTelegram()
@@ -35,7 +35,11 @@ export default function CreateListing() {
       webApp.BackButton.onClick(() => navigate(-1))
 
       // Request location
-      requestLocation().then(setLocation)
+      requestLocation().then((loc) => {
+        if (loc) {
+          setLocation(loc)
+        }
+      })
 
       return () => {
         webApp.MainButton.hide()
@@ -113,11 +117,9 @@ export default function CreateListing() {
         condition,
         photos: photoUrls,
         neighborhood: neighborhood.trim() || undefined,
-        latitude: location?.lat,
-        longitude: location?.lon,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
         status: 'active',
-        view_count: 0,
-        favorite_count: 0,
         is_boosted: false
       })
 

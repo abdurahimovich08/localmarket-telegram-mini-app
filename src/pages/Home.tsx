@@ -12,7 +12,6 @@ export default function Home() {
   const { user } = useUser()
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
-  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null)
 
   useEffect(() => {
     const loadListings = async () => {
@@ -20,15 +19,12 @@ export default function Home() {
       try {
         // Request location
         const location = await requestLocation()
-        if (location) {
-          setUserLocation(location)
-        }
 
         // Load listings
         const data = await getListings({
           radius: user?.search_radius_miles || 10,
-          userLat: location?.lat,
-          userLon: location?.lon
+          userLat: location?.latitude,
+          userLon: location?.longitude
         })
         setListings(data)
       } catch (error) {

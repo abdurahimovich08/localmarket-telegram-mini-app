@@ -1,6 +1,5 @@
 // Telegram Stars payment integration
 import { initTelegram } from './telegram'
-import type { TelegramWebApp } from './telegram'
 
 interface InvoiceParams {
   title: string

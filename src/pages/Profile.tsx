@@ -6,7 +6,6 @@ import type { User, Listing, Review } from '../types'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
 import { ArrowLeftIcon, StarIcon } from '@heroicons/react/24/solid'
-import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()

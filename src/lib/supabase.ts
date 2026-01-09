@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User, Listing, Favorite, Review, Transaction, Report } from '../types'
+import type { User, Listing, Favorite, Review } from '../types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY

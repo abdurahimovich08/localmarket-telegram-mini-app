@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
@@ -9,7 +8,6 @@ import BottomNav from '../components/BottomNav'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function Search() {
-  const navigate = useNavigate()
   const { user } = useUser()
   const [searchQuery, setSearchQuery] = useState('')
   const [listings, setListings] = useState<Listing[]>([])
@@ -23,8 +21,8 @@ export default function Search() {
         const data = await getListings({
           search: searchQuery || undefined,
           radius: user?.search_radius_miles || 10,
-          userLat: location?.lat,
-          userLon: location?.lon
+          userLat: location?.latitude,
+          userLon: location?.longitude
         })
         setListings(data)
       } catch (error) {
