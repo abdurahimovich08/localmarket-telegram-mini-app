@@ -12,7 +12,6 @@ export default function CreateListing() {
   const navigate = useNavigate()
   const { user } = useUser()
   const [loading, setLoading] = useState(false)
-  const [userLoading, setUserLoading] = useState(true)
   const [photos, setPhotos] = useState<string[]>([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -70,22 +69,8 @@ export default function CreateListing() {
     }
   }, [user, title, description, photos])
 
-  // Show loading if user is still loading
-  if (userLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Redirect if no user
-  if (!user) {
-    return null
-  }
+  // If no user, show message but allow form to be visible
+  // User will get error when trying to submit
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -192,6 +177,14 @@ export default function CreateListing() {
           <div className="w-10"></div>
         </div>
       </header>
+
+      {!user && (
+        <div className="mx-4 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800 text-sm">
+            ⚠️ User authentication required. Please wait for user data to load or refresh the page.
+          </p>
+        </div>
+      )}
 
       <div className="p-4 space-y-6">
         {/* Photo Upload */}
