@@ -11,10 +11,18 @@ import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
 import Search from './pages/Search'
 import { UserContext } from './contexts/UserContext'
+import Onboarding from './components/Onboarding'
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    // Check if user has seen onboarding
+    const hasSeenOnboarding = localStorage.getItem('localmarket_onboarding_completed') === 'true'
+    setShowOnboarding(!hasSeenOnboarding)
+  }, [])
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -85,6 +93,11 @@ function App() {
 
     initializeApp()
   }, [])
+
+  // Show onboarding for new users
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => setShowOnboarding(false)} />
+  }
 
   if (loading) {
     return (
