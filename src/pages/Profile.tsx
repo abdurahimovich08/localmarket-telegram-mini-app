@@ -111,7 +111,7 @@ export default function Profile() {
                 <StarIcon className="w-4 h-4 text-yellow-400" />
                 <span className="font-semibold">{user.rating_average.toFixed(1)}</span>
                 <span className="text-sm text-gray-600">
-                  ({user.total_reviews} {user.total_reviews === 1 ? 'review' : 'reviews'})
+                  ({user.total_reviews} {user.total_reviews === 1 ? 'sharh' : 'sharh'})
                 </span>
               </div>
             )}
@@ -125,17 +125,17 @@ export default function Profile() {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-2xl font-bold text-gray-900">{listings.length}</p>
-            <p className="text-sm text-gray-600">Listings</p>
+            <p className="text-sm text-gray-600">E'lonlar</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-gray-900">{user.items_sold_count}</p>
-            <p className="text-sm text-gray-600">Sold</p>
+            <p className="text-sm text-gray-600">Sotilgan</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-gray-900">
               {user.rating_average > 0 ? user.rating_average.toFixed(1) : '—'}
             </p>
-            <p className="text-sm text-gray-600">Rating</p>
+            <p className="text-sm text-gray-600">Reyting</p>
           </div>
         </div>
 
@@ -155,7 +155,7 @@ export default function Profile() {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Listings ({listings.length})
+            E'lonlar ({listings.length})
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
@@ -165,7 +165,7 @@ export default function Profile() {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Reviews ({reviews.length})
+            Sharhlar ({reviews.length})
           </button>
         </div>
       </div>
