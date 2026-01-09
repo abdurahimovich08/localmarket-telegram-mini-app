@@ -27,11 +27,21 @@ function App() {
           return
         }
 
-        // Get Telegram user data
-        const telegramUser = getTelegramUser()
+        // Get Telegram user data - wait a bit for Telegram to initialize
+        await new Promise(resolve => setTimeout(resolve, 500))
+        let telegramUser = getTelegramUser()
+        
+        // Retry if not found
         if (!telegramUser) {
-          console.warn('No Telegram user data found - app will work in limited mode')
-          // Continue even without user data for testing
+          console.log('User not found, retrying...')
+          await new Promise(resolve => setTimeout(resolve, 500))
+          telegramUser = getTelegramUser()
+        }
+        
+        if (!telegramUser) {
+          console.error('No Telegram user data found after retries')
+          console.log('WebApp state:', webApp)
+          console.log('initDataUnsafe:', webApp?.initDataUnsafe)
           setLoading(false)
           return
         }

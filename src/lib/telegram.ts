@@ -118,17 +118,44 @@ export const initTelegram = () => {
 // Get Telegram user data
 export const getTelegramUser = (): TelegramWebApp['initDataUnsafe']['user'] | null => {
   const webApp = initTelegram()
-  if (!webApp) return null
+  if (!webApp) {
+    console.log('WebApp not initialized')
+    return null
+  }
   
   // Try multiple ways to get user data
+  console.log('Trying to get user from webApp.initDataUnsafe:', webApp.initDataUnsafe)
   const user = webApp?.initDataUnsafe?.user
-  if (user) return user
+  if (user) {
+    console.log('User found in webApp.initDataUnsafe:', user)
+    return user
+  }
   
   // Fallback: try to get from window object directly
   if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user) {
+    console.log('User found in window.Telegram.WebApp.initDataUnsafe')
     return (window as any).Telegram.WebApp.initDataUnsafe.user
   }
   
+  // Try initData parsing
+  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initData) {
+    try {
+      const initData = (window as any).Telegram.WebApp.initData
+      console.log('Found initData, trying to parse...')
+      // Parse initData if needed (it's a URL-encoded string)
+      const params = new URLSearchParams(initData)
+      const userJson = params.get('user')
+      if (userJson) {
+        const parsedUser = JSON.parse(decodeURIComponent(userJson))
+        console.log('Parsed user from initData:', parsedUser)
+        return parsedUser
+      }
+    } catch (e) {
+      console.warn('Failed to parse initData:', e)
+    }
+  }
+  
+  console.warn('No Telegram user data found in any location')
   return null
 }
 
