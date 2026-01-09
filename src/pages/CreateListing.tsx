@@ -87,56 +87,6 @@ export default function CreateListing() {
     }
   }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, navigate])
 
-  useEffect(() => {
-    const webApp = initTelegram()
-    if (webApp) {
-      // Set up Main Button
-      webApp.MainButton.setText('Post Listing')
-      webApp.MainButton.show()
-      
-      const handleMainButtonClick = () => {
-        console.log('MainButton clicked')
-        handleSubmit()
-      }
-      
-      webApp.MainButton.onClick(handleMainButtonClick)
-
-      // Back Button is not supported in version 6.0, using header back button instead
-      // webApp.BackButton.show()
-      // webApp.BackButton.onClick(() => navigate(-1))
-
-      // Request location
-      requestLocation().then((loc) => {
-        if (loc) {
-          setLocation(loc)
-        }
-      })
-
-      return () => {
-        webApp.MainButton.offClick(handleMainButtonClick)
-        webApp.MainButton.hide()
-        // BackButton is not supported in version 6.0
-        // webApp.BackButton.hide()
-      }
-    }
-  }, [handleSubmit, navigate])
-
-  useEffect(() => {
-    const webApp = initTelegram()
-    if (webApp) {
-      // Enable/disable Main Button based on form validity
-      const isValid = user && title.trim().length > 0 && description.trim().length > 0 && photos.length > 0
-      if (isValid) {
-        webApp.MainButton.enable()
-      } else {
-        webApp.MainButton.disable()
-      }
-    }
-  }, [user, title, description, photos])
-
-  // If no user, show message but allow form to be visible
-  // User will get error when trying to submit
-
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -161,6 +111,47 @@ export default function CreateListing() {
   const handleRemovePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
+
+  useEffect(() => {
+    const webApp = initTelegram()
+    if (webApp) {
+      // Set up Main Button
+      webApp.MainButton.setText('E\'lon Yaratish')
+      webApp.MainButton.show()
+      
+      const handleMainButtonClick = () => {
+        console.log('MainButton clicked')
+        handleSubmit()
+      }
+      
+      webApp.MainButton.onClick(handleMainButtonClick)
+
+      // Request location
+      requestLocation().then((loc) => {
+        if (loc) {
+          setLocation(loc)
+        }
+      })
+
+      return () => {
+        webApp.MainButton.offClick(handleMainButtonClick)
+        webApp.MainButton.hide()
+      }
+    }
+  }, [handleSubmit])
+
+  useEffect(() => {
+    const webApp = initTelegram()
+    if (webApp) {
+      // Enable/disable Main Button based on form validity
+      const isValid = user && title.trim().length > 0 && description.trim().length > 0 && photos.length > 0
+      if (isValid) {
+        webApp.MainButton.enable()
+      } else {
+        webApp.MainButton.disable()
+      }
+    }
+  }, [user, title, description, photos])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
