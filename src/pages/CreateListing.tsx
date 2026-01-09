@@ -87,12 +87,21 @@ export default function CreateListing() {
   }
 
   const handleSubmit = async () => {
-    if (!user || !title.trim() || !description.trim() || photos.length === 0) return
+    if (!user) {
+      alert('Please wait, user information is loading...')
+      return
+    }
+
+    if (!title.trim() || !description.trim() || photos.length === 0) {
+      alert('Please fill in all required fields (title, description, and at least one photo)')
+      return
+    }
 
     setLoading(true)
     try {
       // Upload photos
-      const photoFiles = photos.map((dataUrl) => {
+      console.log('Starting photo upload...')
+      const photoFiles = photos.map((dataUrl, index) => {
         // Convert data URL to File object
         const arr = dataUrl.split(',')
         const mime = arr[0].match(/:(.*?);/)?.[1]
@@ -102,11 +111,14 @@ export default function CreateListing() {
         while (n--) {
           u8arr[n] = bstr.charCodeAt(n)
         }
-        return new File([u8arr], `photo-${Date.now()}.jpg`, { type: mime || 'image/jpeg' })
+        return new File([u8arr], `photo-${Date.now()}-${index}.jpg`, { type: mime || 'image/jpeg' })
       })
 
+      console.log(`Uploading ${photoFiles.length} photos...`)
       const photoUrls = await uploadImages(photoFiles)
+      console.log('Photos uploaded:', photoUrls)
 
+      console.log('Creating listing...')
       const listing = await createListing({
         seller_telegram_id: user.telegram_user_id,
         title: title.trim(),
@@ -124,11 +136,15 @@ export default function CreateListing() {
       })
 
       if (listing) {
+        console.log('Listing created successfully:', listing.listing_id)
         navigate(`/listing/${listing.listing_id}`)
+      } else {
+        alert('Failed to create listing. Please check browser console for details.')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating listing:', error)
-      alert('Failed to create listing. Please try again.')
+      const errorMessage = error?.message || 'Unknown error occurred'
+      alert(`Failed to create listing: ${errorMessage}. Please check browser console for details.`)
     } finally {
       setLoading(false)
     }

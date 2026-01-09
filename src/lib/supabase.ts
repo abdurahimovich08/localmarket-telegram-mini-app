@@ -123,6 +123,8 @@ export const getListing = async (listingId: string): Promise<Listing | null> => 
 }
 
 export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count'>): Promise<Listing | null> => {
+  console.log('Creating listing with data:', listing)
+  
   const { data, error } = await supabase
     .from('listings')
     .insert(listing)
@@ -131,8 +133,16 @@ export const createListing = async (listing: Omit<Listing, 'listing_id' | 'creat
 
   if (error) {
     console.error('Error creating listing:', error)
-    return null
+    console.error('Error details:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    })
+    throw new Error(`Database error: ${error.message}`)
   }
+  
+  console.log('Listing created successfully:', data)
   return data
 }
 
