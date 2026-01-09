@@ -1,5 +1,5 @@
--- Storage va Database Policies Sozlash
--- Supabase SQL Editor'da run qiling
+-- Barcha Supabase Muammolarni Hal Qilish
+-- Bu faylni Supabase SQL Editor'da run qiling
 
 -- ============================================
 -- 1. STORAGE POLICIES
@@ -25,7 +25,7 @@ USING (bucket_id = 'listings');
 -- 2. DATABASE POLICIES - LISTINGS
 -- ============================================
 
--- Listings INSERT policy (listing yaratish uchun)
+-- Listings INSERT policy
 DROP POLICY IF EXISTS "Users can insert listings" ON listings;
 CREATE POLICY "Users can insert listings"
 ON listings
@@ -33,7 +33,7 @@ FOR INSERT
 TO authenticated
 WITH CHECK (true);
 
--- Listings SELECT policy (listing'larni o'qish uchun)
+-- Listings SELECT policy
 DROP POLICY IF EXISTS "Anyone can read active listings" ON listings;
 CREATE POLICY "Anyone can read active listings"
 ON listings
@@ -41,7 +41,7 @@ FOR SELECT
 TO authenticated
 USING (status = 'active');
 
--- Listings UPDATE policy (listing yangilash uchun)
+-- Listings UPDATE policy
 DROP POLICY IF EXISTS "Users can update own listings" ON listings;
 CREATE POLICY "Users can update own listings"
 ON listings
@@ -54,7 +54,7 @@ WITH CHECK (true);
 -- 3. DATABASE POLICIES - USERS
 -- ============================================
 
--- Users INSERT policy (user yaratish uchun)
+-- Users INSERT policy
 DROP POLICY IF EXISTS "Users can insert own data" ON users;
 CREATE POLICY "Users can insert own data"
 ON users
@@ -62,7 +62,7 @@ FOR INSERT
 TO authenticated
 WITH CHECK (true);
 
--- Users SELECT policy (user ma'lumotlarini o'qish uchun)
+-- Users SELECT policy
 DROP POLICY IF EXISTS "Users can read own data" ON users;
 CREATE POLICY "Users can read own data"
 ON users
@@ -70,7 +70,7 @@ FOR SELECT
 TO authenticated
 USING (true);
 
--- Users UPDATE policy (user ma'lumotlarini yangilash uchun)
+-- Users UPDATE policy
 DROP POLICY IF EXISTS "Users can update own data" ON users;
 CREATE POLICY "Users can update own data"
 ON users
@@ -83,7 +83,6 @@ WITH CHECK (true);
 -- 4. ENABLE RLS (Row Level Security)
 -- ============================================
 
--- Enable RLS for all tables
 ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
@@ -95,20 +94,9 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 -- 5. FIX FUNCTION SEARCH PATH
 -- ============================================
 
--- Fix search_path for all functions
 ALTER FUNCTION update_updated_at_column() SET search_path = public;
 ALTER FUNCTION update_items_sold_count() SET search_path = public;
 ALTER FUNCTION increment_view_count(UUID) SET search_path = public;
 ALTER FUNCTION increment_favorite_count(UUID) SET search_path = public;
 ALTER FUNCTION decrement_favorite_count(UUID) SET search_path = public;
 ALTER FUNCTION update_user_rating(BIGINT) SET search_path = public;
-
--- ============================================
--- 5. TEKSHIRISH
--- ============================================
-
--- Storage policies'ni tekshirish
-SELECT * FROM pg_policies WHERE tablename = 'objects' AND schemaname = 'storage';
-
--- Database policies'ni tekshirish
-SELECT * FROM pg_policies WHERE tablename IN ('listings', 'users');

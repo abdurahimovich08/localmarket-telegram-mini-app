@@ -115,7 +115,8 @@ BEGIN
   SET view_count = view_count + 1
   WHERE listings.listing_id = increment_view_count.listing_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to increment favorite count
 CREATE OR REPLACE FUNCTION increment_favorite_count(listing_id UUID)
@@ -125,7 +126,8 @@ BEGIN
   SET favorite_count = favorite_count + 1
   WHERE listings.listing_id = increment_favorite_count.listing_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to decrement favorite count
 CREATE OR REPLACE FUNCTION decrement_favorite_count(listing_id UUID)
@@ -135,7 +137,8 @@ BEGIN
   SET favorite_count = GREATEST(favorite_count - 1, 0)
   WHERE listings.listing_id = decrement_favorite_count.listing_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Function to update user rating
 CREATE OR REPLACE FUNCTION update_user_rating(user_id BIGINT)
@@ -154,7 +157,8 @@ BEGIN
       total_reviews = COALESCE(total_count, 0)
   WHERE telegram_user_id = user_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 -- Trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -163,7 +167,8 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 DROP TRIGGER IF EXISTS update_listings_updated_at ON listings;
 CREATE TRIGGER update_listings_updated_at
@@ -182,7 +187,8 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public;
 
 DROP TRIGGER IF EXISTS update_sold_count_on_listing_status ON listings;
 CREATE TRIGGER update_sold_count_on_listing_status
