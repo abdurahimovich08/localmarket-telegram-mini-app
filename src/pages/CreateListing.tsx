@@ -5,6 +5,7 @@ import { createListing } from '../lib/supabase'
 import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
 import { uploadImages } from '../lib/imageUpload'
+import { validateCategoryStrict, detectCategory } from '../lib/categoryValidation'
 import BottomNav from '../components/BottomNav'
 import { ArrowLeftIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -21,6 +22,7 @@ export default function CreateListing() {
   const [condition, setCondition] = useState<ListingCondition>('good')
   const [neighborhood, setNeighborhood] = useState('')
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [categoryWarning, setCategoryWarning] = useState<string | null>(null)
 
   const handleSubmit = useCallback(async () => {
     if (!user) {
@@ -31,6 +33,25 @@ export default function CreateListing() {
     if (!title.trim() || !description.trim() || photos.length === 0) {
       alert('Iltimos, barcha majburiy maydonlarni to\'ldiring (sarlavha, tavsif va kamida bitta rasm)')
       return
+    }
+
+    // Validate category
+    const validation = validateCategoryStrict(category, title.trim(), description.trim())
+    if (!validation.isValid && validation.suggestedCategory) {
+      const confirmed = window.confirm(
+        `${validation.reason || 'Kategoriya noto\'g\'ri'}\n\n` +
+        `Tavsiya etilgan kategoriya: ${CATEGORIES.find(c => c.value === validation.suggestedCategory)?.label}\n\n` +
+        `Tavsiya etilgan kategoriyaga o\'tishni xohlaysizmi?`
+      )
+      if (confirmed) {
+        setCategory(validation.suggestedCategory)
+        // Continue with suggested category
+      } else {
+        // User wants to keep current category, but show warning
+        setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
+        const proceed = window.confirm('Kategoriya mos kelmasa ham davom etishni xohlaysizmi?')
+        if (!proceed) return
+      }
     }
 
     setLoading(true)
@@ -73,6 +94,7 @@ export default function CreateListing() {
 
       if (listing) {
         console.log('Listing created successfully:', listing.listing_id)
+        setCategoryWarning(null) // Clear warning on success
         // Navigate to home page after successful creation
         navigate('/')
       } else {
@@ -217,7 +239,18 @@ export default function CreateListing() {
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              // Validate category when title changes
+              if (e.target.value.trim() && description.trim()) {
+                const validation = validateCategoryStrict(category, e.target.value.trim(), description.trim())
+                if (!validation.isValid) {
+                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
+                } else {
+                  setCategoryWarning(null)
+                }
+              }
+            }}
             maxLength={80}
             placeholder="Nima sotmoqchisiz?"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -232,7 +265,18 @@ export default function CreateListing() {
           </label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              // Validate category when description changes
+              if (title.trim() && e.target.value.trim()) {
+                const validation = validateCategoryStrict(category, title.trim(), e.target.value.trim())
+                if (!validation.isValid) {
+                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
+                } else {
+                  setCategoryWarning(null)
+                }
+              }
+            }}
             maxLength={500}
             rows={4}
             placeholder="Mahsulotingizni tasvirlang..."
@@ -280,8 +324,22 @@ export default function CreateListing() {
           </label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value as ListingCategory)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            onChange={(e) => {
+              const newCategory = e.target.value as ListingCategory
+              setCategory(newCategory)
+              // Auto-validate when category changes
+              if (title.trim() && description.trim()) {
+                const validation = validateCategoryStrict(newCategory, title.trim(), description.trim())
+                if (!validation.isValid) {
+                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
+                } else {
+                  setCategoryWarning(null)
+                }
+              }
+            }}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+              categoryWarning ? 'border-yellow-500' : 'border-gray-300'
+            }`}
           >
             {CATEGORIES.map((cat) => (
               <option key={cat.value} value={cat.value}>
@@ -289,6 +347,26 @@ export default function CreateListing() {
               </option>
             ))}
           </select>
+          {categoryWarning && (
+            <p className="mt-1 text-sm text-yellow-600 flex items-center gap-1">
+              ⚠️ {categoryWarning}
+            </p>
+          )}
+          {title.trim() && description.trim() && !categoryWarning && (
+            <button
+              type="button"
+              onClick={() => {
+                const detected = detectCategory(title.trim(), description.trim())
+                if (detected !== category) {
+                  setCategory(detected)
+                  setCategoryWarning(null)
+                }
+              }}
+              className="mt-1 text-xs text-primary hover:underline"
+            >
+              Avtomatik kategoriya aniqlash
+            </button>
+          )}
         </div>
 
         {/* Condition */}

@@ -92,7 +92,7 @@ export const getListings = async (filters?: {
 
   // Filter by distance if location provided
   if (filters?.userLat && filters?.userLon && filters?.radius) {
-    return (data || []).filter((listing: Listing) => {
+    const listingsWithDistance = (data || []).filter((listing: Listing) => {
       if (!listing.latitude || !listing.longitude) return false
       const distance = calculateDistance(
         filters.userLat!,
@@ -102,7 +102,10 @@ export const getListings = async (filters?: {
       )
       listing.distance = distance
       return distance <= filters.radius!
-    }).sort((a, b) => (a.distance || 0) - (b.distance || 0))
+    })
+    
+    // Basic distance sort (advanced sorting will be done in sorting.ts)
+    return listingsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0))
   }
 
   return data || []

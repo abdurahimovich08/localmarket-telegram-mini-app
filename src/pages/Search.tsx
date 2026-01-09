@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
+import { useSearchParams } from 'react-router-dom'
 import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
+import { sortListings } from '../lib/sorting'
+import { trackUserSearch, trackListingView } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import BottomNav from '../components/BottomNav'
@@ -9,7 +12,10 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function Search() {
   const { user } = useUser()
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialQuery = searchParams.get('q') || ''
+  const initialCategory = searchParams.get('category') || undefined
+  const [searchQuery, setSearchQuery] = useState(initialQuery)
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -19,20 +25,41 @@ export default function Search() {
     const loadListings = async () => {
       setLoading(true)
       try {
+        // Track search if query exists
+        if (searchQuery.trim() && user?.telegram_user_id) {
+          trackUserSearch(
+            user.telegram_user_id,
+            searchQuery.trim(),
+            initialCategory,
+            0 // Will be updated after results
+          )
+        }
+
         // Request location (will use cache if available)
         const location = await requestLocation()
         
         if (!isMounted) return
 
+        // Get listings with filters
         const data = await getListings({
           search: searchQuery || undefined,
+          category: initialCategory,
           radius: user?.search_radius_miles || 10,
           userLat: location?.latitude,
           userLon: location?.longitude
         })
         
+        if (!isMounted) return
+
+        // Sort with advanced algorithm
+        const sorted = await sortListings(
+          data,
+          user?.telegram_user_id,
+          user?.search_radius_miles || 10
+        )
+        
         if (isMounted) {
-          setListings(data)
+          setListings(sorted)
         }
       } catch (error) {
         console.error('Error loading listings:', error)
@@ -51,7 +78,14 @@ export default function Search() {
       isMounted = false
       clearTimeout(debounceTimer)
     }
-  }, [searchQuery, user?.search_radius_miles]) // Only reload if search query or radius changes
+  }, [searchQuery, initialCategory, user?.search_radius_miles, user?.telegram_user_id])
+
+  const handleListingClick = (listing: Listing) => {
+    // Track view
+    if (user?.telegram_user_id) {
+      trackListingView(user.telegram_user_id, listing.listing_id)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -102,10 +136,20 @@ export default function Search() {
         <div className="p-4">
           <p className="text-sm text-gray-600 mb-4">
             {listings.length} {listings.length === 1 ? 'natija' : 'natija'} topildi
+            {initialCategory && (
+              <span className="ml-2 text-primary">
+                • {listings.find(l => l.category === initialCategory) ? 'Kategoriya' : ''}
+              </span>
+            )}
           </p>
           <div className="grid grid-cols-2 gap-4">
             {listings.map((listing) => (
-              <ListingCard key={listing.listing_id} listing={listing} />
+              <div
+                key={listing.listing_id}
+                onClick={() => handleListingClick(listing)}
+              >
+                <ListingCard listing={listing} />
+              </div>
             ))}
           </div>
         </div>

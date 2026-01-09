@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getListing, incrementViewCount, isFavorite, addFavorite, removeFavorite } from '../lib/supabase'
 import { openTelegramChat, shareListing, formatDistance } from '../lib/telegram'
+import { trackListingView, trackUserInteraction } from '../lib/tracking'
 import type { Listing } from '../types'
 import { CATEGORIES, CONDITIONS } from '../types'
 import { HeartIcon, ShareIcon, FlagIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
@@ -29,6 +30,10 @@ export default function ListingDetail() {
           setListing(data)
           // Increment view count
           await incrementViewCount(id)
+          // Track view
+          if (user?.telegram_user_id) {
+            trackListingView(user.telegram_user_id, id)
+          }
           // Check if favorited
           if (user) {
             const isFav = await isFavorite(user.telegram_user_id, id)
@@ -47,6 +52,11 @@ export default function ListingDetail() {
 
   const handleToggleFavorite = async () => {
     if (!user || !listing) return
+    
+    // Track interaction
+    if (user.telegram_user_id) {
+      trackUserInteraction(user.telegram_user_id, listing.listing_id, 'favorite')
+    }
 
     try {
       if (favorited) {
