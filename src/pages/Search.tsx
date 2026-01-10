@@ -49,6 +49,8 @@ export default function Search() {
         if (!isMounted) return
 
         // Get listings with filters
+        // CRITICAL: Always sorted by created_at DESC to show newest listings first
+        // No OFFSET - ensures new listings appear even when paginated
         const data = await getListings({
           search: searchQuery || undefined,
           category: filters.category || initialCategory,
@@ -60,6 +62,7 @@ export default function Search() {
           userLon: location?.longitude,
           recentOnly: filters.recentOnly,
           boostedOnly: filters.boostedOnly,
+          limit: 100 // Fetch enough for pagination
         })
         
         if (!isMounted) return

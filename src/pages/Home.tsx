@@ -145,7 +145,9 @@ export default function Home() {
 
   const displayedListings = activeTab === 'personalized' ? personalizedListings : dealsListings
   
-  // Pagination logic
+  // Pagination logic - IMPORTANT: Use client-side pagination only for UI
+  // The actual data is already sorted by created_at DESC from database
+  // This ensures new listings appear first even when paginated
   const totalPages = Math.ceil(displayedListings.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage

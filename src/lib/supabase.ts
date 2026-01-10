@@ -59,17 +59,25 @@ export const getListings = async (filters?: {
   recentOnly?: boolean // only listings from last 7 days
   boostedOnly?: boolean // only boosted listings
   limit?: number // Maximum number of listings to return
+  page?: number // Page number (1-indexed) for pagination
+  afterTimestamp?: string // Cursor-based pagination: show listings after this timestamp
 }): Promise<Listing[]> => {
-  // Use timestamp for cache busting to ensure fresh data
-  // Supabase may cache queries, so we add a small random component
-  const cacheBuster = Date.now()
+  // IMPORTANT: Always order by created_at DESC to ensure new listings appear first
+  // NEVER use OFFSET-based pagination - it breaks when new listings are added
+  // Use cursor-based pagination (afterTimestamp) instead
   
   let query = supabase
     .from('listings')
     .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url)')
     .eq('status', 'active')
     .order('is_boosted', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }) // CRITICAL: Sort by created_at for consistent pagination
+    
+  // Cursor-based pagination: only show listings created after this timestamp
+  // This ensures new listings always appear even if paginated
+  if (filters?.afterTimestamp) {
+    query = query.lt('created_at', filters.afterTimestamp) // lt = less than (older)
+  }
     
   // Add limit for performance (default 100, max 200)
   const limit = filters?.limit || 100
