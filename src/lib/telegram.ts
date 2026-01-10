@@ -176,8 +176,8 @@ export const shareListing = (listingId: string, title: string, price?: number) =
   const webApp = initTelegram()
   if (!webApp) return
   
-  const priceText = price ? `$${price}` : 'Free'
-  const message = `🏪 Check out this item on LocalMarket:\n\n${title}\n${priceText}\n\nView it here: ${window.location.origin}/listing/${listingId}`
+  const priceText = price ? `${price.toLocaleString()} so'm` : 'Bepul'
+  const message = `🏪 LocalMarket'dan ushbu e'lonni ko'ring:\n\n${title}\n${priceText}\n\nBu yerda ko'ring: ${window.location.origin}/listing/${listingId}`
   
   webApp.sendData(JSON.stringify({
     type: 'share',
