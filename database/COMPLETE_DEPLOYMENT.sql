@@ -265,7 +265,7 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('electronics', 'Televizorlar', 'Televizorlar', 'televizorlar', 'TV va monitorlar', 5),
 ('electronics', 'Maishiy texnika', 'Maishiy texnika', 'maishiy-texnika', 'Muzlatgich, kir yuvish mashinasi va boshqalar', 6),
 ('electronics', 'Audio va video', 'Audio va video', 'audio-video', 'Kolonkalar, naushniklar, kameralar', 7),
-('electronics', 'O\'yin konsollari', 'O\'yin konsollari', 'oyin-konsollari', 'PlayStation, Xbox va boshqalar', 8)
+('electronics', 'O''yin konsollari', 'O''yin konsollari', 'oyin-konsollari', 'PlayStation, Xbox va boshqalar', 8)
 ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Nested: iPhone, Samsung under Telefonlar
@@ -312,8 +312,8 @@ ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
 ('sports_outdoors', 'Fitness', 'Fitness', 'fitness', 'Fitness va sport zali uchun uskunalar', 7),
 ('sports_outdoors', 'Turizm', 'Turizm', 'turizm', 'Sayohat va turizm uchun anjomlar', 8),
-('sports_outdoors', 'O\'yinchoqlar', 'O\'yinchoqlar', 'oyinchoqlar', 'Bolalar o\'yinchoqlari', 9),
-('other', 'Vakansiyalar', 'Vakansiyalar', 'vakansiyalar', 'Ish o\'rinlari va vakansiyalar', 1),
+('sports_outdoors', 'O''yinchoqlar', 'O''yinchoqlar', 'oyinchoqlar', 'Bolalar o''yinchoqlari', 9),
+('other', 'Vakansiyalar', 'Vakansiyalar', 'vakansiyalar', 'Ish o''rinlari va vakansiyalar', 1),
 ('other', 'Xizmatlar', 'Xizmatlar', 'xizmatlar', 'Turli xil xizmatlar', 2),
 ('other', 'Hayvonlar', 'Hayvonlar', 'hayvonlar', 'Uy hayvonlari va ularning aksessuarlari', 3)
 ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
