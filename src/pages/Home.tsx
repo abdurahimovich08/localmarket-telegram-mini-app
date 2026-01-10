@@ -36,12 +36,12 @@ export default function Home() {
 
         if (!isMounted) return
 
-        // Load listings with limit for performance (50 for initial load)
+        // Load listings with limit for performance (100 for initial load to ensure new listings are included)
         const allListings = await getListings({
           radius: user?.search_radius_miles || 10,
           userLat: location?.latitude,
           userLon: location?.longitude,
-          limit: 50 // Limit initial load for faster performance
+          limit: 100 // Increased to ensure new listings are captured
         })
 
         if (!isMounted) return
