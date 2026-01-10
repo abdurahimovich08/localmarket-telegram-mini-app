@@ -38,6 +38,7 @@ export type ListingCategory =
   | 'games_hobbies'
   | 'books_media'
   | 'sports_outdoors'
+  | 'automotive'
   | 'other'
 
 export interface Listing {
@@ -127,6 +128,7 @@ export const CATEGORIES: { value: ListingCategory; label: string; emoji: string 
   { value: 'games_hobbies', label: 'O\'yinchoqlar', emoji: '🎮' },
   { value: 'books_media', label: 'Kitoblar', emoji: '📚' },
   { value: 'sports_outdoors', label: 'Sport', emoji: '🏋️' },
+  { value: 'automotive', label: 'Avtomobil', emoji: '🚗' },
   { value: 'other', label: 'Boshqalar', emoji: '🎁' },
 ]
 

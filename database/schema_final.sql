@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS listings (
   description TEXT NOT NULL CHECK (LENGTH(description) <= 500),
   price DECIMAL(10, 2),
   is_free BOOLEAN DEFAULT FALSE,
-  category TEXT NOT NULL CHECK (category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'other')),
+  category TEXT NOT NULL CHECK (category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'automotive', 'other')),
   condition TEXT NOT NULL CHECK (condition IN ('new', 'like_new', 'good', 'fair', 'poor')),
   photos TEXT[] DEFAULT '{}',
   neighborhood TEXT,
@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS user_category_preferences (
 
 CREATE TABLE IF NOT EXISTS subcategories (
   subcategory_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  parent_category TEXT NOT NULL CHECK (parent_category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'other')),
+  parent_category TEXT NOT NULL CHECK (parent_category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'automotive', 'other')),
   name TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
