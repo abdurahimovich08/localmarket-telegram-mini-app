@@ -113,13 +113,11 @@ export default function Home() {
           {/* Top Row: Logo + Actions */}
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <CartIcon />
-              </div>
+            <div className="flex items-center gap-2 relative z-50">
+              <CartIcon />
               <Link
                 to="/create"
-                className="p-2 text-primary hover:text-primary/80 transition-colors"
+                className="p-2 text-primary hover:text-primary/80 transition-colors relative z-50"
                 title="E'lon Yaratish"
               >
                 <PlusCircleIcon className="w-6 h-6" />

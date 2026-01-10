@@ -34,11 +34,12 @@ export default function CartIcon() {
   return (
     <Link
       to="/cart"
-      className="relative p-2 text-gray-700 hover:text-primary transition-colors"
+      className="relative p-2 text-gray-700 hover:text-primary transition-colors z-50 cursor-pointer touch-manipulation"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <ShoppingBagIcon className="w-6 h-6" />
+      <ShoppingBagIcon className="w-6 h-6 pointer-events-none" />
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center pointer-events-none min-w-[20px]">
           {count > 9 ? '9+' : count}
         </span>
       )}
