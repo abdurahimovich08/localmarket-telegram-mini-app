@@ -173,7 +173,8 @@ CREATE TABLE IF NOT EXISTS subcategories (
   display_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(parent_category, slug)
+  UNIQUE(parent_category, slug),
+  UNIQUE(slug) -- Also add unique on slug alone for ON CONFLICT (slug)
 );
 
 -- Add name_uz and description_uz columns if they don't exist (for backward compatibility)
@@ -240,10 +241,12 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('sports_outdoors', 'Ehtiyot qismlar', 'Ehtiyot qismlar', 'ehtiyot-qismlar', 'Mashina ehtiyot qismlari va aksessuarlar', 4),
 ('sports_outdoors', 'Mototsikllar', 'Mototsikllar', 'mototsikllar', 'Mototsikllar va skuterlar', 5),
 ('sports_outdoors', 'Velosipedlar', 'Velosipedlar', 'velosipedlar', 'Velosipedlar va boshqa ikki gildirakli transport', 6)
-ON CONFLICT (parent_category, slug) DO UPDATE SET 
-  name_uz = EXCLUDED.name_uz,
-  description_uz = EXCLUDED.description_uz,
-  display_order = EXCLUDED.display_order;
+ON CONFLICT (slug) DO UPDATE SET 
+  name_uz = COALESCE(EXCLUDED.name_uz, subcategories.name_uz),
+  description_uz = COALESCE(EXCLUDED.description_uz, subcategories.description_uz),
+  display_order = COALESCE(EXCLUDED.display_order, subcategories.display_order),
+  name = COALESCE(EXCLUDED.name, subcategories.name),
+  description = COALESCE(EXCLUDED.description, subcategories.description);
 
 -- Nested: Kamaz, Man, Scania under Yuk mashinalari
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
