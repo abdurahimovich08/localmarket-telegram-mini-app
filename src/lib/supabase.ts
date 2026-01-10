@@ -60,8 +60,7 @@ export const getListings = async (filters?: {
   boostedOnly?: boolean // only boosted listings
   limit?: number // Maximum number of listings to return
   page?: number // Page number (1-indexed) for pagination - DEPRECATED: Use cursor-based instead
-  afterTimestamp?: string // Cursor-based pagination: show listings after this timestamp
-  userTelegramId?: number // Used to mark listings as "new" based on user_last_seen
+  afterTimestamp?: string // Cursor-based pagination: show listings after this timestamp (deprecated)
 }): Promise<Listing[]> => {
   // IMPORTANT: Always order by created_at DESC to ensure new listings appear first
   // NEVER use OFFSET-based pagination - it breaks when new listings are added
@@ -136,6 +135,12 @@ export const getListings = async (filters?: {
   }
 
   let results = data || []
+
+  // CRITICAL: Hech qachon WHERE created_at > last_seen_at qilmaymiz
+  // Vaqtga asoslangan filtr xavfli - bir vaqtda yaratilgan listinglar o'tib ketishi mumkin
+  // Eng yaxshi yondashuv: har doim to'liq listinglarni olish va frontend'da "NEW" badge ko'rsatish
+  // Agar listing_id ga asoslangan filtr kerak bo'lsa, uni alohida qilish mumkin
+  // Lekin bu ham tavsiya etilmaydi - har doim to'liq listinglarni olish eng xavfsiz
 
   // Filter by distance if location provided
   if (filters?.userLat && filters?.userLon && filters?.radius) {

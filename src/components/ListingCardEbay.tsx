@@ -42,11 +42,17 @@ export default function ListingCardEbay({ listing, isFavorite = false, onToggleF
               Targ'ib
             </div>
           )}
-          {listing.is_new && (
-            <div className="absolute top-1 left-10 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
-              Yangi
-            </div>
-          )}
+          {/* "Yangi" badge - frontend'da aniqlanadi (so'nggi 24-72 soatda yaratilgan) */}
+          {(() => {
+            const createdDate = new Date(listing.created_at).getTime()
+            const now = Date.now()
+            const hoursSinceCreation = (now - createdDate) / (1000 * 60 * 60)
+            return hoursSinceCreation < 72 ? (
+              <div className="absolute top-1 left-10 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
+                Yangi
+              </div>
+            ) : null
+          })()}
           {onToggleFavorite && (
             <button
               onClick={(e) => {

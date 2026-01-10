@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS users (
   total_reviews INTEGER DEFAULT 0,
   items_sold_count INTEGER DEFAULT 0,
   last_active TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Listings Table
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS listings (
   favorite_count INTEGER DEFAULT 0,
   is_boosted BOOLEAN DEFAULT FALSE,
   boosted_until TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Favorites Table
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS favorites (
   favorite_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   listing_id UUID NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_telegram_id, listing_id)
 );
 
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
   review_text TEXT CHECK (LENGTH(review_text) <= 200),
   tags TEXT[] DEFAULT '{}',
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(reviewer_telegram_id, listing_id)
 );
 
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   seller_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'initiated' CHECK (status IN ('initiated', 'completed', 'cancelled')),
   completed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Reports Table
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS reports (
   reason TEXT NOT NULL CHECK (reason IN ('spam', 'fraud', 'inappropriate', 'other')),
   description TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolved', 'dismissed')),
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT now(),
   CHECK (
     (reported_listing_id IS NOT NULL) OR (reported_user_telegram_id IS NOT NULL)
   )
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS user_searches (
   category TEXT,
   filters JSONB,
   result_count INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- User Listing Interactions Table
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS user_listing_interactions (
   listing_id UUID NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
   interaction_type TEXT NOT NULL CHECK (interaction_type IN ('view', 'click', 'favorite', 'search_match', 'category_view')),
   metadata JSONB,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- User Category Preferences (Aggregated from interactions)
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS user_category_preferences (
   category TEXT NOT NULL,
   score DECIMAL(5, 2) DEFAULT 0,
   last_interaction TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_telegram_id, category)
 );
 
@@ -161,8 +161,8 @@ CREATE TABLE IF NOT EXISTS subcategories (
   slug TEXT NOT NULL UNIQUE, -- For URL-friendly paths
   description TEXT,
   parent_subcategory_id UUID REFERENCES subcategories(subcategory_id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Add subcategory_id column to listings if not exists
@@ -186,19 +186,21 @@ CREATE TABLE IF NOT EXISTS cart_items (
   user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   listing_id UUID NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
   quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_telegram_id, listing_id) -- One item per user per listing
 );
 
 -- ============================================
 -- QADAM 5: USER LAST SEEN JADVALI
 -- ============================================
+-- MUHIM: Vaqt o'rniga listing_id saqlanadi
+-- Bu xavfsizroq va aniqroq "yangi" e'lonlarni aniqlash uchun
 
 CREATE TABLE IF NOT EXISTS user_last_seen (
   user_telegram_id BIGINT PRIMARY KEY REFERENCES users(telegram_user_id) ON DELETE CASCADE,
-  last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  last_seen_listing_id UUID REFERENCES listings(listing_id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- ============================================
@@ -239,7 +241,8 @@ CREATE INDEX IF NOT EXISTS idx_cart_items_user ON cart_items(user_telegram_id, c
 CREATE INDEX IF NOT EXISTS idx_cart_items_listing ON cart_items(listing_id);
 
 -- User last seen index
-CREATE INDEX IF NOT EXISTS idx_user_last_seen_at ON user_last_seen(last_seen_at);
+CREATE INDEX IF NOT EXISTS idx_user_last_seen_listing ON user_last_seen(last_seen_listing_id);
+CREATE INDEX IF NOT EXISTS idx_user_last_seen_updated ON user_last_seen(updated_at);
 
 -- Search indexes (for fuzzy search and text search)
 CREATE INDEX IF NOT EXISTS idx_listings_title_trgm ON listings USING gin(title gin_trgm_ops);
@@ -304,16 +307,27 @@ END;
 $$ LANGUAGE plpgsql
 SET search_path = public;
 
--- Function to update user last seen timestamp
-CREATE OR REPLACE FUNCTION update_user_last_seen(user_id BIGINT)
+-- Function to update user last seen listing_id
+-- MUHIM: Vaqt o'rniga listing_id saqlanadi
+-- Eng yangi ko'rilgan listing_id bilan yangilanadi
+CREATE OR REPLACE FUNCTION update_user_last_seen(user_id BIGINT, listing_id UUID DEFAULT NULL)
 RETURNS void AS $$
 BEGIN
-  INSERT INTO user_last_seen (user_telegram_id, last_seen_at)
-  VALUES (user_id, NOW())
-  ON CONFLICT (user_telegram_id) 
-  DO UPDATE SET 
-    last_seen_at = NOW(),
-    updated_at = NOW();
+  IF listing_id IS NOT NULL THEN
+    -- Agar listing_id berilgan bo'lsa, uni saqlaydi
+    INSERT INTO user_last_seen (user_telegram_id, last_seen_listing_id, updated_at)
+    VALUES (user_id, listing_id, now())
+    ON CONFLICT (user_telegram_id) 
+    DO UPDATE SET 
+      last_seen_listing_id = listing_id,
+      updated_at = now();
+  ELSE
+    -- Agar listing_id berilmagan bo'lsa, faqat updated_at ni yangilaydi
+    INSERT INTO user_last_seen (user_telegram_id, updated_at)
+    VALUES (user_id, now())
+    ON CONFLICT (user_telegram_id) 
+    DO UPDATE SET updated_at = now();
+  END IF;
 END;
 $$ LANGUAGE plpgsql
 SET search_path = public;
@@ -421,6 +435,12 @@ CREATE TRIGGER update_sold_count_on_listing_status
 -- ============================================
 -- QADAM 9: RLS (Row Level Security) POLICIES
 -- ============================================
+-- MUHIM: RLS va connection pooling bilan muammo bo'lishi mumkin
+-- Vaqtincha test uchun DISABLE qilish mumkin:
+-- ALTER TABLE listings DISABLE ROW LEVEL SECURITY;
+-- 
+-- Production'da RLS yoqilishi kerak, lekin query'larni optimizatsiya qilish kerak
+-- Cache busting va real-time subscriptions ishlatish tavsiya etiladi
 
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
