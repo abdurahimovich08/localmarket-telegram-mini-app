@@ -281,6 +281,7 @@ export const getSimilarListings = async (
     .map(item => item.listing)
 }
 
+
 /**
  * Enhanced personalized listings (combines search + view + interactions)
  * ALWAYS includes ALL listings, but prioritizes personalized ones
@@ -298,10 +299,12 @@ export const getEnhancedPersonalizedListings = async (
   }
 
   // Get different recommendation sets (now returns scored arrays)
+  const searchBasedPromise = getSearchBasedRecommendations(listings, userTelegramId)
+  const viewBasedPromise = getViewBasedRecommendations(listings, userTelegramId)
   const [searchBased, viewBased] = await Promise.all([
-    getSearchBasedRecommendations(listings, userTelegramId),
-    getViewBasedRecommendations(listings, userTelegramId)
-  })
+    searchBasedPromise,
+    viewBasedPromise
+  ])
 
   // Create a map to combine scores for all listings
   const combined = new Map<string, { listing: Listing; score: number }>()
@@ -320,20 +323,28 @@ export const getEnhancedPersonalizedListings = async (
   })
   
   // Search-based relevance (40% weight)
-  searchBased.forEach((item, index) => {
-    const positionWeight = Math.max(0, 1 - index / searchBased.length) // 1.0 for first, 0.0 for last
-    const searchScore = item.score * 40 // Scale search relevance
-    const current = combined.get(item.listing.listing_id)!
-    current.score += searchScore * positionWeight
-  })
+  if (searchBased.length > 0) {
+    searchBased.forEach((item, index) => {
+      const positionWeight = Math.max(0, 1 - index / searchBased.length) // 1.0 for first, 0.0 for last
+      const searchScore = item.score * 40 // Scale search relevance
+      const current = combined.get(item.listing.listing_id)
+      if (current) {
+        current.score += searchScore * positionWeight
+      }
+    })
+  }
 
   // View-based relevance (30% weight)
-  viewBased.forEach((item, index) => {
-    const positionWeight = Math.max(0, 1 - index / viewBased.length)
-    const viewScore = item.score * 30 // Scale view relevance
-    const current = combined.get(item.listing.listing_id)!
-    current.score += viewScore * positionWeight
-  })
+  if (viewBased.length > 0) {
+    viewBased.forEach((item, index) => {
+      const positionWeight = Math.max(0, 1 - index / viewBased.length)
+      const viewScore = item.score * 30 // Scale view relevance
+      const current = combined.get(item.listing.listing_id)
+      if (current) {
+        current.score += viewScore * positionWeight
+      }
+    })
+  }
 
   // Boost active/boosted listings
   combined.forEach((item) => {
