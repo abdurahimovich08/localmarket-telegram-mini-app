@@ -132,26 +132,26 @@ export default function MyListings() {
                       ? 'bg-gray-100 text-gray-700'
                       : 'bg-red-100 text-red-700'
                   }`}>
-                    {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : 'O\'chirilgan'}
+                    {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : 'O''chirilgan'}
                   </span>
                   <div className="flex-1"></div>
-                {listing.status === 'active' && (
-                  <button
-                    onClick={() => handleMarkAsSold(listing.listing_id)}
-                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-green-600 transition-colors"
+                  {listing.status === 'active' && (
+                    <button
+                      onClick={() => handleMarkAsSold(listing.listing_id)}
+                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-green-600 transition-colors"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      <span>Sotilgan Deb Belgilash</span>
+                    </button>
+                  )}
+                  <Link
+                    to={`/listing/${listing.listing_id}/edit`}
+                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-primary transition-colors"
                   >
-                    <CheckIcon className="w-4 h-4" />
-                    <span>Sotilgan Deb Belgilash</span>
-                  </button>
-                )}
-                <Link
-                  to={`/listing/${listing.listing_id}/edit`}
-                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-primary transition-colors"
-                >
-                  <PencilIcon className="w-4 h-4" />
-                  <span>Tahrirlash</span>
-                </Link>
-              </div>
+                    <PencilIcon className="w-4 h-4" />
+                    <span>Tahrirlash</span>
+                  </Link>
+                </div>
             </div>
           ))}
         </div>
