@@ -252,38 +252,38 @@ ON CONFLICT (slug) DO UPDATE SET
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Kamaz', 'Kamaz', 'kamaz', 'Kamaz yuk mashinalari', 1, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yuk-mashinalari'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Man', 'Man', 'man', 'Man yuk mashinalari', 2, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yuk-mashinalari'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Scania', 'Scania', 'scania', 'Scania yuk mashinalari', 3, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yuk-mashinalari'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Nested: Nexia, Gazel, BMW, Mercedes under Yengil mashinalar
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Nexia', 'Nexia', 'nexia', 'Nexia yengil mashinalari', 1, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yengil-mashinalar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Gazel', 'Gazel', 'gazel', 'Gazel yengil mashinalari', 2, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yengil-mashinalar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'BMW', 'BMW', 'bmw', 'BMW yengil mashinalari', 3, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yengil-mashinalar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'sports_outdoors', 'Mercedes', 'Mercedes', 'mercedes', 'Mercedes yengil mashinalari', 4, subcategory_id
 FROM subcategories WHERE parent_category = 'sports_outdoors' AND slug = 'yengil-mashinalar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 -- Ko'chmas mulk
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
@@ -293,7 +293,7 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('home_garden', 'Ofislar', 'Ofislar', 'ofislar', 'Ofis binolari va biznes binolari', 4),
 ('home_garden', 'Magazinlar', 'Magazinlar', 'magazinlar', 'Savdo maydonlari va magazinlar', 5),
 ('home_garden', 'Ijaraga', 'Ijaraga', 'ijaraga', 'Ijaraga beriladigan ko''chmas mulk', 6)
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Elektronika
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
@@ -305,18 +305,18 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('electronics', 'Maishiy texnika', 'Maishiy texnika', 'maishiy-texnika', 'Muzlatgich, kir yuvish mashinasi va boshqalar', 6),
 ('electronics', 'Audio va video', 'Audio va video', 'audio-video', 'Kolonkalar, naushniklar, kameralar', 7),
 ('electronics', 'O''yin konsollari', 'O''yin konsollari', 'oyin-konsollari', 'PlayStation, Xbox va boshqalar', 8)
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Nested: iPhone, Samsung under Telefonlar
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'electronics', 'iPhone', 'iPhone', 'iphone', 'Apple iPhone telefonlar', 1, subcategory_id
 FROM subcategories WHERE parent_category = 'electronics' AND slug = 'telefonlar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'electronics', 'Samsung', 'Samsung', 'samsung', 'Samsung telefonlar', 2, subcategory_id
 FROM subcategories WHERE parent_category = 'electronics' AND slug = 'telefonlar'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 -- Kiyim-kechak
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
@@ -325,7 +325,7 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('clothing', 'Bolalar kiyimi', 'Bolalar kiyimi', 'bolalar-kiyimi', 'Bolalar uchun kiyim-kechaklar', 3),
 ('clothing', 'Oyoq kiyim', 'Oyoq kiyim', 'oyoq-kiyim', 'Etik, tufli, krossovkalar', 4),
 ('clothing', 'Aksessuarlar', 'Aksessuarlar', 'aksessuarlar', 'Sumkalar, soatlar, aksessuarlar', 5)
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Uy va Bog'
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
@@ -334,18 +334,18 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('home_garden', 'Bog'' anjomlari', 'Bog'' anjomlari', 'bog-anjomlari', 'Bog'' va hovli uchun asboblar', 3),
 ('home_garden', 'Uy bezaklari', 'Uy bezaklari', 'uy-bezaklari', 'Interyer bezaklari', 4),
 ('home_garden', 'Oshxona jihozlari', 'Oshxona jihozlari', 'oshxona-jihozlari', 'Oshxona uchun kerakli jihozlar', 5)
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Nested: Divanlar, Stollar under Mebel
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'home_garden', 'Divanlar', 'Divanlar', 'divanlar', 'Divanlar va kreslolar', 1, subcategory_id
 FROM subcategories WHERE parent_category = 'home_garden' AND slug = 'mebel'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order, parent_subcategory_id)
 SELECT 'home_garden', 'Stollar', 'Stollar', 'stollar', 'Har xil turdagi stollar', 2, subcategory_id
 FROM subcategories WHERE parent_category = 'home_garden' AND slug = 'mebel'
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 
 -- Sport va Boshqalar
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
@@ -355,7 +355,7 @@ INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz,
 ('other', 'Vakansiyalar', 'Vakansiyalar', 'vakansiyalar', 'Ish o''rinlari va vakansiyalar', 1),
 ('other', 'Xizmatlar', 'Xizmatlar', 'xizmatlar', 'Turli xil xizmatlar', 2),
 ('other', 'Hayvonlar', 'Hayvonlar', 'hayvonlar', 'Uy hayvonlari va ularning aksessuarlari', 3)
-ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
+ON CONFLICT (slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- ============================================
 -- QADAM 5: USER ACTIVITY TRACKING
