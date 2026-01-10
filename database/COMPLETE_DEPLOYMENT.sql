@@ -152,12 +152,54 @@ CREATE TABLE IF NOT EXISTS user_category_preferences (
   preference_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   category TEXT NOT NULL,
-  subcategory_id UUID,
   score DECIMAL(5, 2) DEFAULT 0,
   last_interaction TIMESTAMPTZ,
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_telegram_id, category, subcategory_id)
+  UNIQUE(user_telegram_id, category)
 );
+
+-- Add subcategory_id column if missing (for backward compatibility)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'user_category_preferences' 
+    AND column_name = 'subcategory_id'
+  ) THEN
+    ALTER TABLE user_category_preferences 
+    ADD COLUMN subcategory_id UUID REFERENCES subcategories(subcategory_id) ON DELETE CASCADE;
+    
+    RAISE NOTICE 'subcategory_id ustuni user_category_preferences jadvaliga qo''shildi';
+  ELSE
+    RAISE NOTICE 'subcategory_id ustuni allaqachon mavjud';
+  END IF;
+END $$;
+
+-- Update unique constraint to include subcategory_id (if needed)
+DO $$
+BEGIN
+  -- Drop old unique constraint if exists
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'user_category_preferences_user_telegram_id_category_key'
+  ) THEN
+    ALTER TABLE user_category_preferences 
+    DROP CONSTRAINT user_category_preferences_user_telegram_id_category_key;
+    RAISE NOTICE 'Eski unique constraint olib tashlandi';
+  END IF;
+  
+  -- Add new unique constraint with subcategory_id (if not exists)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'user_category_preferences_user_category_subcategory_key'
+  ) THEN
+    ALTER TABLE user_category_preferences 
+    ADD CONSTRAINT user_category_preferences_user_category_subcategory_key 
+    UNIQUE(user_telegram_id, category, subcategory_id);
+    RAISE NOTICE 'Yangi unique constraint qo''shildi (category + subcategory_id)';
+  END IF;
+END $$;
 
 -- ============================================
 -- QADAM 3: SUBCATEGORIES TABLE
