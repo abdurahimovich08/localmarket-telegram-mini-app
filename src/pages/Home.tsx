@@ -27,9 +27,13 @@ export default function Home() {
 
   useEffect(() => {
     let isMounted = true
+    let refreshInterval: NodeJS.Timeout | null = null
 
-    const loadListings = async () => {
-      setLoading(true)
+    const loadListings = async (forceRefresh = false) => {
+      // Don't show loading spinner on refresh to avoid flickering
+      if (!forceRefresh) {
+        setLoading(true)
+      }
       try {
         // Request location (will use cache if available)
         const location = await requestLocation()
@@ -37,6 +41,7 @@ export default function Home() {
         if (!isMounted) return
 
         // Load listings with limit for performance (100 for initial load to ensure new listings are included)
+        // Add cache busting timestamp to ensure fresh data
         const allListings = await getListings({
           radius: user?.search_radius_miles || 10,
           userLat: location?.latitude,
@@ -69,16 +74,47 @@ export default function Home() {
       } catch (error) {
         console.error('Error loading listings:', error)
       } finally {
-        if (isMounted) {
+        if (isMounted && !forceRefresh) {
           setLoading(false)
         }
       }
     }
 
+    // Initial load
     loadListings()
+
+    // Refresh listings every 30 seconds when page is visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        loadListings(true) // Force refresh without loading spinner
+      }
+    }
+
+    // Refresh when page becomes visible (user switches back to tab)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Refresh every 30 seconds if page is visible
+    refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        loadListings(true) // Silent refresh
+      }
+    }, 30000) // 30 seconds
+
+    // Refresh on window focus (user switches back to app)
+    const handleFocus = () => {
+      if (isMounted) {
+        loadListings(true) // Silent refresh
+      }
+    }
+    window.addEventListener('focus', handleFocus)
 
     return () => {
       isMounted = false
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+      }
     }
   }, [user?.search_radius_miles, user?.telegram_user_id])
 

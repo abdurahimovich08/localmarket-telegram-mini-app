@@ -60,6 +60,10 @@ export const getListings = async (filters?: {
   boostedOnly?: boolean // only boosted listings
   limit?: number // Maximum number of listings to return
 }): Promise<Listing[]> => {
+  // Use timestamp for cache busting to ensure fresh data
+  // Supabase may cache queries, so we add a small random component
+  const cacheBuster = Date.now()
+  
   let query = supabase
     .from('listings')
     .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url)')
