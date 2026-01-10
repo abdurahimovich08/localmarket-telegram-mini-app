@@ -77,7 +77,10 @@ export default function ListingDetail() {
   const handleMessageSeller = () => {
     if (!listing?.seller?.username) return
 
-    const message = `Hi! I'm interested in your "${listing.title}" listed for ${listing.is_free ? 'free' : `$${listing.price}`}. Is it still available?`
+    const priceText = listing.is_free 
+      ? 'bepul' 
+      : `${listing.price?.toLocaleString()} so'm`
+    const message = `Salom! Men sizning "${listing.title}" e'loningiz bilan qiziqaman. Narxi: ${priceText}. Bu mahsulot hali ham mavjudmi?`
     openTelegramChat(listing.seller.username, message)
   }
 

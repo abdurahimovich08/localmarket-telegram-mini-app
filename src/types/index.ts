@@ -117,21 +117,21 @@ export interface Report {
 }
 
 export const CATEGORIES: { value: ListingCategory; label: string; emoji: string }[] = [
-  { value: 'electronics', label: 'Electronics', emoji: '📱' },
-  { value: 'furniture', label: 'Furniture', emoji: '🪑' },
-  { value: 'clothing', label: 'Clothing & Fashion', emoji: '👕' },
-  { value: 'baby_kids', label: 'Baby & Kids', emoji: '👶' },
-  { value: 'home_garden', label: 'Home & Garden', emoji: '🏠' },
-  { value: 'games_hobbies', label: 'Games & Hobbies', emoji: '🎮' },
-  { value: 'books_media', label: 'Books & Media', emoji: '📚' },
-  { value: 'sports_outdoors', label: 'Sports & Outdoors', emoji: '🏋️' },
-  { value: 'other', label: 'Other', emoji: '🎁' },
+  { value: 'electronics', label: 'Elektronika', emoji: '📱' },
+  { value: 'furniture', label: 'Mebel', emoji: '🪑' },
+  { value: 'clothing', label: 'Kiyim-kechak', emoji: '👕' },
+  { value: 'baby_kids', label: 'Bolalar uchun', emoji: '👶' },
+  { value: 'home_garden', label: 'Uy-ro\'zg\'or', emoji: '🏠' },
+  { value: 'games_hobbies', label: 'O\'yinchoqlar', emoji: '🎮' },
+  { value: 'books_media', label: 'Kitoblar', emoji: '📚' },
+  { value: 'sports_outdoors', label: 'Sport', emoji: '🏋️' },
+  { value: 'other', label: 'Boshqalar', emoji: '🎁' },
 ]
 
 export const CONDITIONS: { value: ListingCondition; label: string }[] = [
-  { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like New' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'poor', label: 'Poor' },
+  { value: 'new', label: 'Yangi' },
+  { value: 'like_new', label: 'Dekoratsiya uchun' },
+  { value: 'good', label: 'Yaxshi holatda' },
+  { value: 'fair', label: 'Qoniqarli' },
+  { value: 'poor', label: 'Yomon holatda' },
 ]
