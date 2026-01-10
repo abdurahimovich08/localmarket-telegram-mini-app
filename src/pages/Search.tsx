@@ -171,7 +171,7 @@ export default function Search() {
                 key={listing.listing_id}
                 onClick={() => {
                   handleListingClick(listing)
-                  window.location.href = `/listing/${listing.listing_id}`
+                  navigate(`/listing/${listing.listing_id}`)
                 }}
                 className="cursor-pointer"
               >
