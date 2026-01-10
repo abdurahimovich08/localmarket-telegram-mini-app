@@ -28,7 +28,7 @@ INSERT INTO listings (
   seller_telegram_id, title, description, price, is_free, category, condition,
   photos, neighborhood, latitude, longitude, status, view_count, favorite_count, created_at
 ) VALUES
-  (1001, 'Yangi Divan', 'Yangi divan, 3 o\'rinli, qulay va chiroyli. Uyga mos keladi.', 2500000, false, 'furniture', 'new',
+  (1001, 'Yangi Divan', 'Yangi divan, 3 o''rinli, qulay va chiroyli. Uyga mos keladi.', 2500000, false, 'furniture', 'new',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 28, 4, NOW() - INTERVAL '3 days'),
   
   (1002, 'Oshxona Stol va Stullar', 'Oshxona uchun stol va 4 ta stul. Yaxshi holatda. Tekshirish mumkin.', 800000, false, 'furniture', 'good',
@@ -42,7 +42,7 @@ INSERT INTO listings (
   seller_telegram_id, title, description, price, is_free, category, condition,
   photos, neighborhood, latitude, longitude, status, view_count, favorite_count, created_at
 ) VALUES
-  (1003, 'Yangi Kiyimlar', 'Yangi kiyimlar to\'plami. Turli o\'lchamlar mavjud. Narxlar arzon.', 150000, false, 'clothing', 'new',
+  (1003, 'Yangi Kiyimlar', 'Yangi kiyimlar to''plami. Turli o''lchamlar mavjud. Narxlar arzon.', 150000, false, 'clothing', 'new',
    ARRAY[]::TEXT[], 'Mirzo Ulugbek', 41.3156, 69.2949, 'active', 41, 7, NOW() - INTERVAL '2 days'),
   
   (1002, 'Olimpiada Futbolka', 'Original futbolka, yangi. Xotira uchun.', 80000, false, 'clothing', 'new',
@@ -56,7 +56,7 @@ INSERT INTO listings (
   seller_telegram_id, title, description, price, is_free, category, condition,
   photos, neighborhood, latitude, longitude, status, view_count, favorite_count, created_at
 ) VALUES
-  (1002, 'Bolalar O\'yinchoqlari', 'Ko\'plab o\'yinchoqlar. Yaxshi holatda. Sotiladi.', 200000, false, 'baby_kids', 'good',
+  (1002, 'Bolalar O''yinchoqlari', 'Ko''plab o''yinchoqlar. Yaxshi holatda. Sotiladi.', 200000, false, 'baby_kids', 'good',
    ARRAY[]::TEXT[], 'Yunusobod', 41.3498, 69.2849, 'active', 24, 5, NOW() - INTERVAL '3 days'),
   
   (1003, 'Bolalar Velosipedi', 'Yangi velosiped, 5 yosh uchun. Tekshirish mumkin.', 1200000, false, 'baby_kids', 'like_new',
@@ -70,10 +70,10 @@ INSERT INTO listings (
   seller_telegram_id, title, description, price, is_free, category, condition,
   photos, neighborhood, latitude, longitude, status, view_count, favorite_count, created_at
 ) VALUES
-  (1001, 'Bog\' Uskunalari', 'Bog\' uchun asboblar va uskunalar. Hohlagan narsangizni tanlashingiz mumkin.', 500000, false, 'home_garden', 'good',
+  (1001, 'Bog'' Uskunalari', 'Bog'' uchun asboblar va uskunalar. Hohlagan narsangizni tanlashingiz mumkin.', 500000, false, 'home_garden', 'good',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 20, 3, NOW() - INTERVAL '4 days'),
   
-  (1002, 'Gul Idishlari', 'Turli o\'lchamdagi gul idishlari. Bog\' uchun.', 80000, false, 'home_garden', 'new',
+  (1002, 'Gul Idishlari', 'Turli o''lchamdagi gul idishlari. Bog'' uchun.', 80000, false, 'home_garden', 'new',
    ARRAY[]::TEXT[], 'Yunusobod', 41.3498, 69.2849, 'active', 14, 2, NOW() - INTERVAL '2 days'),
   
   (1003, 'Uy Dekorlari', 'Uy bezak buyumlari. Chiroyli va zamonaviy.', 250000, false, 'home_garden', 'like_new',
@@ -87,10 +87,10 @@ INSERT INTO listings (
   (1002, 'PlayStation 5', 'PS5 konsol, yangi. Quti va aksessuarlari bilan.', 8500000, false, 'games_hobbies', 'new',
    ARRAY[]::TEXT[], 'Yunusobod', 41.3498, 69.2849, 'active', 89, 15, NOW() - INTERVAL '1 day'),
   
-  (1001, 'Shaxmat To\'plami', 'Zamonaviy shaxmat to\'plami. Professional uchun.', 150000, false, 'games_hobbies', 'new',
+  (1001, 'Shaxmat To''plami', 'Zamonaviy shaxmat to''plami. Professional uchun.', 150000, false, 'games_hobbies', 'new',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 12, 1, NOW() - INTERVAL '5 days'),
   
-  (1003, 'Gitara', 'Akustik gitara, yangi holatda. O\'rganish uchun juda qulay.', 1800000, false, 'games_hobbies', 'like_new',
+  (1003, 'Gitara', 'Akustik gitara, yangi holatda. O''rganish uchun juda qulay.', 1800000, false, 'games_hobbies', 'like_new',
    ARRAY[]::TEXT[], 'Mirzo Ulugbek', 41.3156, 69.2949, 'active', 38, 6, NOW() - INTERVAL '2 days');
 
 -- Books & Media kategoriyasi
@@ -101,7 +101,7 @@ INSERT INTO listings (
   (1001, 'Kitoblar Kolleksiyasi', 'Turli kitoblar. Darsliklar, romanlar va boshqalar.', 200000, false, 'books_media', 'good',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 16, 2, NOW() - INTERVAL '3 days'),
   
-  (1003, 'Elektron Kitob O\'qish', 'Kindle yoki shunga o\'xshash qurilma uchun kitoblar.', 50000, false, 'books_media', 'new',
+  (1003, 'Elektron Kitob O''qish', 'Kindle yoki shunga o''xshash qurilma uchun kitoblar.', 50000, false, 'books_media', 'new',
    ARRAY[]::TEXT[], 'Mirzo Ulugbek', 41.3156, 69.2949, 'active', 9, 1, NOW() - INTERVAL '4 days'),
   
   (1002, 'Jurnallar', 'Eski jurnallar, kolleksiya uchun.', 30000, false, 'books_media', 'fair',
@@ -115,7 +115,7 @@ INSERT INTO listings (
   (1002, 'Velosiped', 'Shahar velosipedi, yaxshi holatda. Tekshirish mumkin.', 2500000, false, 'sports_outdoors', 'good',
    ARRAY[]::TEXT[], 'Yunusobod', 41.3498, 69.2849, 'active', 52, 9, NOW() - INTERVAL '1 day'),
   
-  (1001, 'Futbol To\'pi', 'Original futbol to\'pi. Professional sifat.', 250000, false, 'sports_outdoors', 'new',
+  (1001, 'Futbol To''pi', 'Original futbol to''pi. Professional sifat.', 250000, false, 'sports_outdoors', 'new',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 19, 3, NOW() - INTERVAL '2 days'),
   
   (1003, 'Fitnes Uskunalari', 'Uy uchun fitnes uskunalari. Dumbbell va boshqalar.', 800000, false, 'sports_outdoors', 'good',
@@ -136,7 +136,7 @@ INSERT INTO listings (
    ARRAY[]::TEXT[], 'Mirzo Ulugbek', 41.3156, 69.2949, 'active', 33, 5, NOW() - INTERVAL '3 days'),
   
   -- Test uchun maxsus listing - "test" nomi bilan
-  (1001, 'Test E\'lon', 'Bu test e\'loni. Qidiruv tizimini sinash uchun yaratilgan.', 100000, false, 'other', 'new',
+  (1001, 'Test E''lon', 'Bu test e''loni. Qidiruv tizimini sinash uchun yaratilgan.', 100000, false, 'other', 'new',
    ARRAY[]::TEXT[], 'Chilonzor', 41.3111, 69.2797, 'active', 5, 1, NOW());
 
 -- Muammo: "test" nomini qidirishda topilishi kerak
