@@ -8,6 +8,8 @@ import { getEnhancedPersonalizedListings } from '../lib/recommendations'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
+import ListingCardEbay from '../components/ListingCardEbay'
+import Pagination from '../components/Pagination'
 import CategoryCarousel from '../components/CategoryCarousel'
 import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
@@ -24,6 +26,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('personalized')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     let isMounted = true
@@ -140,6 +144,17 @@ export default function Home() {
   }
 
   const displayedListings = activeTab === 'personalized' ? personalizedListings : dealsListings
+  
+  // Pagination logic
+  const totalPages = Math.ceil(displayedListings.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedListings = displayedListings.slice(startIndex, endIndex)
+  
+  // Reset to page 1 when tab changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -266,17 +281,28 @@ export default function Home() {
             )}
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {displayedListings.map((listing) => (
+          {/* List (eBay-style) */}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {paginatedListings.map((listing) => (
               <div
                 key={listing.listing_id}
                 onClick={() => handleListingClick(listing)}
               >
-                <ListingCard listing={listing} />
+                <ListingCardEbay listing={listing} />
               </div>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={displayedListings.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
 
           {/* Show all listings if personalized/deals are less */}
           {activeTab === 'personalized' && displayedListings.length < listings.length && (
