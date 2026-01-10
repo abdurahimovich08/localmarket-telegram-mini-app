@@ -98,6 +98,8 @@ export default function Home() {
     if (user?.telegram_user_id) {
       trackListingView(user.telegram_user_id, listing.listing_id)
     }
+    // Navigate to listing detail
+    navigate(`/listing/${listing.listing_id}`)
   }
 
   const displayedListings = activeTab === 'personalized' ? personalizedListings : dealsListings
