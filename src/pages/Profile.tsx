@@ -3,9 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getUser, getListings, getReviews } from '../lib/supabase'
 import type { User, Listing, Review } from '../types'
+import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
-import { ArrowLeftIcon, StarIcon } from '@heroicons/react/24/solid'
+import { StarIcon } from '@heroicons/react/24/solid'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()
@@ -72,12 +73,7 @@ export default function Profile() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center px-4 py-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeftIcon className="w-6 h-6" />
-          </button>
+          <BackButton />
           <h1 className="flex-1 text-center font-semibold text-gray-900">Profile</h1>
           <div className="w-10"></div>
         </div>

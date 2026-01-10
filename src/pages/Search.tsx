@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
 import { sortListings } from '../lib/sorting'
@@ -8,10 +8,10 @@ import { trackUserSearch, trackListingView } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
+import BackButton from '../components/BackButton'
 import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
-import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlassIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function Search() {
   const { user } = useUser()
@@ -106,12 +106,7 @@ export default function Search() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 -ml-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeftIcon className="w-5 h-5" />
-            </button>
+            <BackButton />
             <CartIcon />
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

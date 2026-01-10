@@ -6,8 +6,9 @@ import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
 import { uploadImages } from '../lib/imageUpload'
 import { validateCategoryStrict, detectCategory } from '../lib/categoryValidation'
+import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
-import { ArrowLeftIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function CreateListing() {
   const navigate = useNavigate()
@@ -182,12 +183,7 @@ export default function CreateListing() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center px-4 py-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeftIcon className="w-6 h-6" />
-          </button>
+          <BackButton />
           <h1 className="flex-1 text-center font-semibold text-gray-900">E'lon Yaratish</h1>
           <div className="w-10"></div>
         </div>

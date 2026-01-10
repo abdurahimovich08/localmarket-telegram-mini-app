@@ -4,6 +4,7 @@ import { useUser } from '../contexts/UserContext'
 import { getCart, removeFromCart, clearCart } from '../lib/supabase'
 import { openTelegramChat } from '../lib/telegram'
 import type { CartItem } from '../types'
+import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import { TrashIcon, ShoppingBagIcon } from '@heroicons/react/24/outline'
 import { XMarkIcon } from '@heroicons/react/24/outline'
@@ -100,7 +101,10 @@ export default function Cart() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Savatcha</h1>
+          <div className="flex items-center gap-3">
+            <BackButton />
+            <h1 className="text-xl font-bold text-gray-900">Savatcha</h1>
+          </div>
           {cartItems.length > 0 && (
             <button
               onClick={handleClearCart}

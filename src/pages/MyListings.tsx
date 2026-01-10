@@ -5,6 +5,7 @@ import { getListings, updateListing } from '../lib/supabase'
 import { getListingAnalytics, type ListingAnalytics } from '../lib/analytics'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
+import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import { PlusIcon, PencilIcon, CheckIcon, EyeIcon, HeartIcon } from '@heroicons/react/24/outline'
 
@@ -65,7 +66,10 @@ export default function MyListings() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">Mening E'lonlarim</h1>
+            <div className="flex items-center gap-3 flex-1">
+              <BackButton />
+              <h1 className="text-xl font-bold text-gray-900">Mening E'lonlarim</h1>
+            </div>
             <Link
               to="/create"
               className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
