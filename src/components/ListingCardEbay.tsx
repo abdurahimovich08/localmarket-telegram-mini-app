@@ -97,7 +97,7 @@ export default function ListingCardEbay({ listing, isFavorite = false, onToggleF
             <p className="text-xs text-gray-500 mb-1">
               📍 {listing.neighborhood}
             </p>
-          )} */}
+          )}
           {listing.distance !== undefined && (
             <p className="text-xs text-gray-500">
               📍 {formatDistance(listing.distance)}
