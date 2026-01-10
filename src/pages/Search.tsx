@@ -97,9 +97,9 @@ export default function Search() {
   }, [searchQuery, filters, user?.search_radius_miles, user?.telegram_user_id])
 
   const handleListingClick = (listing: Listing) => {
-    // Track view
+    // Track view with subcategory_id for granular recommendations
     if (user?.telegram_user_id) {
-      trackListingView(user.telegram_user_id, listing.listing_id)
+      trackListingView(user.telegram_user_id, listing.listing_id, listing.subcategory_id)
     }
   }
 

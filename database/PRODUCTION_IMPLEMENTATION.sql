@@ -258,7 +258,7 @@ CREATE TRIGGER trigger_favorite_preferences
 -- WHY: Shows all listings, ranked by relevance score
 -- OUTPUT: Production-ready SQL function
 
--- 4.1: Recommendation Score Function
+-- 4.1: Recommendation Score Function (OLX.uz Style - Subcategory Priority)
 CREATE OR REPLACE FUNCTION get_listing_recommendation_score(
   p_listing_id UUID,
   p_user_id BIGINT,
@@ -269,16 +269,18 @@ RETURNS DECIMAL(10, 4) AS $$
 DECLARE
   v_listing RECORD;
   v_preferences RECORD;
+  v_user_subcategory_prefs RECORD;
   v_score DECIMAL(10, 4) := 0;
   
-  -- Component scores
-  v_category_score DECIMAL := 0;
-  v_subcategory_score DECIMAL := 0;
-  v_price_score DECIMAL := 0;
-  v_condition_score DECIMAL := 0;
-  v_distance_score DECIMAL := 0;
-  v_popularity_score DECIMAL := 0;
-  v_freshness_score DECIMAL := 0;
+  -- Component scores (NEW FORMULA: Subcategory * 50 + Category * 10 + Recency * 5 + Distance * 5)
+  v_subcategory_score DECIMAL := 0;  -- 50 points max
+  v_category_score DECIMAL := 0;     -- 10 points max
+  v_price_score DECIMAL := 0;        -- 5 points max
+  v_condition_score DECIMAL := 0;    -- 5 points max
+  v_distance_score DECIMAL := 0;     -- 5 points max
+  v_popularity_score DECIMAL := 0;   -- 5 points max
+  v_freshness_score DECIMAL := 0;    -- 5 points max
+  v_boost_bonus DECIMAL := 0;        -- 15 points max
 BEGIN
   -- Get listing data
   SELECT * INTO v_listing
@@ -295,18 +297,38 @@ BEGIN
   FROM user_preferences
   WHERE user_telegram_id = p_user_id;
   
-  -- 1. CATEGORY MATCH (40% weight if user has preferences, else 0)
+  -- Get user subcategory preference score (from user_category_preferences with subcategory_id)
+  DECLARE
+    v_subcategory_score_value DECIMAL := 0;
+  BEGIN
+    IF v_listing.subcategory_id IS NOT NULL THEN
+      SELECT COALESCE(score, 0) INTO v_subcategory_score_value
+      FROM user_category_preferences
+      WHERE user_telegram_id = p_user_id
+        AND category = v_listing.category
+        AND subcategory_id = v_listing.subcategory_id
+      LIMIT 1;
+    END IF;
+    
+    -- 1. SUBCATEGORY MATCH (50 points max) - CRITICAL FOR KAMAZ CASE
+    -- If user viewed listings in this exact subcategory, huge boost
+    IF v_listing.subcategory_id IS NOT NULL THEN
+      IF v_subcategory_score_value > 0 THEN
+        -- User has viewed this subcategory - full 50 points
+        v_subcategory_score := 50;
+      ELSIF v_preferences IS NOT NULL AND v_preferences.top_subcategory_id = v_listing.subcategory_id THEN
+        -- User's top subcategory matches - full 50 points
+        v_subcategory_score := 50;
+      END IF;
+    END IF;
+  END;
+  
+  -- 2. CATEGORY MATCH (10 points max) - Small boost for same category
   IF v_preferences IS NOT NULL AND v_preferences.top_category = v_listing.category THEN
-    v_category_score := 40;
+    v_category_score := 10;
   END IF;
   
-  -- 2. SUBCATEGORY MATCH (20% weight)
-  IF v_preferences IS NOT NULL AND v_preferences.top_subcategory_id = v_listing.subcategory_id THEN
-    v_subcategory_score := 20;
-  END IF;
-  
-  -- 3. PRICE SIMILARITY (15% weight)
-  -- Closer to user's average viewed price = higher score
+  -- 3. PRICE SIMILARITY (5 points max)
   IF v_preferences IS NOT NULL AND v_preferences.average_viewed_price IS NOT NULL 
      AND v_listing.price IS NOT NULL AND v_listing.price > 0 THEN
     DECLARE
@@ -315,78 +337,73 @@ BEGIN
     BEGIN
       v_price_diff := ABS(v_listing.price - v_preferences.average_viewed_price);
       v_price_ratio := LEAST(v_price_diff / NULLIF(v_preferences.average_viewed_price, 0), 1.0);
-      -- Score decreases as price difference increases
-      v_price_score := 15 * (1.0 - v_price_ratio);
+      v_price_score := 5 * (1.0 - v_price_ratio);
     END;
   END IF;
   
-  -- 4. CONDITION MATCH (10% weight)
+  -- 4. CONDITION MATCH (5 points max)
   IF v_preferences IS NOT NULL AND v_preferences.preferred_condition = v_listing.condition THEN
-    v_condition_score := 10;
+    v_condition_score := 5;
   END IF;
   
-  -- 5. DISTANCE (10% weight if GPS available)
+  -- 5. DISTANCE (5 points max if GPS available)
   IF p_user_lat IS NOT NULL AND p_user_lon IS NOT NULL 
      AND v_listing.latitude IS NOT NULL AND v_listing.longitude IS NOT NULL THEN
     DECLARE
       v_distance_km DECIMAL;
     BEGIN
-      -- Haversine distance (km)
       v_distance_km := (
         6371 * acos(
-          cos(radians(p_user_lat)) * 
-          cos(radians(v_listing.latitude)) * 
-          cos(radians(v_listing.longitude) - radians(p_user_lon)) + 
-          sin(radians(p_user_lat)) * 
-          sin(radians(v_listing.latitude))
+          GREATEST(-1, LEAST(1,
+            cos(radians(p_user_lat)) * 
+            cos(radians(v_listing.latitude)) * 
+            cos(radians(v_listing.longitude) - radians(p_user_lon)) + 
+            sin(radians(p_user_lat)) * 
+            sin(radians(v_listing.latitude))
+          ))
         )
       );
       -- Closer = higher score (max 10km = full score)
-      v_distance_score := GREATEST(0, 10 * (1.0 - LEAST(v_distance_km / 10.0, 1.0)));
+      v_distance_score := GREATEST(0, 5 * (1.0 - LEAST(v_distance_km / 10.0, 1.0)));
     END;
   END IF;
   
-  -- 6. POPULARITY (views + likes) (5% weight)
-  -- Normalized: score based on relative popularity
+  -- 6. POPULARITY (views + likes) (5 points max)
   v_popularity_score := LEAST(
-    (v_listing.view_count * 0.1 + v_listing.favorite_count * 2) / 100.0,
+    (v_listing.view_count * 0.01 + v_listing.favorite_count * 0.2),
     5.0
   );
   
-  -- 7. FRESHNESS (newer = higher score) (10% weight)
+  -- 7. FRESHNESS (newer = higher score) (5 points max)
   DECLARE
     v_age_hours DECIMAL;
   BEGIN
     v_age_hours := EXTRACT(EPOCH FROM (now() - v_listing.created_at)) / 3600;
     -- < 24h = full score, decays over 7 days
     IF v_age_hours < 24 THEN
-      v_freshness_score := 10;
+      v_freshness_score := 5;
     ELSIF v_age_hours < 168 THEN -- 7 days
-      v_freshness_score := 10 * (1.0 - (v_age_hours - 24) / 144.0);
+      v_freshness_score := 5 * (1.0 - (v_age_hours - 24) / 144.0);
     ELSE
       v_freshness_score := 0;
     END IF;
   END;
   
-  -- 8. BOOST BONUS (extra 20 points if boosted)
-  DECLARE
-    v_boost_bonus DECIMAL := 0;
-  BEGIN
-    IF v_listing.is_boosted = true 
-       AND (v_listing.boosted_until IS NULL OR v_listing.boosted_until > now()) THEN
-      v_boost_bonus := 20;
-    END IF;
-    
-    -- Total score
-    v_score := v_category_score + v_subcategory_score + v_price_score + 
-               v_condition_score + v_distance_score + v_popularity_score + 
-               v_freshness_score + v_boost_bonus;
-  END;
+  -- 8. BOOST BONUS (15 points if boosted)
+  IF v_listing.is_boosted = true 
+     AND (v_listing.boosted_until IS NULL OR v_listing.boosted_until > now()) THEN
+    v_boost_bonus := 15;
+  END IF;
+  
+  -- Total score: Subcategory (50) + Category (10) + Others (25) + Boost (15) = 100 max
+  v_score := v_subcategory_score + v_category_score + v_price_score + 
+             v_condition_score + v_distance_score + v_popularity_score + 
+             v_freshness_score + v_boost_bonus;
   
   RETURN v_score;
 END;
 $$ LANGUAGE plpgsql
-STABLE -- Function doesn't modify data
+STABLE
 SET search_path = public;
 
 -- 4.2: Recommendation Feed Query (Production-ready)

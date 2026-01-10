@@ -44,13 +44,30 @@ export const trackUserInteraction = async (
 }
 
 /**
- * Track listing view
+ * Track listing view (with subcategory support)
+ * Uses listing_views table for better granular tracking
  */
 export const trackListingView = async (
   userTelegramId: number,
-  listingId: string
+  listingId: string,
+  subcategoryId?: string | null
 ): Promise<void> => {
-  await trackUserInteraction(userTelegramId, listingId, 'view')
+  try {
+    // Track in listing_views table (deduplicated per day)
+    await supabase.from('listing_views').insert({
+      user_telegram_id: userTelegramId,
+      listing_id: listingId,
+      viewed_at: new Date().toISOString(),
+      viewed_date: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+    })
+    
+    // Also track in user_listing_interactions for backward compatibility
+    await trackUserInteraction(userTelegramId, listingId, 'view', {
+      subcategory_id: subcategoryId || null
+    })
+  } catch (error) {
+    console.error('Error tracking listing view:', error)
+  }
 }
 
 /**

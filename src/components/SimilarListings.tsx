@@ -49,7 +49,7 @@ export default function SimilarListings({ listing }: SimilarListingsProps) {
   const handleListingClick = (similarListing: Listing) => {
     // Track view
     if (user?.telegram_user_id) {
-      trackListingView(user.telegram_user_id, similarListing.listing_id)
+      trackListingView(user.telegram_user_id, similarListing.listing_id, similarListing.subcategory_id)
     }
     navigate(`/listing/${similarListing.listing_id}`)
   }

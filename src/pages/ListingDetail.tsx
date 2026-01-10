@@ -33,9 +33,9 @@ export default function ListingDetail() {
           setListing(data)
           // Increment view count
           await incrementViewCount(id)
-          // Track view
+          // Track view with subcategory_id for granular recommendations
           if (user?.telegram_user_id) {
-            trackListingView(user.telegram_user_id, id)
+            trackListingView(user.telegram_user_id, id, data.subcategory_id)
           }
           // Check if favorited
           if (user) {

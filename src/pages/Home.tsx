@@ -147,9 +147,9 @@ export default function Home() {
   }
 
   const handleListingClick = (listing: Listing) => {
-    // Track view
+    // Track view with subcategory_id for granular recommendations
     if (user?.telegram_user_id) {
-      trackListingView(user.telegram_user_id, listing.listing_id)
+      trackListingView(user.telegram_user_id, listing.listing_id, listing.subcategory_id)
     }
     // Navigate to listing detail
     navigate(`/listing/${listing.listing_id}`)
