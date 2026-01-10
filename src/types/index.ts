@@ -61,6 +61,7 @@ export interface Listing {
   created_at: string
   updated_at: string
   distance?: number // Calculated distance in miles
+  relevanceScore?: number // Search relevance score (0-100+)
   seller?: User // Populated seller info
 }
 
@@ -69,6 +70,16 @@ export interface Favorite {
   user_telegram_id: number
   listing_id: string
   created_at: string
+  listing?: Listing
+}
+
+export interface CartItem {
+  cart_item_id: string
+  user_telegram_id: number
+  listing_id: string
+  quantity: number
+  created_at: string
+  updated_at: string
   listing?: Listing
 }
 

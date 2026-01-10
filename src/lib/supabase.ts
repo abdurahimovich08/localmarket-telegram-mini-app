@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User, Listing, Favorite, Review } from '../types'
+import type { User, Listing, Favorite, Review, CartItem } from '../types'
+import { buildPostgresSearchQuery, scoreListingRelevance } from './searchAlgorithms'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -55,6 +56,8 @@ export const getListings = async (filters?: {
   userLat?: number
   userLon?: number
   search?: string
+  recentOnly?: boolean // only listings from last 7 days
+  boostedOnly?: boolean // only boosted listings
 }): Promise<Listing[]> => {
   let query = supabase
     .from('listings')
@@ -63,10 +66,12 @@ export const getListings = async (filters?: {
     .order('is_boosted', { ascending: false })
     .order('created_at', { ascending: false })
 
+  // Category filter
   if (filters?.category) {
     query = query.eq('category', filters.category)
   }
 
+  // Price filters
   if (filters?.minPrice !== undefined) {
     query = query.gte('price', filters.minPrice)
   }
@@ -75,12 +80,38 @@ export const getListings = async (filters?: {
     query = query.lte('price', filters.maxPrice)
   }
 
+  // Condition filter
   if (filters?.condition) {
     query = query.eq('condition', filters.condition)
   }
 
-  if (filters?.search) {
-    query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+  // Boosted only filter
+  if (filters?.boostedOnly) {
+    query = query.eq('is_boosted', true)
+  }
+
+  // Recent only filter (last 7 days)
+  if (filters?.recentOnly) {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    query = query.gte('created_at', sevenDaysAgo.toISOString())
+  }
+
+  // Advanced search with fuzzy matching, synonyms, transliteration
+  if (filters?.search && filters.search.trim()) {
+    const searchQuery = buildPostgresSearchQuery(filters.search.trim())
+    if (searchQuery) {
+      // Use RPC call for complex OR conditions
+      // Fallback to simple ILIKE if RPC not available
+      try {
+        query = query.or(searchQuery)
+      } catch (error) {
+        // Fallback to simple search
+        console.warn('Advanced search failed, using simple search:', error)
+        const escaped = filters.search.trim().replace(/'/g, "''")
+        query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
+      }
+    }
   }
 
   const { data, error } = await query
@@ -90,9 +121,11 @@ export const getListings = async (filters?: {
     return []
   }
 
+  let results = data || []
+
   // Filter by distance if location provided
   if (filters?.userLat && filters?.userLon && filters?.radius) {
-    const listingsWithDistance = (data || []).filter((listing: Listing) => {
+    const listingsWithDistance = results.filter((listing: Listing) => {
       if (!listing.latitude || !listing.longitude) return false
       const distance = calculateDistance(
         filters.userLat!,
@@ -104,11 +137,26 @@ export const getListings = async (filters?: {
       return distance <= filters.radius!
     })
     
-    // Basic distance sort (advanced sorting will be done in sorting.ts)
-    return listingsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0))
+    results = listingsWithDistance
   }
 
-  return data || []
+  // Score listings by relevance if search query exists
+  if (filters?.search && filters.search.trim()) {
+    results = results.map((listing: Listing) => ({
+      ...listing,
+      relevanceScore: scoreListingRelevance(listing, filters.search!),
+    }))
+    
+    // Sort by relevance score (higher is better)
+    results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+  } else {
+    // Basic distance sort if location provided
+    if (filters?.userLat && filters?.userLon) {
+      results.sort((a, b) => (a.distance || 0) - (b.distance || 0))
+    }
+  }
+
+  return results
 }
 
 export const getListing = async (listingId: string): Promise<Listing | null> => {
@@ -237,6 +285,146 @@ export const isFavorite = async (telegramUserId: number, listingId: string): Pro
   const { data, error } = await supabase
     .from('favorites')
     .select('favorite_id')
+    .eq('user_telegram_id', telegramUserId)
+    .eq('listing_id', listingId)
+    .single()
+
+  if (error) return false
+  return !!data
+}
+
+// Cart operations
+export const getCart = async (telegramUserId: number): Promise<CartItem[]> => {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('*, listing:listings(*, seller:users(*))')
+    .eq('user_telegram_id', telegramUserId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching cart:', error)
+    return []
+  }
+  return data || []
+}
+
+export const addToCart = async (
+  telegramUserId: number,
+  listingId: string,
+  quantity: number = 1
+): Promise<CartItem | null> => {
+  // Check if item already in cart
+  const { data: existing } = await supabase
+    .from('cart_items')
+    .select('cart_item_id, quantity')
+    .eq('user_telegram_id', telegramUserId)
+    .eq('listing_id', listingId)
+    .single()
+
+  if (existing) {
+    // Update quantity
+    const { data, error } = await supabase
+      .from('cart_items')
+      .update({ quantity: existing.quantity + quantity })
+      .eq('cart_item_id', existing.cart_item_id)
+      .select('*, listing:listings(*, seller:users(*))')
+      .single()
+
+    if (error) {
+      console.error('Error updating cart:', error)
+      return null
+    }
+    return data
+  } else {
+    // Insert new item
+    const { data, error } = await supabase
+      .from('cart_items')
+      .insert({
+        user_telegram_id: telegramUserId,
+        listing_id: listingId,
+        quantity
+      })
+      .select('*, listing:listings(*, seller:users(*))')
+      .single()
+
+    if (error) {
+      console.error('Error adding to cart:', error)
+      return null
+    }
+    return data
+  }
+}
+
+export const removeFromCart = async (telegramUserId: number, cartItemId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('user_telegram_id', telegramUserId)
+    .eq('cart_item_id', cartItemId)
+
+  if (error) {
+    console.error('Error removing from cart:', error)
+    return false
+  }
+  return true
+}
+
+export const updateCartQuantity = async (
+  telegramUserId: number,
+  cartItemId: string,
+  quantity: number
+): Promise<CartItem | null> => {
+  if (quantity <= 0) {
+    // Remove if quantity is 0 or negative
+    await removeFromCart(telegramUserId, cartItemId)
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('cart_items')
+    .update({ quantity })
+    .eq('user_telegram_id', telegramUserId)
+    .eq('cart_item_id', cartItemId)
+    .select('*, listing:listings(*, seller:users(*))')
+    .single()
+
+  if (error) {
+    console.error('Error updating cart quantity:', error)
+    return null
+  }
+  return data
+}
+
+export const clearCart = async (telegramUserId: number): Promise<boolean> => {
+  const { error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('user_telegram_id', telegramUserId)
+
+  if (error) {
+    console.error('Error clearing cart:', error)
+    return false
+  }
+  return true
+}
+
+export const getCartCount = async (telegramUserId: number): Promise<number> => {
+  const { count, error } = await supabase
+    .from('cart_items')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_telegram_id', telegramUserId)
+
+  if (error) {
+    console.error('Error getting cart count:', error)
+    return 0
+  }
+  return count || 0
+}
+
+export const isInCart = async (telegramUserId: number, listingId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('cart_item_id')
     .eq('user_telegram_id', telegramUserId)
     .eq('listing_id', listingId)
     .single()

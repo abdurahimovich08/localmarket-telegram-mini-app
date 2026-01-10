@@ -7,6 +7,8 @@ import { sortListings } from '../lib/sorting'
 import { trackUserSearch, trackListingView } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
+import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
+import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -18,6 +20,10 @@ export default function Search() {
   const [searchQuery, setSearchQuery] = useState(initialQuery)
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState<SearchFiltersType>({
+    category: initialCategory as any,
+    radius: user?.search_radius_miles || 10,
+  })
 
   useEffect(() => {
     let isMounted = true
@@ -43,10 +49,15 @@ export default function Search() {
         // Get listings with filters
         const data = await getListings({
           search: searchQuery || undefined,
-          category: initialCategory,
-          radius: user?.search_radius_miles || 10,
+          category: filters.category || initialCategory,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          condition: filters.condition,
+          radius: filters.radius || user?.search_radius_miles || 10,
           userLat: location?.latitude,
-          userLon: location?.longitude
+          userLon: location?.longitude,
+          recentOnly: filters.recentOnly,
+          boostedOnly: filters.boostedOnly,
         })
         
         if (!isMounted) return
@@ -78,7 +89,7 @@ export default function Search() {
       isMounted = false
       clearTimeout(debounceTimer)
     }
-  }, [searchQuery, initialCategory, user?.search_radius_miles, user?.telegram_user_id])
+  }, [searchQuery, filters, user?.search_radius_miles, user?.telegram_user_id])
 
   const handleListingClick = (listing: Listing) => {
     // Track view
@@ -93,13 +104,14 @@ export default function Search() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center gap-2">
+            <CartIcon />
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Qidiruv..."
+                placeholder="Qidiruv... (masalan: kamaz, kmz, машин, kuchmas mulk)"
                 className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 autoFocus
               />
@@ -114,6 +126,9 @@ export default function Search() {
             </div>
           </div>
         </div>
+        
+        {/* Filters */}
+        <SearchFilters filters={filters} onFiltersChange={setFilters} />
       </header>
 
       {loading ? (
@@ -146,7 +161,11 @@ export default function Search() {
             {listings.map((listing) => (
               <div
                 key={listing.listing_id}
-                onClick={() => handleListingClick(listing)}
+                onClick={() => {
+                  handleListingClick(listing)
+                  window.location.href = `/listing/${listing.listing_id}`
+                }}
+                className="cursor-pointer"
               >
                 <ListingCard listing={listing} />
               </div>

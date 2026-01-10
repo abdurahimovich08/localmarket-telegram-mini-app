@@ -10,6 +10,7 @@ import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
 import Favorites from './pages/Favorites'
 import Search from './pages/Search'
+import Cart from './pages/Cart'
 import { UserContext } from './contexts/UserContext'
 import Onboarding from './components/Onboarding'
 
@@ -121,6 +122,7 @@ function App() {
           <Route path="/profile/:id?" element={<Profile />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/cart" element={<Cart />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

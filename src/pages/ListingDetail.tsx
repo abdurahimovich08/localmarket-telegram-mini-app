@@ -8,6 +8,7 @@ import type { Listing } from '../types'
 import { CATEGORIES, CONDITIONS } from '../types'
 import { HeartIcon, ShareIcon, FlagIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
+import AddToCartButton from '../components/AddToCartButton'
 import BottomNav from '../components/BottomNav'
 
 export default function ListingDetail() {
@@ -279,14 +280,20 @@ export default function ListingDetail() {
           </button>
         </div>
 
-        {/* Message Seller Button */}
+        {/* Add to Cart and Message Seller Buttons */}
         {listing.seller && listing.seller.telegram_user_id !== user?.telegram_user_id && (
-          <button
-            onClick={handleMessageSeller}
-            className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-          >
-            💬 Sotuvchiga Yozish
-          </button>
+          <div className="space-y-3 pt-4">
+            <AddToCartButton
+              listingId={listing.listing_id}
+              className="w-full py-3"
+            />
+            <button
+              onClick={handleMessageSeller}
+              className="w-full bg-primary text-white py-4 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+            >
+              💬 Sotuvchiga Yozish
+            </button>
+          </div>
         )}
       </div>
 

@@ -8,6 +8,7 @@ import { trackListingView, trackUserSearch } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import CategoryCarousel from '../components/CategoryCarousel'
+import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
 import { MagnifyingGlassIcon, PlusCircleIcon, QrCodeIcon } from '@heroicons/react/24/outline'
 
@@ -112,6 +113,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
             <div className="flex items-center gap-2">
+              <CartIcon />
               <Link
                 to="/create"
                 className="p-2 text-primary hover:text-primary/80 transition-colors"
