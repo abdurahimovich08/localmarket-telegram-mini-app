@@ -10,10 +10,12 @@ import ListingCard from '../components/ListingCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
 import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { useNavigate } from 'react-router-dom'
+import { MagnifyingGlassIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 export default function Search() {
   const { user } = useUser()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
   const initialCategory = searchParams.get('category') || undefined
@@ -104,6 +106,12 @@ export default function Search() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+            </button>
             <CartIcon />
             <div className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

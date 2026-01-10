@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { User, Listing, Favorite, Review, CartItem } from '../types'
-import { buildPostgresSearchQuery, scoreListingRelevance } from './searchAlgorithms'
+import { buildSearchVariations, scoreListingRelevance } from './searchAlgorithms'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -99,19 +99,13 @@ export const getListings = async (filters?: {
 
   // Advanced search with fuzzy matching, synonyms, transliteration
   if (filters?.search && filters.search.trim()) {
-    const searchQuery = buildPostgresSearchQuery(filters.search.trim())
-    if (searchQuery) {
-      // Use RPC call for complex OR conditions
-      // Fallback to simple ILIKE if RPC not available
-      try {
-        query = query.or(searchQuery)
-      } catch (error) {
-        // Fallback to simple search
-        console.warn('Advanced search failed, using simple search:', error)
-        const escaped = filters.search.trim().replace(/'/g, "''")
-        query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
-      }
-    }
+    // Get search term and escape it
+    const searchTerm = filters.search.trim()
+    const escaped = searchTerm.replace(/'/g, "''")
+    
+    // Use simple ILIKE for basic search (Supabase compatible)
+    // This will match title or description containing the search term
+    query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
   }
 
   const { data, error } = await query
@@ -142,13 +136,43 @@ export const getListings = async (filters?: {
 
   // Score listings by relevance if search query exists
   if (filters?.search && filters.search.trim()) {
-    results = results.map((listing: Listing) => ({
-      ...listing,
-      relevanceScore: scoreListingRelevance(listing, filters.search!),
-    }))
+    // Get search variations for enhanced matching
+    const variations = buildSearchVariations(filters.search.trim())
+    const searchTerm = filters.search.trim().toLowerCase()
     
+    // Client-side filtering and scoring for fuzzy matching
+    const scoredResults = results.map((listing: Listing) => {
+      const titleLower = listing.title.toLowerCase()
+      const descLower = (listing.description || '').toLowerCase()
+      let relevanceScore = scoreListingRelevance(listing, filters.search!)
+      
+      // Check variations for better matching
+      variations.forEach(variation => {
+        const varLower = variation.toLowerCase()
+        if (titleLower.includes(varLower)) {
+          relevanceScore += 30 // Bonus for variation match in title
+        } else if (descLower.includes(varLower)) {
+          relevanceScore += 10 // Bonus for variation match in description
+        }
+      })
+      
+      // Exact match bonus (title has higher weight)
+      if (titleLower.includes(searchTerm)) {
+        relevanceScore += 50
+      } else if (descLower.includes(searchTerm)) {
+        relevanceScore += 20
+      }
+      
+      return {
+        ...listing,
+        relevanceScore,
+      }
+    })
+    
+    // Don't filter out results - show all matches but sort by relevance
     // Sort by relevance score (higher is better)
-    results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+    scoredResults.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+    results = scoredResults
   } else {
     // Basic distance sort if location provided
     if (filters?.userLat && filters?.userLon) {
