@@ -26,21 +26,21 @@ $$ LANGUAGE plpgsql
 SET search_path = public;
 
 -- RLS Policy: Users can read their own last_seen record
+-- NOTE: Since Telegram users don't use Supabase Auth (auth.uid() returns UUID, not BIGINT),
+-- we allow all operations. The backend (service role) handles authentication and authorization.
 ALTER TABLE user_last_seen ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can read their own last_seen"
+-- Allow all SELECT operations (backend filters by telegram_user_id)
+CREATE POLICY "Allow public read access to user_last_seen"
   ON user_last_seen FOR SELECT
-  USING (auth.uid()::bigint = user_telegram_id);
+  USING (true);
 
-CREATE POLICY "Users can update their own last_seen"
-  ON user_last_seen FOR UPDATE
-  USING (auth.uid()::bigint = user_telegram_id);
-
-CREATE POLICY "Users can insert their own last_seen"
+-- Allow all INSERT operations (backend validates telegram_user_id)
+CREATE POLICY "Allow public insert to user_last_seen"
   ON user_last_seen FOR INSERT
-  WITH CHECK (auth.uid()::bigint = user_telegram_id);
+  WITH CHECK (true);
 
--- For service role (backend)
-CREATE POLICY "Service role can manage all last_seen"
-  ON user_last_seen FOR ALL
-  USING (auth.role() = 'service_role');
+-- Allow all UPDATE operations (backend validates telegram_user_id)
+CREATE POLICY "Allow public update to user_last_seen"
+  ON user_last_seen FOR UPDATE
+  USING (true);
