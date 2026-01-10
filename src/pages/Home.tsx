@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { getListings } from '../lib/supabase'
-import { requestLocation } from '../lib/telegram'
+import { supabase } from '../lib/supabase'
 import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
 import { getEnhancedPersonalizedListings } from '../lib/recommendations'
-import { trackListingView, trackUserSearch, updateUserLastSeen } from '../lib/tracking'
+import { trackListingView, trackUserSearch } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import ListingCardEbay from '../components/ListingCardEbay'
@@ -41,33 +40,44 @@ export default function Home() {
         setLoading(true)
       }
       try {
-        // Request location (will use cache if available)
-        const location = await requestLocation()
+        // CRITICAL: Barcha e'lonlarni olamiz, hech qanday filter yo'q
+        // Database allaqachon "Hamma uchun ochiq" - frontend ham ochiq bo'lishi kerak
+        // Joylashuv filtri (radius, userLat, userLon) OLIB TASHLANDI
+        // Seller filtri OLIB TASHLANDI
+        
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            *,
+            seller:users!seller_telegram_id(telegram_user_id, first_name, username, profile_photo_url)
+          `)
+          .eq('status', 'active') // Faqat faol e'lonlar
+          .order('is_boosted', { ascending: false }) // Targ'ib qilinganlar birinchi
+          .order('created_at', { ascending: false }) // Eng yangisi tepada
+          .limit(100) // Performance uchun limit
+
+        if (error) {
+          console.error('Error fetching listings:', error)
+          return
+        }
 
         if (!isMounted) return
 
-        // Load listings with limit for performance (100 for initial load to ensure new listings are included)
-        // Add cache busting timestamp to ensure fresh data
-        const allListings = await getListings({
-          radius: user?.search_radius_miles || 10,
-          userLat: location?.latitude,
-          userLon: location?.longitude,
-          limit: 100 // Increased to ensure new listings are captured
-        })
+        const allListings = data || []
 
-        if (!isMounted) return
+        console.log("Barcha e'lonlar yuklandi:", allListings.length, "ta")
 
         // Sort with advanced algorithm (only first 50)
         const sorted = await sortListings(
           allListings,
           user?.telegram_user_id,
-          user?.search_radius_miles || 10
+          100 // Max radius (barcha e'lonlar)
         )
 
         // Get enhanced personalized listings (search + view history) - limit to 30
         const personalized = user?.telegram_user_id
           ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
-          : await getPersonalizedListings(sorted, user?.telegram_user_id, user?.search_radius_miles || 10, 30)
+          : await getPersonalizedListings(sorted, user?.telegram_user_id, 100, 30)
 
         // Get deals of the day - limit to 20
         const deals = getDealsOfDay(sorted, 20)
@@ -122,7 +132,7 @@ export default function Home() {
         clearInterval(refreshInterval)
       }
     }
-  }, [user?.search_radius_miles, user?.telegram_user_id])
+  }, [user?.telegram_user_id]) // search_radius_miles dependency olib tashlandi - endi kerak emas
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
