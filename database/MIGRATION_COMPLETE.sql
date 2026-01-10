@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS users (
   rating_average DECIMAL(3, 2) DEFAULT 0,
   total_reviews INTEGER DEFAULT 0,
   items_sold_count INTEGER DEFAULT 0,
-  last_active TIMESTAMP,
+  last_active TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   buyer_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   seller_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'initiated' CHECK (status IN ('initiated', 'completed', 'cancelled')),
-  completed_at TIMESTAMP,
+  completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS user_category_preferences (
   user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   score DECIMAL(5, 2) DEFAULT 0,
-  last_interaction TIMESTAMP,
+  last_interaction TIMESTAMPTZ,
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_telegram_id, category)
 );
