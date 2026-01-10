@@ -5,7 +5,7 @@ import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
 import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
 import { getEnhancedPersonalizedListings } from '../lib/recommendations'
-import { trackListingView, trackUserSearch } from '../lib/tracking'
+import { trackListingView, trackUserSearch, updateUserLastSeen } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import ListingCardEbay from '../components/ListingCardEbay'
@@ -26,6 +26,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('personalized')
   const [searchQuery, setSearchQuery] = useState('')
+  // CRITICAL: Pagination state is only in React state, NEVER in localStorage
+  // This ensures fresh data every time user loads the page
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 

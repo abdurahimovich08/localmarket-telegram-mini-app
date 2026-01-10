@@ -42,6 +42,11 @@ export default function ListingCardEbay({ listing, isFavorite = false, onToggleF
               Targ'ib
             </div>
           )}
+          {listing.is_new && (
+            <div className="absolute top-1 left-10 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
+              Yangi
+            </div>
+          )}
           {onToggleFavorite && (
             <button
               onClick={(e) => {

@@ -59,19 +59,22 @@ export const getListings = async (filters?: {
   recentOnly?: boolean // only listings from last 7 days
   boostedOnly?: boolean // only boosted listings
   limit?: number // Maximum number of listings to return
-  page?: number // Page number (1-indexed) for pagination
+  page?: number // Page number (1-indexed) for pagination - DEPRECATED: Use cursor-based instead
   afterTimestamp?: string // Cursor-based pagination: show listings after this timestamp
+  userTelegramId?: number // Used to mark listings as "new" based on user_last_seen
 }): Promise<Listing[]> => {
   // IMPORTANT: Always order by created_at DESC to ensure new listings appear first
   // NEVER use OFFSET-based pagination - it breaks when new listings are added
   // Use cursor-based pagination (afterTimestamp) instead
   
+  // CRITICAL: Always ORDER BY created_at DESC - NEVER use OFFSET-based pagination
+  // This ensures new listings always appear first, even when other users add listings
   let query = supabase
     .from('listings')
     .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url)')
     .eq('status', 'active')
-    .order('is_boosted', { ascending: false })
-    .order('created_at', { ascending: false }) // CRITICAL: Sort by created_at for consistent pagination
+    .order('is_boosted', { ascending: false }) // Boosted listings first
+    .order('created_at', { ascending: false }) // CRITICAL: Always newest first
     
   // Cursor-based pagination: only show listings created after this timestamp
   // This ensures new listings always appear even if paginated

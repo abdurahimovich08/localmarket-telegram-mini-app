@@ -63,6 +63,7 @@ export interface Listing {
   distance?: number // Calculated distance in miles
   relevanceScore?: number // Search relevance score (0-100+)
   seller?: User // Populated seller info
+  is_new?: boolean // Calculated: true if created after user's last_seen_at
 }
 
 export interface Favorite {
