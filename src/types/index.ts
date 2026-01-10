@@ -64,6 +64,8 @@ export interface Listing {
   distance?: number // Calculated distance in miles
   relevanceScore?: number // Search relevance score (0-100+)
   seller?: User // Populated seller info
+  store_id?: string // Optional: associated store
+  store?: Store // Populated store info
   // "Yangi" badge frontend'da aniqlanadi (so'nggi 24-72 soatda yaratilgan)
   // Hech qachon WHERE created_at > last_seen_at qilmaymiz - xavfli!
 }
@@ -117,6 +119,57 @@ export interface Report {
   description?: string
   status: 'pending' | 'resolved' | 'dismissed'
   created_at: string
+}
+
+export interface Store {
+  store_id: string
+  owner_telegram_id: number
+  name: string
+  description?: string
+  category: ListingCategory
+  logo_url?: string
+  banner_url?: string
+  subscriber_count: number
+  is_verified: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  owner?: User
+  is_subscribed?: boolean
+}
+
+export interface StoreSubscription {
+  subscription_id: string
+  user_telegram_id: number
+  store_id: string
+  created_at: string
+  store?: Store
+}
+
+export interface StorePost {
+  post_id: string
+  store_id: string
+  content: string
+  images: string[]
+  view_count: number
+  created_at: string
+  updated_at: string
+  store?: Store
+}
+
+export interface StorePromotion {
+  promotion_id: string
+  store_id: string
+  title: string
+  description?: string
+  discount_percent?: number
+  start_date: string
+  end_date: string
+  listing_ids: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  store?: Store
 }
 
 export const CATEGORIES: { value: ListingCategory; label: string; emoji: string }[] = [

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { supabase } from '../lib/supabase'
+import { getStores } from '../lib/supabase'
 import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
 import { getEnhancedPersonalizedListings } from '../lib/recommendations'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
-import type { Listing } from '../types'
+import type { Listing, Store } from '../types'
 import ListingCard from '../components/ListingCard'
 import ListingCardEbay from '../components/ListingCardEbay'
 import Pagination from '../components/Pagination'
@@ -22,6 +23,7 @@ export default function Home() {
   const [listings, setListings] = useState<Listing[]>([])
   const [personalizedListings, setPersonalizedListings] = useState<Listing[]>([])
   const [dealsListings, setDealsListings] = useState<Listing[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('personalized')
   const [searchQuery, setSearchQuery] = useState('')
@@ -86,6 +88,12 @@ export default function Home() {
           setListings(sorted)
           setPersonalizedListings(personalized)
           setDealsListings(deals)
+        }
+
+        // Load random stores
+        const randomStores = await getStores(3, user?.telegram_user_id)
+        if (isMounted) {
+          setStores(randomStores)
         }
       } catch (error) {
         console.error('Error loading listings:', error)
@@ -218,6 +226,61 @@ export default function Home() {
 
       {/* Category Carousel */}
       <CategoryCarousel />
+
+      {/* Stores Section */}
+      {stores.length > 0 && (
+        <div className="bg-white border-b border-gray-200 py-4">
+          <div className="px-4 mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Do'konlar</h2>
+          </div>
+          <div className="px-4 overflow-x-auto">
+            <div className="flex gap-4">
+              {stores.map((store) => (
+                <div
+                  key={store.store_id}
+                  onClick={() => navigate(`/store/${store.store_id}`)}
+                  className="flex-shrink-0 w-64 bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  {store.banner_url ? (
+                    <div className="relative w-full h-20 overflow-hidden">
+                      <img
+                        src={store.banner_url}
+                        alt={store.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-20 bg-gradient-to-r from-blue-400 to-purple-500"></div>
+                  )}
+                  <div className="p-3 relative">
+                    <div className="flex items-start gap-3">
+                      {store.logo_url ? (
+                        <img
+                          src={store.logo_url}
+                          alt={store.name}
+                          className="w-12 h-12 rounded-full border-2 border-white -mt-6 bg-white"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full border-2 border-white -mt-6 bg-primary/20 flex items-center justify-center">
+                          <span className="text-lg text-primary font-semibold">
+                            {store.name[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 pt-1">
+                        <h3 className="font-medium text-gray-900 truncate">{store.name}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {store.subscriber_count} obunachi
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs: Siz uchun / Kun narxlari */}
       <div className="bg-white border-b border-gray-200 sticky top-[140px] z-30">

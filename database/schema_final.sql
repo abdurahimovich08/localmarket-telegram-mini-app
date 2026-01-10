@@ -122,6 +122,75 @@ CREATE TABLE IF NOT EXISTS cart_items (
   UNIQUE(user_telegram_id, listing_id)
 );
 
+-- ============================================
+-- STORES SYSTEM TABLES
+-- ============================================
+
+-- Stores Table
+CREATE TABLE IF NOT EXISTS stores (
+  store_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
+  name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
+  description TEXT CHECK (LENGTH(description) <= 500),
+  category TEXT NOT NULL CHECK (category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'automotive', 'other')),
+  logo_url TEXT,
+  banner_url TEXT,
+  subscriber_count INTEGER DEFAULT 0,
+  is_verified BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Store Subscriptions Table
+CREATE TABLE IF NOT EXISTS store_subscriptions (
+  subscription_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
+  store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_telegram_id, store_id)
+);
+
+-- Store Posts Table
+CREATE TABLE IF NOT EXISTS store_posts (
+  post_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
+  content TEXT NOT NULL CHECK (LENGTH(content) <= 1000),
+  images TEXT[] DEFAULT '{}',
+  view_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Store Promotions Table
+CREATE TABLE IF NOT EXISTS store_promotions (
+  promotion_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  store_id UUID NOT NULL REFERENCES stores(store_id) ON DELETE CASCADE,
+  title TEXT NOT NULL CHECK (LENGTH(title) <= 100),
+  description TEXT CHECK (LENGTH(description) <= 500),
+  discount_percent DECIMAL(5, 2) CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  start_date TIMESTAMPTZ NOT NULL,
+  end_date TIMESTAMPTZ NOT NULL,
+  listing_ids UUID[] DEFAULT '{}',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CHECK (end_date > start_date)
+);
+
+-- Add store_id to listings table (optional - for store listings)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'listings' 
+    AND column_name = 'store_id'
+  ) THEN
+    ALTER TABLE listings ADD COLUMN store_id UUID REFERENCES stores(store_id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
 -- User Searches Table
 CREATE TABLE IF NOT EXISTS user_searches (
   search_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -637,6 +706,16 @@ CREATE INDEX IF NOT EXISTS idx_subcategories_parent_subcategory ON subcategories
 CREATE INDEX IF NOT EXISTS idx_listings_subcategory ON listings(subcategory_id);
 CREATE INDEX IF NOT EXISTS idx_listings_status_created ON listings(status, created_at DESC) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_listings_category_subcategory ON listings(category, subcategory_id) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_listings_store_id ON listings(store_id) WHERE store_id IS NOT NULL;
+
+-- Store indexes
+CREATE INDEX IF NOT EXISTS idx_stores_owner ON stores(owner_telegram_id);
+CREATE INDEX IF NOT EXISTS idx_stores_category ON stores(category);
+CREATE INDEX IF NOT EXISTS idx_stores_active ON stores(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_store_subscriptions_user ON store_subscriptions(user_telegram_id);
+CREATE INDEX IF NOT EXISTS idx_store_subscriptions_store ON store_subscriptions(store_id);
+CREATE INDEX IF NOT EXISTS idx_store_posts_store ON store_posts(store_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_store_promotions_store ON store_promotions(store_id, end_date DESC) WHERE is_active = TRUE;
 
 -- ============================================
 -- STEP 8: RLS POLICIES
@@ -660,6 +739,77 @@ CREATE POLICY "Allow users to update their own preferences" ON user_preferences 
 
 DROP POLICY IF EXISTS "Allow public access to user_category_preferences" ON user_category_preferences;
 CREATE POLICY "Allow public access to user_category_preferences" ON user_category_preferences FOR ALL USING (true);
+
+-- ============================================
+-- STORES RLS POLICIES
+-- ============================================
+
+ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_promotions ENABLE ROW LEVEL SECURITY;
+
+-- Stores policies
+DROP POLICY IF EXISTS "Allow public read access to active stores" ON stores;
+CREATE POLICY "Allow public read access to active stores" ON stores FOR SELECT USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "Allow store owners to manage their stores" ON stores;
+CREATE POLICY "Allow store owners to manage their stores" ON stores FOR ALL USING (true);
+
+-- Store subscriptions policies
+DROP POLICY IF EXISTS "Allow public read access to store subscriptions" ON store_subscriptions;
+CREATE POLICY "Allow public read access to store subscriptions" ON store_subscriptions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert to store subscriptions" ON store_subscriptions;
+CREATE POLICY "Allow public insert to store subscriptions" ON store_subscriptions FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public delete from store subscriptions" ON store_subscriptions;
+CREATE POLICY "Allow public delete from store subscriptions" ON store_subscriptions FOR DELETE USING (true);
+
+-- Store posts policies
+DROP POLICY IF EXISTS "Allow public read access to store posts" ON store_posts;
+CREATE POLICY "Allow public read access to store posts" ON store_posts FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow store owners to manage posts" ON store_posts;
+CREATE POLICY "Allow store owners to manage posts" ON store_posts FOR ALL USING (true);
+
+-- Store promotions policies
+DROP POLICY IF EXISTS "Allow public read access to active promotions" ON store_promotions;
+CREATE POLICY "Allow public read access to active promotions" ON store_promotions FOR SELECT USING (is_active = TRUE AND end_date > now());
+
+DROP POLICY IF EXISTS "Allow store owners to manage promotions" ON store_promotions;
+CREATE POLICY "Allow store owners to manage promotions" ON store_promotions FOR ALL USING (true);
+
+-- ============================================
+-- STORE FUNCTIONS
+-- ============================================
+
+-- Function to increment store subscriber count
+CREATE OR REPLACE FUNCTION increment_store_subscriber_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE stores SET subscriber_count = subscriber_count + 1 WHERE store_id = NEW.store_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to decrement store subscriber count
+CREATE OR REPLACE FUNCTION decrement_store_subscriber_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE stores SET subscriber_count = GREATEST(0, subscriber_count - 1) WHERE store_id = OLD.store_id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Triggers for subscriber count
+DROP TRIGGER IF EXISTS trigger_increment_store_subscriber ON store_subscriptions;
+CREATE TRIGGER trigger_increment_store_subscriber AFTER INSERT ON store_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION increment_store_subscriber_count();
+
+DROP TRIGGER IF EXISTS trigger_decrement_store_subscriber ON store_subscriptions;
+CREATE TRIGGER trigger_decrement_store_subscriber AFTER DELETE ON store_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION decrement_store_subscriber_count();
 
 -- ============================================
 -- YAKUN (COMPLETE)

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { getUser, getListings, getReviews } from '../lib/supabase'
-import type { User, Listing, Review } from '../types'
+import { getUser, getListings, getReviews, getUserStores } from '../lib/supabase'
+import type { User, Listing, Review, Store } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
-import { StarIcon } from '@heroicons/react/24/solid'
+import { StarIcon, PlusIcon, BuildingStorefrontIcon } from '@heroicons/react/24/solid'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()
@@ -15,8 +15,9 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'listings' | 'reviews'>('listings')
+  const [activeTab, setActiveTab] = useState<'listings' | 'reviews' | 'stores'>('listings')
 
   const isOwnProfile = !id || (currentUser && parseInt(id) === currentUser.telegram_user_id)
 
@@ -46,6 +47,12 @@ export default function Profile() {
         // Load reviews
         const userReviews = await getReviews(userId)
         setReviews(userReviews)
+
+        // Load user stores (only for own profile)
+        if (isOwnProfile) {
+          const userStores = await getUserStores(userId)
+          setStores(userStores)
+        }
       } catch (error) {
         console.error('Error loading profile:', error)
       } finally {
@@ -138,14 +145,76 @@ export default function Profile() {
         {user.neighborhood && (
           <p className="text-sm text-gray-600 mt-4">📍 {user.neighborhood}</p>
         )}
+
+        {/* Create Store Button (Own Profile Only) */}
+        {isOwnProfile && (
+          <button
+            onClick={() => navigate('/create-store')}
+            className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Do'kon Yaratish
+          </button>
+        )}
+
+        {/* User Stores (Own Profile Only) */}
+        {isOwnProfile && stores.length > 0 && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <BuildingStorefrontIcon className="w-5 h-5 text-primary" />
+                Mening do'konlarim ({stores.length})
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {stores.slice(0, 3).map((store) => (
+                <div
+                  key={store.store_id}
+                  onClick={() => navigate(`/store/${store.store_id}`)}
+                  className="bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-3">
+                    {store.logo_url ? (
+                      <img
+                        src={store.logo_url}
+                        alt={store.name}
+                        className="w-12 h-12 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-lg text-primary font-semibold">
+                          {store.name[0].toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 truncate">{store.name}</h4>
+                      <p className="text-xs text-gray-500">
+                        {store.subscriber_count} obunachi
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {stores.length > 3 && (
+                <button
+                  onClick={() => setActiveTab('stores')}
+                  className="text-sm text-primary hover:underline w-full text-center py-2"
+                >
+                  Barcha do'konlarni ko'rish ({stores.length})
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="bg-white border-b border-gray-200">
-        <div className="flex">
+        <div className="flex overflow-x-auto">
           <button
             onClick={() => setActiveTab('listings')}
-            className={`flex-1 py-3 text-center font-medium transition-colors ${
+            className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
               activeTab === 'listings'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-600 hover:text-gray-900'
@@ -153,9 +222,21 @@ export default function Profile() {
           >
             E'lonlar ({listings.length})
           </button>
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('stores')}
+              className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'stores'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Do'konlar ({stores.length})
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 py-3 text-center font-medium transition-colors ${
+            className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
               activeTab === 'reviews'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-600 hover:text-gray-900'
@@ -168,7 +249,68 @@ export default function Profile() {
 
       {/* Content */}
       <div className="p-4">
-        {activeTab === 'listings' ? (
+        {activeTab === 'stores' && isOwnProfile ? (
+          stores.length === 0 ? (
+            <div className="text-center py-12">
+              <BuildingStorefrontIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">Hali do'konlaringiz yo'q</p>
+              <button
+                onClick={() => navigate('/create-store')}
+                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+              >
+                Birinchi do'koningizni yarating
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {stores.map((store) => (
+                <div
+                  key={store.store_id}
+                  onClick={() => navigate(`/store/${store.store_id}`)}
+                  className="bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  {store.banner_url && (
+                    <div className="relative w-full h-32 overflow-hidden">
+                      <img
+                        src={store.banner_url}
+                        alt={store.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="p-4 relative">
+                    <div className="flex items-start gap-4">
+                      {store.logo_url ? (
+                        <img
+                          src={store.logo_url}
+                          alt={store.name}
+                          className={`w-16 h-16 rounded-full border-4 border-white ${store.banner_url ? '-mt-12 bg-white' : ''}`}
+                        />
+                      ) : (
+                        <div className={`w-16 h-16 rounded-full border-4 border-white bg-primary/20 flex items-center justify-center ${store.banner_url ? '-mt-12 bg-white' : ''}`}>
+                          <span className="text-xl text-primary font-semibold">
+                            {store.name[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 pt-1">
+                        <h3 className="font-bold text-gray-900 truncate">{store.name}</h3>
+                        {store.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{store.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="text-sm text-gray-500">
+                            {store.subscriber_count} obunachi
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : activeTab === 'listings' ? (
           listings.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">Hali e'lonlar yo'q</p>
