@@ -167,16 +167,52 @@ CREATE TABLE IF NOT EXISTS subcategories (
   subcategory_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   parent_category TEXT NOT NULL CHECK (parent_category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'other')),
   name TEXT NOT NULL,
-  name_uz TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
-  description_uz TEXT,
   parent_subcategory_id UUID REFERENCES subcategories(subcategory_id) ON DELETE CASCADE,
   display_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(parent_category, slug)
 );
+
+-- Add name_uz and description_uz columns if they don't exist (for backward compatibility)
+DO $$ 
+BEGIN
+  -- Add name_uz if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'subcategories' 
+    AND column_name = 'name_uz'
+  ) THEN
+    ALTER TABLE subcategories ADD COLUMN name_uz TEXT;
+    -- Copy name to name_uz for existing rows
+    UPDATE subcategories SET name_uz = name WHERE name_uz IS NULL;
+  END IF;
+  
+  -- Add description_uz if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'subcategories' 
+    AND column_name = 'description_uz'
+  ) THEN
+    ALTER TABLE subcategories ADD COLUMN description_uz TEXT;
+    -- Copy description to description_uz for existing rows
+    UPDATE subcategories SET description_uz = description WHERE description_uz IS NULL;
+  END IF;
+  
+  -- Add display_order if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'subcategories' 
+    AND column_name = 'display_order'
+  ) THEN
+    ALTER TABLE subcategories ADD COLUMN display_order INTEGER DEFAULT 0;
+  END IF;
+END $$;
 
 -- Add subcategory_id to listings if missing
 DO $$ 
