@@ -32,8 +32,9 @@ CREATE TABLE IF NOT EXISTS listing_views (
   user_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   listing_id UUID NOT NULL REFERENCES listings(listing_id) ON DELETE CASCADE,
   viewed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  viewed_date DATE NOT NULL DEFAULT CURRENT_DATE, -- Computed date for deduplication
   session_id TEXT, -- For grouping views in same session
-  UNIQUE(user_telegram_id, listing_id, DATE(viewed_at)) -- One view per user per listing per day
+  UNIQUE(user_telegram_id, listing_id, viewed_date) -- One view per user per listing per day
 );
 
 CREATE INDEX IF NOT EXISTS idx_listing_views_user ON listing_views(user_telegram_id, viewed_at DESC);
@@ -208,7 +209,25 @@ $$ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public;
 
--- 3.3: Trigger to auto-compute preferences (runs after view is tracked)
+-- 3.3: Trigger to ensure viewed_date is set automatically
+CREATE OR REPLACE FUNCTION set_viewed_date()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Set viewed_date from viewed_at if not provided
+  IF NEW.viewed_date IS NULL THEN
+    NEW.viewed_date := DATE(NEW.viewed_at);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_set_viewed_date ON listing_views;
+CREATE TRIGGER trigger_set_viewed_date
+  BEFORE INSERT ON listing_views
+  FOR EACH ROW
+  EXECUTE FUNCTION set_viewed_date();
+
+-- 3.4: Trigger to auto-compute preferences (runs after view is tracked)
 CREATE OR REPLACE FUNCTION trigger_compute_preferences()
 RETURNS TRIGGER AS $$
 BEGIN
