@@ -109,7 +109,7 @@ export default function MyListings() {
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <EyeIcon className="w-4 h-4" />
                       <span className="font-medium">{analytics[listing.listing_id].total_views}</span>
-                      <span className="text-xs">ko'rish</span>
+                      <span className="text-xs">ko&apos;rish</span>
                     </div>
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <HeartIcon className="w-4 h-4" />
@@ -152,6 +152,7 @@ export default function MyListings() {
                     <span>Tahrirlash</span>
                   </Link>
                 </div>
+              </div>
             </div>
           ))}
         </div>
