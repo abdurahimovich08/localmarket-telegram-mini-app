@@ -782,10 +782,14 @@ ALTER TABLE user_category_preferences ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read access to listing_views" ON listing_views;
 CREATE POLICY "Allow public read access to listing_views" ON listing_views FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert to listing_views" ON listing_views;
 CREATE POLICY "Allow public insert to listing_views" ON listing_views FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow public read access to user_preferences" ON user_preferences;
 CREATE POLICY "Allow public read access to user_preferences" ON user_preferences FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow users to update their own preferences" ON user_preferences;
 CREATE POLICY "Allow users to update their own preferences" ON user_preferences FOR UPDATE USING (true);
 
 DROP POLICY IF EXISTS "Allow public access to user_category_preferences" ON user_category_preferences;
