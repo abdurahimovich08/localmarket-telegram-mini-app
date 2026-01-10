@@ -176,14 +176,10 @@ const calculateViewRelevance = (
 export const getSearchBasedRecommendations = async (
   listings: Listing[],
   userTelegramId: number
-): Promise<Listing[]> => {
+): Promise<Array<{ listing: Listing; score: number }>> => {
   const searchKeywords = await getUserSearchKeywords(userTelegramId, 30)
   
-  if (searchKeywords.length === 0) {
-    return listings.slice(0, 20) // Return default if no search history
-  }
-
-  // Score listings based on search history
+  // Score all listings based on search history (don't filter out)
   const scored = listings.map(listing => ({
     listing,
     score: calculateSearchRelevance(listing, searchKeywords)
@@ -192,11 +188,7 @@ export const getSearchBasedRecommendations = async (
   // Sort by score (descending)
   scored.sort((a, b) => b.score - a.score)
 
-  // Return top 20
   return scored
-    .filter(item => item.score > 0) // Only listings with some relevance
-    .slice(0, 20)
-    .map(item => item.listing)
 }
 
 /**
@@ -205,14 +197,10 @@ export const getSearchBasedRecommendations = async (
 export const getViewBasedRecommendations = async (
   listings: Listing[],
   userTelegramId: number
-): Promise<Listing[]> => {
+): Promise<Array<{ listing: Listing; score: number }>> => {
   const viewedListings = await getUserViewedListings(userTelegramId, 20)
-  
-  if (viewedListings.length === 0) {
-    return listings.slice(0, 20) // Return default if no view history
-  }
 
-  // Score listings based on view history
+  // Score all listings based on view history (don't filter out)
   const scored = listings.map(listing => ({
     listing,
     score: calculateViewRelevance(listing, viewedListings)
@@ -221,11 +209,7 @@ export const getViewBasedRecommendations = async (
   // Sort by score (descending)
   scored.sort((a, b) => b.score - a.score)
 
-  // Return top 20
   return scored
-    .filter(item => item.score > 0) // Only listings with some relevance
-    .slice(0, 20)
-    .map(item => item.listing)
 }
 
 /**
@@ -298,57 +282,71 @@ export const getSimilarListings = async (
 
 /**
  * Enhanced personalized listings (combines search + view + interactions)
+ * ALWAYS includes ALL listings, but prioritizes personalized ones
  */
 export const getEnhancedPersonalizedListings = async (
   listings: Listing[],
   userTelegramId: number | undefined,
-  limit: number = 20
+  limit: number = 30
 ): Promise<Listing[]> => {
   if (!userTelegramId) {
-    // No personalization for non-logged-in users
-    return listings.slice(0, limit)
+    // No personalization for non-logged-in users - show all sorted by recency
+    return listings
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit)
   }
 
-  // Get different recommendation sets
+  // Get different recommendation sets (now returns scored arrays)
   const [searchBased, viewBased] = await Promise.all([
     getSearchBasedRecommendations(listings, userTelegramId),
     getViewBasedRecommendations(listings, userTelegramId)
-  ])
+  })
 
-  // Combine and deduplicate
+  // Create a map to combine scores for all listings
   const combined = new Map<string, { listing: Listing; score: number }>()
   
-  // Search-based (50% weight)
-  searchBased.forEach((listing, index) => {
-    const score = (searchBased.length - index) * 50 / searchBased.length
-    combined.set(listing.listing_id, {
-      listing,
-      score: (combined.get(listing.listing_id)?.score || 0) + score
-    })
-  })
-
-  // View-based (30% weight)
-  viewBased.forEach((listing, index) => {
-    const score = (viewBased.length - index) * 30 / viewBased.length
-    combined.set(listing.listing_id, {
-      listing,
-      score: (combined.get(listing.listing_id)?.score || 0) + score
-    })
-  })
-
-  // Add other listings with lower scores (20% weight)
+  // Calculate recency score for new listings (boost recently created)
+  const now = Date.now()
   listings.forEach((listing) => {
-    if (!combined.has(listing.listing_id)) {
-      combined.set(listing.listing_id, {
-        listing,
-        score: 10 // Base score
-      })
+    const createdAt = new Date(listing.created_at).getTime()
+    const ageInHours = (now - createdAt) / (1000 * 60 * 60)
+    const recencyScore = ageInHours < 24 ? 100 : ageInHours < 48 ? 50 : ageInHours < 72 ? 25 : 0
+    
+    combined.set(listing.listing_id, {
+      listing,
+      score: recencyScore // Start with recency score
+    })
+  })
+  
+  // Search-based relevance (40% weight)
+  searchBased.forEach((item, index) => {
+    const positionWeight = Math.max(0, 1 - index / searchBased.length) // 1.0 for first, 0.0 for last
+    const searchScore = item.score * 40 // Scale search relevance
+    const current = combined.get(item.listing.listing_id)!
+    current.score += searchScore * positionWeight
+  })
+
+  // View-based relevance (30% weight)
+  viewBased.forEach((item, index) => {
+    const positionWeight = Math.max(0, 1 - index / viewBased.length)
+    const viewScore = item.score * 30 // Scale view relevance
+    const current = combined.get(item.listing.listing_id)!
+    current.score += viewScore * positionWeight
+  })
+
+  // Boost active/boosted listings
+  combined.forEach((item) => {
+    if (item.listing.is_boosted) {
+      item.score += 200 // High boost for promoted listings
+    }
+    if (item.listing.status === 'active') {
+      item.score += 10 // Small boost for active listings
     }
   })
 
-  // Sort by combined score
+  // Sort by combined score (highest first)
   const sorted = Array.from(combined.values()).sort((a, b) => b.score - a.score)
 
-  // Return top listings
+  // Return top listings (always returns ALL listings, just sorted by relevance)
   return sorted.slice(0, limit).map(item => item.listing)
 }

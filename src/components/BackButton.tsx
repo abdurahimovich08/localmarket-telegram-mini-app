@@ -25,9 +25,17 @@ export default function BackButton({ onClick, className = '', fallbackPath = '/'
       return
     }
 
-    // Always use navigate(-1) - React Router manages history stack correctly
-    // This will navigate to the previous page in the history stack
-    navigate(-1)
+    // Use React Router's navigate(-1) to go back in history
+    // This respects the browser/React Router history stack
+    // If no history, it will stay on current page (which is fine)
+    const canGoBack = window.history.length > 1
+    
+    if (canGoBack) {
+      navigate(-1)
+    } else {
+      // If no history, navigate to home
+      navigate(fallbackPath)
+    }
   }
 
   useEffect(() => {
