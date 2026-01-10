@@ -249,11 +249,11 @@ ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz;
 -- Ko'chmas mulk
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
 ('home_garden', 'Kvartiralar', 'Kvartiralar', 'kvartiralar', 'Bir xonali, ikki xonali, uch xonali kvartiralar', 1),
-('home_garden', 'Hovli uylar', 'Hovli uylar', 'hovli-uylar', 'Hovli uylar va qo\'shni uylar', 2),
+('home_garden', 'Hovli uylar', 'Hovli uylar', 'hovli-uylar', 'Hovli uylar va qo''shni uylar', 2),
 ('home_garden', 'Yer uchastkalari', 'Yer uchastkalari', 'yer-uchastkalari', 'Yer uchastkalari va qurilish uchun yerlar', 3),
 ('home_garden', 'Ofislar', 'Ofislar', 'ofislar', 'Ofis binolari va biznes binolari', 4),
 ('home_garden', 'Magazinlar', 'Magazinlar', 'magazinlar', 'Savdo maydonlari va magazinlar', 5),
-('home_garden', 'Ijaraga', 'Ijaraga', 'ijaraga', 'Ijaraga beriladigan ko\'chmas mulk', 6)
+('home_garden', 'Ijaraga', 'Ijaraga', 'ijaraga', 'Ijaraga beriladigan ko''chmas mulk', 6)
 ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
 
 -- Elektronika
@@ -291,8 +291,8 @@ ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, de
 -- Uy va Bog'
 INSERT INTO subcategories (parent_category, name, name_uz, slug, description_uz, display_order) VALUES
 ('home_garden', 'Mebel', 'Mebel', 'mebel', 'Divanlar, stollar, stullar', 1),
-('home_garden', 'Qurilish mollari', 'Qurilish mollari', 'qurilish-mollari', 'Cement, g\'isht, plitka va boshqalar', 2),
-('home_garden', 'Bog\' anjomlari', 'Bog\' anjomlari', 'bog-anjomlari', 'Bog\' va hovli uchun asboblar', 3),
+('home_garden', 'Qurilish mollari', 'Qurilish mollari', 'qurilish-mollari', 'Cement, g''isht, plitka va boshqalar', 2),
+('home_garden', 'Bog'' anjomlari', 'Bog'' anjomlari', 'bog-anjomlari', 'Bog'' va hovli uchun asboblar', 3),
 ('home_garden', 'Uy bezaklari', 'Uy bezaklari', 'uy-bezaklari', 'Interyer bezaklari', 4),
 ('home_garden', 'Oshxona jihozlari', 'Oshxona jihozlari', 'oshxona-jihozlari', 'Oshxona uchun kerakli jihozlar', 5)
 ON CONFLICT (parent_category, slug) DO UPDATE SET name_uz = EXCLUDED.name_uz, description_uz = EXCLUDED.description_uz;
