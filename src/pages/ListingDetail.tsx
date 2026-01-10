@@ -9,6 +9,7 @@ import { CATEGORIES, CONDITIONS } from '../types'
 import { HeartIcon, ShareIcon, FlagIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import AddToCartButton from '../components/AddToCartButton'
+import SimilarListings from '../components/SimilarListings'
 import BottomNav from '../components/BottomNav'
 
 export default function ListingDetail() {
@@ -296,6 +297,9 @@ export default function ListingDetail() {
           </div>
         )}
       </div>
+
+      {/* Similar Listings */}
+      <SimilarListings listing={listing} />
 
       <BottomNav />
     </div>

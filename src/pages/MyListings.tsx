@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getListings, updateListing } from '../lib/supabase'
+import { getListingAnalytics, type ListingAnalytics } from '../lib/analytics'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
 import BottomNav from '../components/BottomNav'
-import { PlusIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, CheckIcon, EyeIcon, HeartIcon } from '@heroicons/react/24/outline'
 
 export default function MyListings() {
   const navigate = useNavigate()
   const { user } = useUser()
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState<Record<string, ListingAnalytics>>({})
 
   useEffect(() => {
     if (!user) {
@@ -26,6 +28,16 @@ export default function MyListings() {
         const data = await getListings()
         const myListings = data.filter((l) => l.seller_telegram_id === user.telegram_user_id)
         setListings(myListings)
+
+        // Load analytics for each listing
+        const analyticsMap: Record<string, ListingAnalytics> = {}
+        for (const listing of myListings) {
+          const listingAnalytics = await getListingAnalytics(listing.listing_id)
+          if (listingAnalytics) {
+            analyticsMap[listing.listing_id] = listingAnalytics
+          }
+        }
+        setAnalytics(analyticsMap)
       } catch (error) {
         console.error('Error loading listings:', error)
       } finally {
@@ -90,17 +102,39 @@ export default function MyListings() {
               <Link to={`/listing/${listing.listing_id}`}>
                 <ListingCard listing={listing} />
               </Link>
-              <div className="p-3 border-t border-gray-200 flex items-center gap-2">
-                <span className={`text-xs px-2 py-1 rounded ${
-                  listing.status === 'active'
-                    ? 'bg-green-100 text-green-700'
-                    : listing.status === 'sold'
-                    ? 'bg-gray-100 text-gray-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : 'O\'chirilgan'}
-                </span>
-                <div className="flex-1"></div>
+              <div className="p-3 border-t border-gray-200">
+                {/* Analytics */}
+                {analytics[listing.listing_id] && (
+                  <div className="flex items-center gap-4 mb-3 pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <EyeIcon className="w-4 h-4" />
+                      <span className="font-medium">{analytics[listing.listing_id].total_views}</span>
+                      <span className="text-xs">ko'rish</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                      <HeartIcon className="w-4 h-4" />
+                      <span className="font-medium">{analytics[listing.listing_id].favorite_count}</span>
+                      <span className="text-xs">yoqtirish</span>
+                    </div>
+                    <div className="flex-1"></div>
+                    <div className="text-xs text-gray-500">
+                      {analytics[listing.listing_id].views_last_7_days} (7 kun)
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    listing.status === 'active'
+                      ? 'bg-green-100 text-green-700'
+                      : listing.status === 'sold'
+                      ? 'bg-gray-100 text-gray-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : 'O\'chirilgan'}
+                  </span>
+                  <div className="flex-1"></div>
                 {listing.status === 'active' && (
                   <button
                     onClick={() => handleMarkAsSold(listing.listing_id)}

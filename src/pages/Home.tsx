@@ -4,6 +4,7 @@ import { useUser } from '../contexts/UserContext'
 import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
 import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
+import { getEnhancedPersonalizedListings } from '../lib/recommendations'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
 import type { Listing } from '../types'
 import ListingCard from '../components/ListingCard'
@@ -51,13 +52,10 @@ export default function Home() {
           user?.search_radius_miles || 10
         )
 
-        // Get personalized listings
-        const personalized = await getPersonalizedListings(
-          sorted,
-          user?.telegram_user_id,
-          user?.search_radius_miles || 10,
-          30
-        )
+        // Get enhanced personalized listings (search + view history)
+        const personalized = user?.telegram_user_id
+          ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
+          : await getPersonalizedListings(sorted, user?.telegram_user_id, user?.search_radius_miles || 10, 30)
 
         // Get deals of the day
         const deals = getDealsOfDay(sorted, 20)
