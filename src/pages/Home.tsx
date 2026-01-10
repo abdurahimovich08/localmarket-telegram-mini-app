@@ -36,28 +36,29 @@ export default function Home() {
 
         if (!isMounted) return
 
-        // Load all listings
+        // Load listings with limit for performance (50 for initial load)
         const allListings = await getListings({
           radius: user?.search_radius_miles || 10,
           userLat: location?.latitude,
-          userLon: location?.longitude
+          userLon: location?.longitude,
+          limit: 50 // Limit initial load for faster performance
         })
 
         if (!isMounted) return
 
-        // Sort with advanced algorithm
+        // Sort with advanced algorithm (only first 50)
         const sorted = await sortListings(
           allListings,
           user?.telegram_user_id,
           user?.search_radius_miles || 10
         )
 
-        // Get enhanced personalized listings (search + view history)
+        // Get enhanced personalized listings (search + view history) - limit to 30
         const personalized = user?.telegram_user_id
           ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
           : await getPersonalizedListings(sorted, user?.telegram_user_id, user?.search_radius_miles || 10, 30)
 
-        // Get deals of the day
+        // Get deals of the day - limit to 20
         const deals = getDealsOfDay(sorted, 20)
 
         if (isMounted) {
@@ -107,13 +108,15 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header with Search */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="px-4 py-3 space-y-3">
           {/* Top Row: Logo + Actions */}
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
             <div className="flex items-center gap-2">
-              <CartIcon />
+              <div className="relative">
+                <CartIcon />
+              </div>
               <Link
                 to="/create"
                 className="p-2 text-primary hover:text-primary/80 transition-colors"

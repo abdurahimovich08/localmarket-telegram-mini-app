@@ -58,13 +58,18 @@ export const getListings = async (filters?: {
   search?: string
   recentOnly?: boolean // only listings from last 7 days
   boostedOnly?: boolean // only boosted listings
+  limit?: number // Maximum number of listings to return
 }): Promise<Listing[]> => {
   let query = supabase
     .from('listings')
-    .select('*, seller:users(*)')
+    .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url)')
     .eq('status', 'active')
     .order('is_boosted', { ascending: false })
     .order('created_at', { ascending: false })
+    
+  // Add limit for performance (default 100, max 200)
+  const limit = filters?.limit || 100
+  query = query.limit(Math.min(limit, 200))
 
   // Category filter
   if (filters?.category) {

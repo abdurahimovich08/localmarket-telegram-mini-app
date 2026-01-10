@@ -22,6 +22,7 @@ export const getUserSearchKeywords = async (
       .eq('user_telegram_id', userTelegramId)
       .gte('created_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
+      .limit(100) // Limit to last 100 searches for performance
 
     if (error) {
       console.error('Error fetching search keywords:', error)
@@ -75,7 +76,7 @@ export const getUserViewedListings = async (
       .eq('user_telegram_id', userTelegramId)
       .eq('interaction_type', 'view')
       .order('created_at', { ascending: false })
-      .limit(limit)
+      .limit(Math.min(limit, 50)) // Cap at 50 for performance
 
     if (error) {
       console.error('Error fetching viewed listings:', error)
