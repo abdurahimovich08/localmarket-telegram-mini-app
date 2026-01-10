@@ -19,11 +19,18 @@ export default function BackButton({ onClick, className = '', fallbackPath = '/'
     return null
   }
 
-  useEffect(() => {
-    // Check if we can go back in history
-    // React Router keeps its own history stack
-    setCanGoBack(true) // Assume we can always go back (React Router manages history)
+  const handleBack = () => {
+    if (onClick) {
+      onClick()
+      return
+    }
 
+    // Always use navigate(-1) - React Router manages history stack correctly
+    // This will navigate to the previous page in the history stack
+    navigate(-1)
+  }
+
+  useEffect(() => {
     // Telegram WebApp BackButton API integration (if available)
     const webApp = initTelegram()
     if (webApp?.BackButton) {
@@ -52,24 +59,7 @@ export default function BackButton({ onClick, className = '', fallbackPath = '/'
         console.warn('Telegram BackButton not available:', error)
       }
     }
-  }, [location.pathname])
-
-  const handleBack = () => {
-    if (onClick) {
-      onClick()
-      return
-    }
-
-    // Always try navigate(-1) first (React Router history)
-    // This will work correctly with React Router's history stack
-    try {
-      navigate(-1)
-    } catch (error) {
-      // If navigate(-1) fails, fallback to home
-      console.warn('Navigate back failed, using fallback:', error)
-      navigate(fallbackPath)
-    }
-  }
+  }, [location.pathname, navigate, onClick])
 
   return (
     <button
