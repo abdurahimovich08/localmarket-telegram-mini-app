@@ -1,29 +1,100 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { createListing } from '../lib/supabase'
+import { createListing, getSubcategories, type Subcategory } from '../lib/supabase'
 import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
 import { uploadImages } from '../lib/imageUpload'
-import { validateCategoryStrict, detectCategory } from '../lib/categoryValidation'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
-import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PhotoIcon, XMarkIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
+
+type Step = 'photos' | 'category' | 'subcategory' | 'form'
 
 export default function CreateListing() {
   const navigate = useNavigate()
   const { user } = useUser()
+  const [currentStep, setCurrentStep] = useState<Step>('photos')
   const [loading, setLoading] = useState(false)
+  
+  // Photos
   const [photos, setPhotos] = useState<string[]>([])
+  
+  // Category & Subcategory
+  const [category, setCategory] = useState<ListingCategory | null>(null)
+  const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null)
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const [nestedSubcategories, setNestedSubcategories] = useState<Subcategory[]>([])
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false)
+  
+  // Form fields
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
   const [isFree, setIsFree] = useState(false)
-  const [category, setCategory] = useState<ListingCategory>('other')
   const [condition, setCondition] = useState<ListingCondition>('good')
   const [neighborhood, setNeighborhood] = useState('')
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
-  const [categoryWarning, setCategoryWarning] = useState<string | null>(null)
+
+  // Load subcategories when category is selected
+  useEffect(() => {
+    if (category && currentStep === 'subcategory') {
+      loadSubcategories()
+    }
+  }, [category, currentStep])
+
+  const loadSubcategories = async () => {
+    if (!category) return
+    
+    setLoadingSubcategories(true)
+    try {
+      const subs = await getSubcategories(category)
+      setSubcategories(subs)
+    } catch (error) {
+      console.error('Error loading subcategories:', error)
+    } finally {
+      setLoadingSubcategories(false)
+    }
+  }
+
+  const loadNestedSubcategories = async (parentSubcategoryId: string) => {
+    if (!category) return
+    
+    setLoadingSubcategories(true)
+    try {
+      const nested = await getSubcategories(category, parentSubcategoryId)
+      setNestedSubcategories(nested)
+    } catch (error) {
+      console.error('Error loading nested subcategories:', error)
+    } finally {
+      setLoadingSubcategories(false)
+    }
+  }
+
+  const handleCategorySelect = (selectedCategory: ListingCategory) => {
+    setCategory(selectedCategory)
+    setCurrentStep('subcategory')
+  }
+
+  const handleSubcategorySelect = async (subcategory: Subcategory) => {
+    // Check if this subcategory has nested subcategories
+    const nested = await getSubcategories(category!, subcategory.subcategory_id)
+    
+    if (nested.length > 0) {
+      // Show nested subcategories
+      setSelectedSubcategory(subcategory)
+      setNestedSubcategories(nested)
+    } else {
+      // No nested subcategories, proceed to form
+      setSelectedSubcategory(subcategory)
+      setCurrentStep('form')
+    }
+  }
+
+  const handleNestedSubcategorySelect = (nestedSubcategory: Subcategory) => {
+    setSelectedSubcategory(nestedSubcategory)
+    setCurrentStep('form')
+  }
 
   const handleSubmit = useCallback(async () => {
     if (!user) {
@@ -36,23 +107,9 @@ export default function CreateListing() {
       return
     }
 
-    // Validate category
-    const validation = validateCategoryStrict(category, title.trim(), description.trim())
-    if (!validation.isValid && validation.suggestedCategory) {
-      const confirmed = window.confirm(
-        `${validation.reason || 'Kategoriya noto\'g\'ri'}\n\n` +
-        `Tavsiya etilgan kategoriya: ${CATEGORIES.find(c => c.value === validation.suggestedCategory)?.label}\n\n` +
-        `Tavsiya etilgan kategoriyaga o\'tishni xohlaysizmi?`
-      )
-      if (confirmed) {
-        setCategory(validation.suggestedCategory)
-        // Continue with suggested category
-      } else {
-        // User wants to keep current category, but show warning
-        setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
-        const proceed = window.confirm('Kategoriya mos kelmasa ham davom etishni xohlaysizmi?')
-        if (!proceed) return
-      }
+    if (!category) {
+      alert('Iltimos, kategoriyani tanlang')
+      return
     }
 
     setLoading(true)
@@ -60,7 +117,6 @@ export default function CreateListing() {
       // Upload photos
       console.log('Starting photo upload...')
       const photoFiles = photos.map((dataUrl, index) => {
-        // Convert data URL to File object
         const arr = dataUrl.split(',')
         const mime = arr[0].match(/:(.*?);/)?.[1]
         const bstr = atob(arr[1])
@@ -90,13 +146,12 @@ export default function CreateListing() {
         latitude: location?.latitude,
         longitude: location?.longitude,
         status: 'active',
-        is_boosted: false
+        is_boosted: false,
+        subcategory_id: selectedSubcategory?.subcategory_id
       })
 
       if (listing) {
         console.log('Listing created successfully:', listing.listing_id)
-        setCategoryWarning(null) // Clear warning on success
-        // Navigate to home page after successful creation
         navigate('/')
       } else {
         alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
@@ -108,7 +163,7 @@ export default function CreateListing() {
     } finally {
       setLoading(false)
     }
-  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, navigate])
+  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, selectedSubcategory, navigate])
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -135,21 +190,42 @@ export default function CreateListing() {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const canProceedFromPhotos = photos.length > 0
+  const canProceedFromCategory = category !== null
+  const canProceedFromSubcategory = selectedSubcategory !== null
+  const canSubmitForm = user && title.trim().length > 0 && description.trim().length > 0 && photos.length > 0 && category !== null
+
   useEffect(() => {
     const webApp = initTelegram()
     if (webApp) {
-      // Set up Main Button
-      webApp.MainButton.setText('E\'lon Yaratish')
-      webApp.MainButton.show()
-      
-      const handleMainButtonClick = () => {
-        console.log('MainButton clicked')
-        handleSubmit()
-      }
-      
-      webApp.MainButton.onClick(handleMainButtonClick)
+      // Set up Main Button based on current step
+      if (currentStep === 'form') {
+        webApp.MainButton.setText('E\'lon Yaratish')
+        webApp.MainButton.show()
+        
+        const handleMainButtonClick = () => {
+          console.log('MainButton clicked')
+          handleSubmit()
+        }
+        
+        webApp.MainButton.onClick(handleMainButtonClick)
 
-      // Request location only once (will use cache if available)
+        // Enable/disable Main Button based on form validity
+        if (canSubmitForm) {
+          webApp.MainButton.enable()
+        } else {
+          webApp.MainButton.disable()
+        }
+
+        return () => {
+          webApp.MainButton.offClick(handleMainButtonClick)
+          webApp.MainButton.hide()
+        }
+      } else {
+        webApp.MainButton.hide()
+      }
+
+      // Request location only once
       if (!location) {
         requestLocation().then((loc) => {
           if (loc) {
@@ -157,33 +233,186 @@ export default function CreateListing() {
           }
         })
       }
-
-      return () => {
-        webApp.MainButton.offClick(handleMainButtonClick)
-        webApp.MainButton.hide()
-      }
     }
-  }, [handleSubmit])
+  }, [currentStep, canSubmitForm, handleSubmit, location])
 
-  useEffect(() => {
-    const webApp = initTelegram()
-    if (webApp) {
-      // Enable/disable Main Button based on form validity
-      const isValid = user && title.trim().length > 0 && description.trim().length > 0 && photos.length > 0
-      if (isValid) {
-        webApp.MainButton.enable()
-      } else {
-        webApp.MainButton.disable()
-      }
-    }
-  }, [user, title, description, photos])
+  // Render based on current step
+  if (currentStep === 'photos') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center px-4 py-3">
+            <BackButton />
+            <h1 className="flex-1 text-center font-semibold text-gray-900">Rasmlar</h1>
+            <div className="w-10"></div>
+          </div>
+        </header>
 
+        <div className="p-4">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rasmlar (10 tagacha) *
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((photo, index) => (
+                <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemovePhoto(index)}
+                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {photos.length < 10 && (
+                <button
+                  onClick={handlePhotoUpload}
+                  className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                >
+                  <PhotoIcon className="w-8 h-8 mb-1" />
+                  <span className="text-xs">Rasm Qo'shish</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setCurrentStep('category')}
+            disabled={!canProceedFromPhotos}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+              canProceedFromPhotos
+                ? 'bg-primary text-white hover:bg-primary-dark'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Keyingi qadam
+            <ChevronRightIcon className="w-5 h-5 inline-block ml-2" />
+          </button>
+        </div>
+
+        <BottomNav />
+      </div>
+    )
+  }
+
+  if (currentStep === 'category') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center px-4 py-3">
+            <button
+              onClick={() => setCurrentStep('photos')}
+              className="p-2 -ml-2"
+            >
+              <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
+            </button>
+            <h1 className="flex-1 text-center font-semibold text-gray-900">Kategoriya Tanlash</h1>
+            <div className="w-10"></div>
+          </div>
+        </header>
+
+        <div className="p-4">
+          <p className="text-sm text-gray-600 mb-4">E'lon uchun kategoriyani tanlang:</p>
+          <div className="grid grid-cols-2 gap-3">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => handleCategorySelect(cat.value)}
+                className="p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors text-left"
+              >
+                <div className="text-3xl mb-2">{cat.emoji}</div>
+                <div className="font-medium text-gray-900">{cat.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <BottomNav />
+      </div>
+    )
+  }
+
+  if (currentStep === 'subcategory') {
+    const displaySubcategories = nestedSubcategories.length > 0 ? nestedSubcategories : subcategories
+    const showBackToParent = nestedSubcategories.length > 0
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center px-4 py-3">
+            <button
+              onClick={() => {
+                if (showBackToParent) {
+                  setNestedSubcategories([])
+                  setSelectedSubcategory(null)
+                } else {
+                  setCurrentStep('category')
+                }
+              }}
+              className="p-2 -ml-2"
+            >
+              <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
+            </button>
+            <h1 className="flex-1 text-center font-semibold text-gray-900">
+              {showBackToParent ? selectedSubcategory?.name_uz : CATEGORIES.find(c => c.value === category)?.label}
+            </h1>
+            <div className="w-10"></div>
+          </div>
+        </header>
+
+        <div className="p-4">
+          {loadingSubcategories ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : displaySubcategories.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              Bu kategoriya uchun subkategoriyalar topilmadi
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {displaySubcategories.map((sub) => (
+                <button
+                  key={sub.subcategory_id}
+                  onClick={() => {
+                    if (nestedSubcategories.length > 0) {
+                      handleNestedSubcategorySelect(sub)
+                    } else {
+                      handleSubcategorySelect(sub)
+                    }
+                  }}
+                  className="w-full p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors text-left flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-medium text-gray-900">{sub.name_uz}</div>
+                    {sub.description_uz && (
+                      <div className="text-sm text-gray-500 mt-1">{sub.description_uz}</div>
+                    )}
+                  </div>
+                  <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <BottomNav />
+      </div>
+    )
+  }
+
+  // Form step
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center px-4 py-3">
-          <BackButton />
+          <button
+            onClick={() => setCurrentStep('subcategory')}
+            className="p-2 -ml-2"
+          >
+            <ChevronLeftIcon className="w-6 h-6 text-gray-600" />
+          </button>
           <h1 className="flex-1 text-center font-semibold text-gray-900">E'lon Yaratish</h1>
           <div className="w-10"></div>
         </div>
@@ -198,55 +427,27 @@ export default function CreateListing() {
       )}
 
       <div className="p-4 space-y-6">
-        {/* Photo Upload */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Rasmlar (10 tagacha) *
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {photos.map((photo, index) => (
-              <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
-                <button
-                  onClick={() => handleRemovePhoto(index)}
-                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            {photos.length < 10 && (
-              <button
-                onClick={handlePhotoUpload}
-                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
-              >
-                <PhotoIcon className="w-8 h-8 mb-1" />
-                <span className="text-xs">Rasm Qo'shish</span>
-              </button>
-            )}
+        {/* Selected Category & Subcategory Display */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="text-sm text-blue-800">
+            <span className="font-medium">Kategoriya:</span> {CATEGORIES.find(c => c.value === category)?.label}
           </div>
+          {selectedSubcategory && (
+            <div className="text-sm text-blue-800 mt-1">
+              <span className="font-medium">Subkategoriya:</span> {selectedSubcategory.name_uz}
+            </div>
+          )}
         </div>
 
         {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Title *
+            Sarlavha *
           </label>
           <input
             type="text"
             value={title}
-            onChange={(e) => {
-              setTitle(e.target.value)
-              // Validate category when title changes
-              if (e.target.value.trim() && description.trim()) {
-                const validation = validateCategoryStrict(category, e.target.value.trim(), description.trim())
-                if (!validation.isValid) {
-                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
-                } else {
-                  setCategoryWarning(null)
-                }
-              }
-            }}
+            onChange={(e) => setTitle(e.target.value)}
             maxLength={80}
             placeholder="Nima sotmoqchisiz?"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -257,22 +458,11 @@ export default function CreateListing() {
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description *
+            Tavsif *
           </label>
           <textarea
             value={description}
-            onChange={(e) => {
-              setDescription(e.target.value)
-              // Validate category when description changes
-              if (title.trim() && e.target.value.trim()) {
-                const validation = validateCategoryStrict(category, title.trim(), e.target.value.trim())
-                if (!validation.isValid) {
-                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
-                } else {
-                  setCategoryWarning(null)
-                }
-              }
-            }}
+            onChange={(e) => setDescription(e.target.value)}
             maxLength={500}
             rows={4}
             placeholder="Mahsulotingizni tasvirlang..."
@@ -284,7 +474,7 @@ export default function CreateListing() {
         {/* Price */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Price
+            Narx
           </label>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2">
@@ -311,58 +501,6 @@ export default function CreateListing() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Kategoriya
-          </label>
-          <select
-            value={category}
-            onChange={(e) => {
-              const newCategory = e.target.value as ListingCategory
-              setCategory(newCategory)
-              // Auto-validate when category changes
-              if (title.trim() && description.trim()) {
-                const validation = validateCategoryStrict(newCategory, title.trim(), description.trim())
-                if (!validation.isValid) {
-                  setCategoryWarning(validation.reason || 'Kategoriya mos kelmayapti')
-                } else {
-                  setCategoryWarning(null)
-                }
-              }
-            }}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-              categoryWarning ? 'border-yellow-500' : 'border-gray-300'
-            }`}
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.emoji} {cat.label}
-              </option>
-            ))}
-          </select>
-          {categoryWarning && (
-            <p className="mt-1 text-sm text-yellow-600 flex items-center gap-1">
-              ⚠️ {categoryWarning}
-            </p>
-          )}
-          {title.trim() && description.trim() && !categoryWarning && (
-            <button
-              type="button"
-              onClick={() => {
-                const detected = detectCategory(title.trim(), description.trim())
-                if (detected !== category) {
-                  setCategory(detected)
-                  setCategoryWarning(null)
-                }
-              }}
-              className="mt-1 text-xs text-primary hover:underline"
-            >
-              Avtomatik kategoriya aniqlash
-            </button>
-          )}
         </div>
 
         {/* Condition */}

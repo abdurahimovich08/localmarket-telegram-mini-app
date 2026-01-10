@@ -222,7 +222,7 @@ export const getListing = async (listingId: string): Promise<Listing | null> => 
   return data
 }
 
-export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count'>): Promise<Listing | null> => {
+export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count'> & { subcategory_id?: string }): Promise<Listing | null> => {
   console.log('Creating listing with data:', listing)
   
   const { data, error } = await supabase
@@ -512,6 +512,45 @@ export const createReview = async (review: Omit<Review, 'review_id' | 'created_a
   // Update user rating
   await supabase.rpc('update_user_rating', { user_id: review.reviewed_telegram_id })
   return data
+}
+
+// Subcategory operations
+export interface Subcategory {
+  subcategory_id: string
+  parent_category: string
+  name: string
+  name_uz: string
+  slug: string
+  description?: string
+  description_uz?: string
+  parent_subcategory_id?: string
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export const getSubcategories = async (parentCategory: string, parentSubcategoryId?: string): Promise<Subcategory[]> => {
+  let query = supabase
+    .from('subcategories')
+    .select('*')
+    .eq('parent_category', parentCategory)
+    .order('display_order', { ascending: true })
+    .order('name_uz', { ascending: true })
+
+  if (parentSubcategoryId) {
+    query = query.eq('parent_subcategory_id', parentSubcategoryId)
+  } else {
+    query = query.is('parent_subcategory_id', null)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching subcategories:', error)
+    return []
+  }
+
+  return data || []
 }
 
 // Helper function for distance calculation
