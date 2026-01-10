@@ -132,7 +132,7 @@ export default function MyListings() {
                       ? 'bg-gray-100 text-gray-700'
                       : 'bg-red-100 text-red-700'
                   }`}>
-                    {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : 'O''chirilgan'}
+                    {listing.status === 'active' ? 'Faol' : listing.status === 'sold' ? 'Sotilgan' : "O'chirilgan"}
                   </span>
                   <div className="flex-1"></div>
                   {listing.status === 'active' && (
