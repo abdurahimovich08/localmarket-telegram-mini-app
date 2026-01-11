@@ -260,24 +260,24 @@ export default function StoreDetail() {
 
       {/* STORE IDENTITY BLOCK - YouTube channel header style */}
       <div className="bg-white border-b border-gray-200 px-4 pb-4">
-        <div className="flex items-start gap-4 -mt-12">
+        <div className="flex items-start gap-4 -mt-8">
           {/* Logo - Circular avatar */}
           {store.logo_url ? (
             <img
               src={store.logo_url}
               alt={store.name}
-              className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
+              className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white shadow-lg object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-primary/20 flex items-center justify-center">
-              <span className="text-3xl text-primary font-bold">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white shadow-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl md:text-3xl text-primary font-bold">
                 {store.name[0].toUpperCase()}
               </span>
             </div>
           )}
 
           {/* Store Info */}
-          <div className="flex-1 pt-2">
+          <div className="flex-1 pt-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-xl font-bold text-gray-900">{store.name}</h2>
               {store.is_verified && (
