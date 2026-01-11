@@ -48,6 +48,35 @@ export default function StoreDetail() {
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
 
+  // Reset description state when store changes
+  useEffect(() => {
+    setShowFullDescription(false)
+  }, [id])
+
+  // Load liked posts from localStorage
+  useEffect(() => {
+    if (id && user) {
+      const storageKey = `store_likes_${id}_${user.telegram_user_id}`
+      const savedLikes = localStorage.getItem(storageKey)
+      if (savedLikes) {
+        try {
+          const likesArray = JSON.parse(savedLikes)
+          setLikedPosts(new Set(likesArray))
+        } catch (e) {
+          console.error('Error loading liked posts:', e)
+        }
+      }
+    }
+  }, [id, user])
+
+  // Save liked posts to localStorage
+  useEffect(() => {
+    if (id && user && likedPosts.size > 0) {
+      const storageKey = `store_likes_${id}_${user.telegram_user_id}`
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(likedPosts)))
+    }
+  }, [likedPosts, id, user])
+
   useEffect(() => {
     if (!id) {
       navigate('/')
@@ -99,17 +128,44 @@ export default function StoreDetail() {
   const handleSubscribe = async () => {
     if (!user || !store) return
 
+    // Optimistic UI update
+    const previousState = {
+      is_subscribed: store.is_subscribed,
+      subscriber_count: store.subscriber_count
+    }
+
     setSubscribing(true)
+    
+    // Immediately update UI (optimistic)
+    if (store.is_subscribed) {
+      setStore({ 
+        ...store, 
+        is_subscribed: false, 
+        subscriber_count: Math.max(0, store.subscriber_count - 1) 
+      })
+    } else {
+      setStore({ 
+        ...store, 
+        is_subscribed: true, 
+        subscriber_count: store.subscriber_count + 1 
+      })
+    }
+
     try {
-      if (store.is_subscribed) {
+      if (previousState.is_subscribed) {
         await unsubscribeFromStore(user.telegram_user_id, store.store_id)
-        setStore({ ...store, is_subscribed: false, subscriber_count: Math.max(0, store.subscriber_count - 1) })
       } else {
         await subscribeToStore(user.telegram_user_id, store.store_id)
-        setStore({ ...store, is_subscribed: true, subscriber_count: store.subscriber_count + 1 })
       }
     } catch (error) {
       console.error('Error toggling subscription:', error)
+      // Rollback on error
+      setStore({ 
+        ...store, 
+        is_subscribed: previousState.is_subscribed,
+        subscriber_count: previousState.subscriber_count
+      })
+      alert('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
     } finally {
       setSubscribing(false)
     }
@@ -233,12 +289,16 @@ export default function StoreDetail() {
             
             {/* Rating and Products Count */}
             <div className="flex items-center gap-4 flex-wrap">
-              {storeRating > 0 && (
-                <div className="flex items-center gap-1">
-                  <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                  <span className="text-sm font-semibold text-gray-900">{storeRating.toFixed(1)}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                {storeRating > 0 ? (
+                  <>
+                    <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="text-sm font-semibold text-gray-900">{storeRating.toFixed(1)}</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-500">—</span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
                 <span className="text-sm text-gray-600">{listings.length}</span>
                 <span className="text-sm text-gray-600">mahsulot</span>
