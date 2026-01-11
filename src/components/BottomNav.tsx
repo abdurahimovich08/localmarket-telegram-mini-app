@@ -25,11 +25,7 @@ export default function BottomNav() {
     {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
-      onClick: () => {
-        // TODO: Implement service creation
-        alert('Tez orada qo\'shiladi')
-      },
-      disabled: true,
+      onClick: () => navigate('/create-service'),
     },
   ]
 

@@ -14,6 +14,7 @@ import Cart from './pages/Cart'
 import CreateStore from './pages/CreateStore'
 import EditStore from './pages/EditStore'
 import StoreDetail from './pages/StoreDetail'
+import AIChatCreationPage from './pages/AIChatCreationPage'
 import { UserContext } from './contexts/UserContext'
 import Onboarding from './components/Onboarding'
 
@@ -129,6 +130,7 @@ function App() {
           <Route path="/create-store" element={<CreateStore />} />
           <Route path="/store/:id/edit" element={<EditStore />} />
           <Route path="/store/:id" element={<StoreDetail />} />
+          <Route path="/create-service" element={<AIChatCreationPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
