@@ -1,19 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../contexts/UserContext'
-import { uploadImages } from '../../lib/imageUpload'
-import { createService } from '../../lib/supabase'
+import { uploadImages, uploadToSupabase } from '../../lib/imageUpload'
+import { createService, updateService } from '../../lib/supabase'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { ServiceData } from '../../services/GeminiService'
 import LogoUploader from '../LogoUploader'
 import PortfolioUploader from '../PortfolioUploader'
+import type { Service } from '../../types'
 
 interface ServiceReviewFormProps {
   data: ServiceData
   onBack?: () => void
+  editMode?: boolean
+  serviceId?: string
+  existingService?: Service
 }
 
-export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormProps) {
+export default function ServiceReviewForm({ 
+  data, 
+  onBack, 
+  editMode = false,
+  serviceId,
+  existingService 
+}: ServiceReviewFormProps) {
   const navigate = useNavigate()
   const { user } = useUser()
   const [formData, setFormData] = useState<ServiceData>(data)
@@ -21,6 +31,14 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
   const [portfolio, setPortfolio] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Load existing service data in edit mode
+  useEffect(() => {
+    if (editMode && existingService) {
+      setLogo(existingService.logo_url || existingService.image_url || null)
+      setPortfolio(existingService.portfolio_images || [])
+    }
+  }, [editMode, existingService])
 
   const dataUrlToFile = (dataUrl: string, filename: string): File => {
     const arr = dataUrl.split(',')
@@ -59,30 +77,67 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
       // Upload logo
       let logoUrl: string | null = null
       if (logo) {
-        const logoFile = dataUrlToFile(logo, 'logo.jpg')
-        const logoUrls = await uploadImages([logoFile])
-        logoUrl = logoUrls[0]
+        // Check if logo is a data URL (new upload) or URL (existing)
+        if (logo.startsWith('data:')) {
+          const logoFile = dataUrlToFile(logo, 'logo.jpg')
+          const logoUrls = await uploadImages([logoFile])
+          logoUrl = logoUrls[0]
+        } else {
+          // Logo is already a URL, use it directly
+          logoUrl = logo
+        }
       }
 
       // Upload portfolio images
       let portfolioUrls: string[] = []
       if (portfolio.length > 0) {
-        const portfolioFiles = portfolio.map((img, index) => dataUrlToFile(img, `portfolio-${index}.jpg`))
-        portfolioUrls = await uploadImages(portfolioFiles)
+        const portfolioFiles = portfolio
+          .filter(img => img.startsWith('data:')) // Only upload new images (data URLs)
+          .map((img, index) => dataUrlToFile(img, `portfolio-${index}.jpg`))
+        
+        if (portfolioFiles.length > 0) {
+          const uploadedUrls = await uploadImages(portfolioFiles)
+          portfolioUrls = uploadedUrls
+        }
+        
+        // Keep existing URLs (those that don't start with 'data:')
+        const existingUrls = portfolio.filter(img => !img.startsWith('data:'))
+        portfolioUrls = [...existingUrls, ...portfolioUrls]
       }
 
-      // Save service to database
-      const serviceId = await createService({
-        ...formData,
-        logo_url: logoUrl,
-        portfolio_images: portfolioUrls,
-        provider_telegram_id: user.telegram_user_id,
-      })
+      if (editMode && serviceId) {
+        // Update existing service
+        const updatedService = await updateService(serviceId, {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: formData.category,
+          price_type: formData.priceType,
+          price: formData.price.trim(),
+          tags: formData.tags,
+          logo_url: logoUrl,
+          portfolio_images: portfolioUrls,
+          image_url: logoUrl, // Backward compatibility
+        })
 
-      if (serviceId) {
-        navigate(`/service/${serviceId}`)
+        if (updatedService) {
+          navigate(`/service/${serviceId}`)
+        } else {
+          setError('Xizmatni yangilashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+        }
       } else {
-        setError('Xizmatni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+        // Create new service
+        const newServiceId = await createService({
+          ...formData,
+          logo_url: logoUrl,
+          portfolio_images: portfolioUrls,
+          provider_telegram_id: user.telegram_user_id,
+        })
+
+        if (newServiceId) {
+          navigate(`/service/${newServiceId}`)
+        } else {
+          setError('Xizmatni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+        }
       }
     } catch (err) {
       console.error('Error saving service:', err)
@@ -105,7 +160,9 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
               <ArrowLeftIcon className="w-6 h-6" />
             </button>
           )}
-          <h1 className="flex-1 text-center font-semibold text-gray-900">Xizmatni Ko'rib Chiqish</h1>
+          <h1 className="flex-1 text-center font-semibold text-gray-900">
+            {editMode ? 'Xizmatni Tahrirlash' : 'Xizmatni Ko\'rib Chiqish'}
+          </h1>
           <div className="w-10"></div>
         </div>
       </header>
@@ -258,7 +315,7 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
                   : 'bg-primary text-white hover:bg-primary-dark active:bg-primary-dark'
               }`}
             >
-              {isSaving ? 'Saqlanmoqda...' : 'Xizmatni Saqlash'}
+              {isSaving ? 'Saqlanmoqda...' : editMode ? 'Xizmatni Yangilash' : 'Xizmatni Saqlash'}
             </button>
             {!logo && (
               <p className="text-sm text-red-600 mt-2 text-center">Iltimos, logo rasmini yuklang</p>
