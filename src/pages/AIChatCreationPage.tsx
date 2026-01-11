@@ -1,120 +1,149 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import BackButton from '../components/BackButton'
-import BottomNav from '../components/BottomNav'
+import { useUser } from '../contexts/UserContext'
+import { getUserServices } from '../lib/supabase'
+import { startChatSession, sendMessage, type ChatResponse } from '../services/GeminiService'
 import ServiceReviewForm from '../components/service/ServiceReviewForm'
-import { PaperAirplaneIcon } from '@heroicons/react/24/outline'
-import { startChatSession, sendMessage, type ChatResponse, type ServiceData } from '../services/GeminiService'
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
+import type { ServiceData } from '../services/GeminiService'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import BackButton from '../components/BackButton'
 
 export default function AIChatCreationPage() {
   const navigate = useNavigate()
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)',
-      timestamp: new Date(),
-    },
-  ])
+  const { user } = useUser()
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'ai'; content: string }>>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [chatSession, setChatSession] = useState<any>(null)
+  const [chat, setChat] = useState<any>(null)
   const [aiData, setAiData] = useState<ServiceData | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [checkingService, setCheckingService] = useState(true)
+  const [existingService, setExistingService] = useState<{ service_id: string; title: string } | null>(null)
 
-  // Initialize chat session
+  // Check if user already has a service (only one service per user)
+  useEffect(() => {
+    const checkExistingService = async () => {
+      if (user) {
+        setCheckingService(true)
+        const services = await getUserServices(user.telegram_user_id)
+        if (services.length > 0) {
+          const firstService = services[0]
+          setExistingService({ 
+            service_id: firstService.service_id, 
+            title: firstService.title 
+          })
+        }
+        setCheckingService(false)
+      }
+    }
+    checkExistingService()
+  }, [user])
+
   useEffect(() => {
     const initChat = async () => {
-      try {
-        const chat = await startChatSession()
-        setChatSession(chat)
-      } catch (error) {
-        console.error('Error initializing chat:', error)
-        alert('AI xizmati ishlamayapti. Iltimos, keyinroq urinib ko\'ring.')
-        navigate(-1)
-      }
+      const chatSession = await startChatSession()
+      setChat(chatSession)
+      setMessages([
+        { role: 'ai', content: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }
+      ])
     }
     initChat()
-  }, [navigate])
+  }, [])
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading || !chatSession) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInputValue('')
-    setIsLoading(true)
-
-    try {
-      const response: ChatResponse = await sendMessage(chatSession, userMessage.content)
-
-      if (response.isFinished && response.data) {
-        // Service data is ready - show review form
-        setAiData(response.data)
-      } else {
-        // Regular AI response
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: response.message || 'Xatolik yuz berdi.',
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsLoading(false)
-      inputRef.current?.focus()
+  const scrollToBottom = () => {
+    const messagesContainer = document.getElementById('messages-container')
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || isLoading || !chat) return
+
+    const userMessage = inputValue.trim()
+    setInputValue('')
+    setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
+    setIsLoading(true)
+
+    try {
+      const response: ChatResponse = await sendMessage(chat, userMessage)
+      
+      if (response.isFinished && response.data) {
+        setAiData(response.data)
+      } else {
+        setMessages((prev) => [...prev, { role: 'ai', content: response.message || 'Xatolik yuz berdi' }])
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      setMessages((prev) => [...prev, { role: 'ai', content: 'Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.' }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
-  // Show review form if AI data is ready
+  // Show loading while checking for existing service
+  if (checkingService) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  // If user already has a service, redirect to edit page
+  if (existingService) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center px-4 py-3">
+            <BackButton />
+            <h1 className="flex-1 text-center font-semibold text-gray-900">Xizmat Yaratish</h1>
+            <div className="w-10"></div>
+          </div>
+        </header>
+        <div className="flex items-center justify-center min-h-[60vh] px-4">
+          <div className="text-center bg-white rounded-lg p-6 shadow-sm max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Sizda allaqachon xizmat mavjud</h2>
+            <p className="text-gray-600 mb-4">{existingService.title}</p>
+            <button
+              onClick={() => navigate(`/service/${existingService.service_id}/edit`)}
+              className="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
+            >
+              Xizmatni Tahrirlash
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // If AI finished and returned data, show review form
   if (aiData) {
     return (
-      <>
-        <ServiceReviewForm data={aiData} onBack={() => setAiData(null)} />
-        <BottomNav />
-      </>
+      <ServiceReviewForm
+        data={aiData}
+        onBack={() => {
+          setAiData(null)
+          setMessages([
+            { role: 'ai', content: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }
+          ])
+        }}
+      />
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center px-4 py-3">
           <BackButton />
@@ -123,90 +152,62 @@ export default function AIChatCreationPage() {
         </div>
       </header>
 
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+      <div className="flex-1 flex flex-col">
+        <div
+          id="messages-container"
+          className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        >
+          {messages.map((message, index) => (
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                message.role === 'user'
-                  ? 'bg-primary text-white rounded-br-sm'
-                  : 'bg-white text-gray-900 rounded-bl-sm shadow-sm border border-gray-100'
-              }`}
+              key={index}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-white/70' : 'text-gray-400'
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  message.role === 'user'
+                    ? 'bg-primary text-white'
+                    : 'bg-white text-gray-900 border border-gray-200'
                 }`}
               >
-                {message.timestamp.toLocaleTimeString('uz-UZ', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white text-gray-900 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                </div>
-                <span className="text-sm text-gray-500">AI yozmoqda...</span>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
               </div>
             </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border-t border-gray-200 p-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Xabar yozing..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isLoading}
+              className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Yuborish
+            </button>
           </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 p-4 safe-area-bottom">
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Xabar yozing..."
-            rows={1}
-            disabled={isLoading}
-            className="flex-1 resize-none px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed max-h-32 overflow-y-auto"
-            style={{
-              minHeight: '48px',
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement
-              target.style.height = 'auto'
-              target.style.height = `${Math.min(target.scrollHeight, 128)}px`
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
-            className={`p-3 rounded-full transition-colors ${
-              inputValue.trim() && !isLoading
-                ? 'bg-primary text-white hover:bg-primary-dark active:bg-primary-dark'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <PaperAirplaneIcon className="w-5 h-5" />
-          </button>
         </div>
       </div>
-
-      <BottomNav />
     </div>
   )
 }

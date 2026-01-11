@@ -181,11 +181,11 @@ export default function Profile() {
         {isOwnProfile && (
           services.length > 0 ? (
             <button
-              onClick={() => setActiveTab('services')}
+              onClick={() => navigate(`/service/${services[0].service_id}/edit`)}
               className="mt-3 w-full py-3 px-4 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
             >
               <EyeIcon className="w-5 h-5" />
-              SOQQANI Tahrirlash ({services.length})
+              SOQQANI Tahrirlash
             </button>
           ) : (
             <button
