@@ -7,6 +7,7 @@ import { CATEGORIES, type ListingCategory } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import StorePreview from '../components/StorePreview'
+import BannerCropper from '../components/BannerCropper'
 import { PhotoIcon, XMarkIcon, EyeIcon, CheckCircleIcon, ClockIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { initTelegram } from '../lib/telegram'
 import type { Store } from '../types'
@@ -29,6 +30,7 @@ export default function EditStore() {
   const [banner, setBanner] = useState<string | null>(null)
   const [logoChanged, setLogoChanged] = useState(false)
   const [bannerChanged, setBannerChanged] = useState(false)
+  const [bannerToCrop, setBannerToCrop] = useState<string | null>(null)
 
   // Load store data
   useEffect(() => {
@@ -436,6 +438,16 @@ export default function EditStore() {
             <p className="mt-4 text-gray-600">Do'kon yangilanmoqda...</p>
           </div>
         </div>
+      )}
+
+      {/* Banner Cropper Modal */}
+      {bannerToCrop && (
+        <BannerCropper
+          imageSrc={bannerToCrop}
+          onCrop={handleBannerCrop}
+          onCancel={handleBannerCropCancel}
+          aspectRatio={16 / 9}
+        />
       )}
 
       <BottomNav />

@@ -7,6 +7,7 @@ import { CATEGORIES, type ListingCategory } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import StorePreview from '../components/StorePreview'
+import BannerCropper from '../components/BannerCropper'
 import { PhotoIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline'
 import { initTelegram } from '../lib/telegram'
 import type { Store } from '../types'
@@ -25,6 +26,7 @@ export default function CreateStore() {
   const [category, setCategory] = useState<ListingCategory>('other')
   const [logo, setLogo] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [bannerToCrop, setBannerToCrop] = useState<string | null>(null)
 
   // Check if user already has a store
   useEffect(() => {
@@ -80,12 +82,22 @@ export default function CreateStore() {
         if (type === 'logo') {
           setLogo(result)
         } else {
-          setBanner(result)
+          // Banner uchun cropping oynasini ochamiz
+          setBannerToCrop(result)
         }
       }
       reader.readAsDataURL(file)
     }
     input.click()
+  }
+
+  const handleBannerCrop = (croppedImageDataUrl: string) => {
+    setBanner(croppedImageDataUrl)
+    setBannerToCrop(null)
+  }
+
+  const handleBannerCropCancel = () => {
+    setBannerToCrop(null)
   }
 
   const handleSubmit = useCallback(async () => {
