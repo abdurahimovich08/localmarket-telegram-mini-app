@@ -260,8 +260,8 @@ export default function StoreDetail() {
 
       {/* STORE IDENTITY BLOCK - YouTube channel header style */}
       <div className="bg-white border-b border-gray-200 px-4 pb-4">
-        <div className="flex items-start gap-4 -mt-8">
-          {/* Logo - Circular avatar */}
+        <div className="flex items-start gap-4 -mt-12 md:-mt-16">
+          {/* Logo - Circular avatar (overlaps banner) */}
           {store.logo_url ? (
             <img
               src={store.logo_url}
@@ -277,32 +277,27 @@ export default function StoreDetail() {
           )}
 
           {/* Store Info */}
-          <div className="flex-1 pt-1 min-w-0">
+          <div className="flex-1 pt-2 md:pt-3 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-xl font-bold text-gray-900">{store.name}</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900">{store.name}</h2>
               {store.is_verified && (
-                <CheckBadgeIcon className="w-5 h-5 text-blue-500" />
+                <CheckBadgeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
               )}
             </div>
             
-            <p className="text-sm text-gray-600 mb-2">@{storeUsername}</p>
+            <p className="text-sm text-gray-600 mb-1">@{storeUsername}</p>
             
-            {/* Rating and Products Count */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-1">
-                {storeRating > 0 ? (
-                  <>
-                    <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm font-semibold text-gray-900">{storeRating.toFixed(1)}</span>
-                  </>
-                ) : (
-                  <span className="text-sm text-gray-500">—</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-600">{listings.length}</span>
-                <span className="text-sm text-gray-600">mahsulot</span>
-              </div>
+            {/* Stats */}
+            <div className="flex items-center gap-3 flex-wrap text-sm text-gray-600">
+              {storeRating > 0 && (
+                <div className="flex items-center gap-1">
+                  <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
+                  <span className="font-semibold text-gray-900">{storeRating.toFixed(1)}</span>
+                </div>
+              )}
+              <span>{listings.length} mahsulot</span>
+              <span>•</span>
+              <span>{store.subscriber_count} obunachi</span>
             </div>
           </div>
         </div>
