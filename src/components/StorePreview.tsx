@@ -19,19 +19,19 @@ export default function StorePreview({ store, listings = [], isPreview = true }:
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* TOP BANNER */}
+      {/* TOP BANNER - YouTube style (reduced height) */}
       {store.banner_url ? (
-        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+        <div className="relative w-full h-40 md:h-48 overflow-hidden bg-gray-100">
           <img 
             src={store.banner_url} 
             alt={store.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
           />
         </div>
       ) : (
-        <div className="relative w-full bg-gradient-to-r from-primary to-primary-dark" style={{ aspectRatio: '16/9' }}>
+        <div className="relative w-full h-40 md:h-48 bg-gradient-to-r from-primary to-primary-dark overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">{store.name || 'Store Name'}</span>
+            <span className="text-white text-xl md:text-2xl font-bold">{store.name || 'Store Name'}</span>
           </div>
         </div>
       )}
