@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
 
 if (!API_KEY) {
-  console.warn('VITE_GOOGLE_API_KEY is not set in environment variables')
+  console.warn('VITE_GEMINI_API_KEY or VITE_GOOGLE_API_KEY is not set in environment variables')
 }
 
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
@@ -50,7 +50,7 @@ export interface ChatResponse {
 
 export async function startChatSession() {
   if (!genAI) {
-    throw new Error('Gemini API key is not configured. Please set VITE_GOOGLE_API_KEY in your environment variables.')
+    throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment variables.')
   }
 
   const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
