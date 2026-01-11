@@ -53,7 +53,7 @@ export async function startChatSession() {
     throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment variables.')
   }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
   
   // Start chat with system prompt
   const chat = model.startChat({
