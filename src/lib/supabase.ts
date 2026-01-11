@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User, Listing, Favorite, Review, CartItem, Store, StoreSubscription, StorePost, StorePromotion } from '../types'
+import type { User, Listing, Favorite, Review, CartItem, Store, StoreSubscription, StorePost, StorePromotion, Service } from '../types'
 import { buildSearchVariations, scoreListingRelevance } from './searchAlgorithms'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -852,22 +852,7 @@ export const getPromotionListings = async (promotionId: string): Promise<Listing
   return data || []
 }
 
-// Service operations
-export interface Service {
-  service_id: string
-  provider_telegram_id: number
-  title: string
-  description: string
-  category: string
-  price_type: 'fixed' | 'hourly' | 'negotiable'
-  price: string
-  tags: string[]
-  image_url: string | null
-  status: 'active' | 'inactive' | 'deleted'
-  view_count: number
-  created_at: string
-  updated_at: string
-}
+// Service operations (Service type is imported from types/index.ts)
 
 export const createService = async (serviceData: {
   title: string
@@ -901,4 +886,36 @@ export const createService = async (serviceData: {
   }
 
   return data?.service_id || null
+}
+
+export const getService = async (serviceId: string): Promise<Service | null> => {
+  const { data, error } = await supabase
+    .from('services')
+    .select('*, provider:users!provider_telegram_id(*)')
+    .eq('service_id', serviceId)
+    .eq('status', 'active')
+    .single()
+
+  if (error) {
+    console.error('Error fetching service:', error)
+    return null
+  }
+
+  return data as Service
+}
+
+export const getUserServices = async (providerTelegramId: number): Promise<Service[]> => {
+  const { data, error } = await supabase
+    .from('services')
+    .select('*, provider:users!provider_telegram_id(*)')
+    .eq('provider_telegram_id', providerTelegramId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching user services:', error)
+    return []
+  }
+
+  return (data || []) as Service[]
 }

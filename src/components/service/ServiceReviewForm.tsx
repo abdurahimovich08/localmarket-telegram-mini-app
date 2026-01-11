@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../contexts/UserContext'
 import { uploadToSupabase } from '../../lib/imageUpload'
 import { createService } from '../../lib/supabase'
-import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PhotoIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { ServiceData } from '../../services/GeminiService'
 
 interface ServiceReviewFormProps {
@@ -75,8 +75,7 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
       })
 
       if (serviceId) {
-        alert('Xizmat muvaffaqiyatli saqlandi!')
-        navigate('/')
+        navigate(`/service/${serviceId}`)
       } else {
         setError('Xizmatni saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
       }

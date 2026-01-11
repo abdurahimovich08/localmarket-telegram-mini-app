@@ -172,6 +172,23 @@ export interface StorePromotion {
   store?: Store
 }
 
+export interface Service {
+  service_id: string
+  provider_telegram_id: number
+  title: string
+  description: string
+  category: string
+  price_type: 'fixed' | 'hourly' | 'negotiable'
+  price?: string
+  tags: string[]
+  image_url?: string
+  status: 'active' | 'inactive' | 'deleted'
+  view_count: number
+  created_at: string
+  updated_at: string
+  provider?: User // Populated provider info
+}
+
 export const CATEGORIES: { value: ListingCategory; label: string; emoji: string }[] = [
   { value: 'electronics', label: 'Elektronika', emoji: '📱' },
   { value: 'furniture', label: 'Mebel', emoji: '🪑' },
