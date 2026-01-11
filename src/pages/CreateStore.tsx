@@ -7,7 +7,7 @@ import { CATEGORIES, type ListingCategory } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import StorePreview from '../components/StorePreview'
-import BannerCropper from '../components/BannerCropper'
+import StoreBannerUploader from '../components/StoreBannerUploader'
 import { PhotoIcon, XMarkIcon, EyeIcon } from '@heroicons/react/24/outline'
 import { initTelegram } from '../lib/telegram'
 import type { Store } from '../types'
@@ -26,7 +26,6 @@ export default function CreateStore() {
   const [category, setCategory] = useState<ListingCategory>('other')
   const [logo, setLogo] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
-  const [bannerToCrop, setBannerToCrop] = useState<string | null>(null)
 
   // Check if user already has a store
   useEffect(() => {
@@ -68,7 +67,7 @@ export default function CreateStore() {
     return new File([u8arr], filename, { type: mime || 'image/jpeg' })
   }
 
-  const handleImageUpload = (type: 'logo' | 'banner') => {
+  const handleLogoUpload = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
@@ -79,25 +78,11 @@ export default function CreateStore() {
       const reader = new FileReader()
       reader.onload = (e) => {
         const result = e.target?.result as string
-        if (type === 'logo') {
-          setLogo(result)
-        } else {
-          // Banner uchun cropping oynasini ochamiz
-          setBannerToCrop(result)
-        }
+        setLogo(result)
       }
       reader.readAsDataURL(file)
     }
     input.click()
-  }
-
-  const handleBannerCrop = (croppedImageDataUrl: string) => {
-    setBanner(croppedImageDataUrl)
-    setBannerToCrop(null)
-  }
-
-  const handleBannerCropCancel = () => {
-    setBannerToCrop(null)
   }
 
   const handleSubmit = useCallback(async () => {
@@ -323,31 +308,11 @@ export default function CreateStore() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Brending</h2>
             
             {/* Banner Upload */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Banner * (16:9 nisbat)
-              </label>
-              {banner ? (
-                <div className="relative w-full rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                  <img src={banner} alt="Banner" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => setBanner(null)}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleImageUpload('banner')}
-                  className="w-full rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
-                  style={{ aspectRatio: '16/9', minHeight: '120px' }}
-                >
-                  <PhotoIcon className="w-12 h-12 mb-2" />
-                  <span className="text-sm">Banner yuklash</span>
-                </button>
-              )}
-            </div>
+            <StoreBannerUploader
+              banner={banner}
+              onBannerChange={setBanner}
+              required={true}
+            />
 
             {/* Logo Upload */}
             <div>
@@ -366,7 +331,7 @@ export default function CreateStore() {
                 </div>
               ) : (
                 <button
-                  onClick={() => handleImageUpload('logo')}
+                  onClick={handleLogoUpload}
                   className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
                 >
                   <PhotoIcon className="w-8 h-8 mb-1" />
@@ -421,16 +386,6 @@ export default function CreateStore() {
             <p className="mt-4 text-gray-600">Do'kon yaratilmoqda...</p>
           </div>
         </div>
-      )}
-
-      {/* Banner Cropper Modal */}
-      {bannerToCrop && (
-        <BannerCropper
-          imageSrc={bannerToCrop}
-          onCrop={handleBannerCrop}
-          onCancel={handleBannerCropCancel}
-          aspectRatio={16 / 9}
-        />
       )}
 
       <BottomNav />
