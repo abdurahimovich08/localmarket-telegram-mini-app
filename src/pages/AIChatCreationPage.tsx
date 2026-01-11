@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
+import ServiceReviewForm from '../components/service/ServiceReviewForm'
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline'
-import { startChatSession, sendMessage, type ChatResponse } from '../services/GeminiService'
+import { startChatSession, sendMessage, type ChatResponse, type ServiceData } from '../services/GeminiService'
 
 interface Message {
   id: string
@@ -25,6 +26,7 @@ export default function AIChatCreationPage() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [chatSession, setChatSession] = useState<any>(null)
+  const [aiData, setAiData] = useState<ServiceData | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -66,11 +68,8 @@ export default function AIChatCreationPage() {
       const response: ChatResponse = await sendMessage(chatSession, userMessage.content)
 
       if (response.isFinished && response.data) {
-        // Service data is ready
-        console.log('Service data:', response.data)
-        alert('Profil tayyor! (Tez orada saqlash funksiyasi qo\'shiladi)')
-        // TODO: Navigate to service creation confirmation page or save service
-        navigate('/')
+        // Service data is ready - show review form
+        setAiData(response.data)
       } else {
         // Regular AI response
         const assistantMessage: Message = {
@@ -101,6 +100,16 @@ export default function AIChatCreationPage() {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  // Show review form if AI data is ready
+  if (aiData) {
+    return (
+      <>
+        <ServiceReviewForm data={aiData} onBack={() => setAiData(null)} />
+        <BottomNav />
+      </>
+    )
   }
 
   return (
