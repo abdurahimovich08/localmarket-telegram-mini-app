@@ -851,3 +851,54 @@ export const getPromotionListings = async (promotionId: string): Promise<Listing
 
   return data || []
 }
+
+// Service operations
+export interface Service {
+  service_id: string
+  provider_telegram_id: number
+  title: string
+  description: string
+  category: string
+  price_type: 'fixed' | 'hourly' | 'negotiable'
+  price: string
+  tags: string[]
+  image_url: string | null
+  status: 'active' | 'inactive' | 'deleted'
+  view_count: number
+  created_at: string
+  updated_at: string
+}
+
+export const createService = async (serviceData: {
+  title: string
+  description: string
+  category: string
+  priceType: 'fixed' | 'hourly' | 'negotiable'
+  price: string
+  tags: string[]
+  image_url: string | null
+  provider_telegram_id: number
+}): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from('services')
+    .insert({
+      provider_telegram_id: serviceData.provider_telegram_id,
+      title: serviceData.title,
+      description: serviceData.description,
+      category: serviceData.category,
+      price_type: serviceData.priceType,
+      price: serviceData.price,
+      tags: serviceData.tags,
+      image_url: serviceData.image_url,
+      status: 'active',
+    })
+    .select('service_id')
+    .single()
+
+  if (error) {
+    console.error('Error creating service:', error)
+    throw new Error(`Failed to create service: ${error.message}`)
+  }
+
+  return data?.service_id || null
+}
