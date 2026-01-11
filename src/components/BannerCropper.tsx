@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import Cropper, { ReactCropperElement } from 'react-cropper'
-import 'cropperjs/dist/cropper.css'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface BannerCropperProps {
