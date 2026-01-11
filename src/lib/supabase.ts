@@ -923,3 +923,19 @@ export const getUserServices = async (providerTelegramId: number): Promise<Servi
 
   return (data || []) as Service[]
 }
+
+export const updateService = async (serviceId: string, updates: Partial<Service>): Promise<Service | null> => {
+  const { data, error } = await supabase
+    .from('services')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('service_id', serviceId)
+    .select('*, provider:users!provider_telegram_id(*)')
+    .single()
+
+  if (error) {
+    console.error('Error updating service:', error)
+    return null
+  }
+
+  return data as Service
+}
