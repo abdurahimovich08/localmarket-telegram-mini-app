@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import Cropper from 'react-cropper'
+import { useRef, useState } from 'react'
+import Cropper, { ReactCropperElement } from 'react-cropper'
 import 'cropperjs/dist/cropper.css'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -11,13 +11,11 @@ interface BannerCropperProps {
 }
 
 export default function BannerCropper({ imageSrc, onCrop, onCancel, aspectRatio = 16 / 9 }: BannerCropperProps) {
-  const cropperRef = useRef<HTMLImageElement>(null)
+  const cropperRef = useRef<ReactCropperElement>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleCrop = () => {
-    if (!cropperRef.current) return
-
-    const cropper = (cropperRef.current as any).cropper
+    const cropper = cropperRef.current?.cropper
     if (!cropper) return
 
     setIsProcessing(true)
