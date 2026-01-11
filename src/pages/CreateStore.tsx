@@ -423,6 +423,16 @@ export default function CreateStore() {
         </div>
       )}
 
+      {/* Banner Cropper Modal */}
+      {bannerToCrop && (
+        <BannerCropper
+          imageSrc={bannerToCrop}
+          onCrop={handleBannerCrop}
+          onCancel={handleBannerCropCancel}
+          aspectRatio={16 / 9}
+        />
+      )}
+
       <BottomNav />
     </div>
   )
