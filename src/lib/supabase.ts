@@ -861,7 +861,9 @@ export const createService = async (serviceData: {
   priceType: 'fixed' | 'hourly' | 'negotiable'
   price: string
   tags: string[]
-  image_url: string | null
+  logo_url?: string | null
+  portfolio_images?: string[]
+  image_url?: string | null // Deprecated, use logo_url instead
   provider_telegram_id: number
 }): Promise<string | null> => {
   const { data, error } = await supabase
@@ -874,7 +876,9 @@ export const createService = async (serviceData: {
       price_type: serviceData.priceType,
       price: serviceData.price,
       tags: serviceData.tags,
-      image_url: serviceData.image_url,
+      logo_url: serviceData.logo_url || serviceData.image_url || null,
+      portfolio_images: serviceData.portfolio_images || [],
+      image_url: serviceData.logo_url || serviceData.image_url || null, // Backward compatibility
       status: 'active',
     })
     .select('service_id')

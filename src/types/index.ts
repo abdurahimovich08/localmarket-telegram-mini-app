@@ -181,7 +181,9 @@ export interface Service {
   price_type: 'fixed' | 'hourly' | 'negotiable'
   price?: string
   tags: string[]
-  image_url?: string
+  logo_url?: string
+  portfolio_images?: string[]
+  image_url?: string // Deprecated, use logo_url instead
   status: 'active' | 'inactive' | 'deleted'
   view_count: number
   created_at: string

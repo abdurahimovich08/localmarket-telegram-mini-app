@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../contexts/UserContext'
-import { uploadToSupabase } from '../../lib/imageUpload'
+import { uploadImages } from '../../lib/imageUpload'
 import { createService } from '../../lib/supabase'
-import { PhotoIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import type { ServiceData } from '../../services/GeminiService'
+import LogoUploader from '../LogoUploader'
+import PortfolioUploader from '../PortfolioUploader'
 
 interface ServiceReviewFormProps {
   data: ServiceData
@@ -15,32 +17,21 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
   const navigate = useNavigate()
   const { user } = useUser()
   const [formData, setFormData] = useState<ServiceData>(data)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [logo, setLogo] = useState<string | null>(null)
+  const [portfolio, setPortfolio] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleImageUpload = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-
-      setImageFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+  const dataUrlToFile = (dataUrl: string, filename: string): File => {
+    const arr = dataUrl.split(',')
+    const mime = arr[0].match(/:(.*?);/)?.[1]
+    const bstr = atob(arr[1])
+    let n = bstr.length
+    const u8arr = new Uint8Array(n)
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n)
     }
-    input.click()
-  }
-
-  const handleRemoveImage = () => {
-    setImageFile(null)
-    setImagePreview(null)
+    return new File([u8arr], filename, { type: mime || 'image/jpeg' })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,21 +47,35 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
       return
     }
 
+    if (!logo) {
+      setError('Iltimos, logo rasmini yuklang')
+      return
+    }
+
     setIsSaving(true)
     setError(null)
 
     try {
-      // Upload image if provided
-      let imageUrl: string | null = null
-      if (imageFile) {
-        // Upload to services folder in Supabase storage
-        imageUrl = await uploadToSupabase(imageFile, 'listings', 'services')
+      // Upload logo
+      let logoUrl: string | null = null
+      if (logo) {
+        const logoFile = dataUrlToFile(logo, 'logo.jpg')
+        const logoUrls = await uploadImages([logoFile])
+        logoUrl = logoUrls[0]
+      }
+
+      // Upload portfolio images
+      let portfolioUrls: string[] = []
+      if (portfolio.length > 0) {
+        const portfolioFiles = portfolio.map((img, index) => dataUrlToFile(img, `portfolio-${index}.jpg`))
+        portfolioUrls = await uploadImages(portfolioFiles)
       }
 
       // Save service to database
       const serviceId = await createService({
         ...formData,
-        image_url: imageUrl,
+        logo_url: logoUrl,
+        portfolio_images: portfolioUrls,
         provider_telegram_id: user.telegram_user_id,
       })
 
@@ -113,33 +118,22 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Image Upload */}
+          {/* Logo Upload */}
           <div className="bg-white rounded-lg p-4 shadow-sm">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Asosiy rasm (Portfolio/Avatar) *
-            </label>
-            {imagePreview ? (
-              <div className="relative w-full rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
-                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleImageUpload}
-                className="w-full rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
-                style={{ aspectRatio: '16/9', minHeight: '120px' }}
-              >
-                <PhotoIcon className="w-12 h-12 mb-2" />
-                <span className="text-sm">Rasm yuklash</span>
-              </button>
-            )}
+            <LogoUploader
+              logo={logo}
+              onLogoChange={setLogo}
+              required={true}
+            />
+          </div>
+
+          {/* Portfolio Upload */}
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <PortfolioUploader
+              portfolio={portfolio}
+              onPortfolioChange={setPortfolio}
+              maxImages={4}
+            />
           </div>
 
           {/* Title */}
@@ -257,17 +251,17 @@ export default function ServiceReviewForm({ data, onBack }: ServiceReviewFormPro
           <div className="pb-4">
             <button
               type="submit"
-              disabled={isSaving || !imageFile}
+              disabled={isSaving || !logo}
               className={`w-full py-4 rounded-lg font-medium transition-colors ${
-                isSaving || !imageFile
+                isSaving || !logo
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-primary text-white hover:bg-primary-dark active:bg-primary-dark'
               }`}
             >
               {isSaving ? 'Saqlanmoqda...' : 'Xizmatni Saqlash'}
             </button>
-            {!imageFile && (
-              <p className="text-sm text-red-600 mt-2 text-center">Iltimos, asosiy rasmni yuklang</p>
+            {!logo && (
+              <p className="text-sm text-red-600 mt-2 text-center">Iltimos, logo rasmini yuklang</p>
             )}
           </div>
         </form>
