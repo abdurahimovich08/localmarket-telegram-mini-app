@@ -1,12 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
-
-if (!API_KEY) {
-  console.warn('VITE_GEMINI_API_KEY or VITE_GOOGLE_API_KEY is not set in environment variables')
-}
-
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
+// Secure Gemini Service - Uses Vercel API route instead of direct API calls
 
 const SYSTEM_PROMPT = `
 Sen - men SOQQA ilovasining professional HR va Marketing mutaxassisisan. 
@@ -48,43 +40,76 @@ export interface ChatResponse {
   message?: string
 }
 
+interface ChatMessage {
+  role: 'user' | 'model'
+  parts: Array<{ text: string }>
+}
+
+// Chat history stored in memory (per session)
+let chatHistory: ChatMessage[] = [
+  {
+    role: 'user',
+    parts: [{ text: SYSTEM_PROMPT }],
+  },
+  {
+    role: 'model',
+    parts: [{ text: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }],
+  },
+]
+
 export async function startChatSession() {
-  if (!genAI) {
-    throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment variables.')
-  }
-
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' })
-  
-  // Start chat with system prompt
-  const chat = model.startChat({
-    history: [
-      {
-        role: 'user',
-        parts: [{ text: SYSTEM_PROMPT }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }],
-      },
-    ],
-  })
-
-  return chat
+  // Reset chat history for new session
+  chatHistory = [
+    {
+      role: 'user',
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    {
+      role: 'model',
+      parts: [{ text: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }],
+    },
+  ]
+  return { history: chatHistory }
 }
 
 export async function sendMessage(chat: any, message: string): Promise<ChatResponse> {
-  if (!genAI) {
-    throw new Error('Gemini API key is not configured.')
-  }
-
   try {
-    const result = await chat.sendMessage(message)
-    const response = await result.response
-    const text = response.text()
+    // Add user message to history
+    chatHistory.push({
+      role: 'user',
+      parts: [{ text: message }],
+    })
+
+    // Call our secure API route
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        chatHistory: chatHistory.slice(0, -1), // Send history without the current message
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || 'Failed to get response from Gemini API')
+    }
+
+    const data = await response.json()
+
+    // Extract text from Gemini response
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+    // Add model response to history
+    chatHistory.push({
+      role: 'model',
+      parts: [{ text }],
+    })
 
     // Try to parse JSON response
     try {
-      // Look for JSON in the response
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const jsonData = JSON.parse(jsonMatch[0])
