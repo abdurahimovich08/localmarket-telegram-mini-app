@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { getUser, getListings, getReviews, getUserStores, getUserStore } from '../lib/supabase'
-import type { User, Listing, Review, Store } from '../types'
+import { getUser, getListings, getReviews, getUserStores, getUserStore, getUserServices } from '../lib/supabase'
+import type { User, Listing, Review, Store, Service } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
@@ -17,8 +17,9 @@ export default function Profile() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [userStore, setUserStore] = useState<Store | null>(null)
+  const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'listings' | 'reviews' | 'stores'>('listings')
+  const [activeTab, setActiveTab] = useState<'listings' | 'reviews' | 'stores' | 'services'>('listings')
 
   const isOwnProfile = !id || (currentUser && parseInt(id) === currentUser.telegram_user_id)
 
@@ -57,6 +58,10 @@ export default function Profile() {
           // Load single user store (one user = one store)
           const singleStore = await getUserStore(userId)
           setUserStore(singleStore)
+          
+          // Load user services
+          const userServices = await getUserServices(userId)
+          setServices(userServices)
         }
       } catch (error) {
         console.error('Error loading profile:', error)
@@ -238,16 +243,28 @@ export default function Profile() {
             E'lonlar ({listings.length})
           </button>
           {isOwnProfile && (
-            <button
-              onClick={() => setActiveTab('stores')}
-              className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'stores'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Do'konlar ({stores.length})
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('stores')}
+                className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'stores'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Do'konlar ({stores.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('services')}
+                className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'services'
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Xizmatlar ({services.length})
+              </button>
+            </>
           )}
           <button
             onClick={() => setActiveTab('reviews')}
@@ -320,6 +337,59 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : activeTab === 'services' && isOwnProfile ? (
+          services.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600 mb-4">Hali xizmatlaringiz yo'q</p>
+              <button
+                onClick={() => navigate('/create-service')}
+                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+              >
+                Birinchi xizmatingizni yarating
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {services.map((service) => (
+                <div
+                  key={service.service_id}
+                  onClick={() => navigate(`/service/${service.service_id}`)}
+                  className="bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="p-4 flex items-start gap-4">
+                    {service.image_url ? (
+                      <img
+                        src={service.image_url}
+                        alt={service.title}
+                        className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                        {service.title[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate">{service.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{service.description}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className="text-sm font-semibold text-primary">{service.price || 'Kelishiladi'}</span>
+                        <span className="text-xs text-gray-500">{service.category}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/service/${service.service_id}/edit`)
+                      }}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               ))}
