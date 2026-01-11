@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { createListing, getSubcategories, type Subcategory } from '../lib/supabase'
+import { createListing, getSubcategories, getUserStore, type Subcategory } from '../lib/supabase'
 import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
 import { uploadImages } from '../lib/imageUpload'
@@ -35,6 +35,8 @@ export default function CreateListing() {
   const [condition, setCondition] = useState<ListingCondition>('good')
   const [neighborhood, setNeighborhood] = useState('')
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [listingType, setListingType] = useState<'personal' | 'store'>('personal')
+  const [userStore, setUserStore] = useState<{ store_id: string; name: string } | null>(null)
 
   // Load subcategories when category is selected
   useEffect(() => {
@@ -42,6 +44,19 @@ export default function CreateListing() {
       loadSubcategories()
     }
   }, [category, currentStep])
+
+  // Load user store when component mounts
+  useEffect(() => {
+    const loadUserStore = async () => {
+      if (user) {
+        const store = await getUserStore(user.telegram_user_id)
+        if (store) {
+          setUserStore({ store_id: store.store_id, name: store.name })
+        }
+      }
+    }
+    loadUserStore()
+  }, [user])
 
   const loadSubcategories = async () => {
     if (!category) return
@@ -147,7 +162,8 @@ export default function CreateListing() {
         longitude: location?.longitude,
         status: 'active',
         is_boosted: false,
-        subcategory_id: selectedSubcategory?.subcategory_id
+        subcategory_id: selectedSubcategory?.subcategory_id,
+        store_id: listingType === 'store' && userStore ? userStore.store_id : undefined
       })
 
       if (listing) {
@@ -163,7 +179,7 @@ export default function CreateListing() {
     } finally {
       setLoading(false)
     }
-  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, selectedSubcategory, navigate])
+  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, selectedSubcategory, listingType, userStore, navigate])
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -437,6 +453,50 @@ export default function CreateListing() {
               <span className="font-medium">Subkategoriya:</span> {selectedSubcategory.name_uz}
             </div>
           )}
+        </div>
+
+        {/* Listing Type Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Kim nomidan? *
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 cursor-pointer transition-colors hover:bg-gray-50">
+              <input
+                type="radio"
+                name="listingType"
+                value="personal"
+                checked={listingType === 'personal'}
+                onChange={() => setListingType('personal')}
+                className="w-5 h-5 text-primary border-gray-300 focus:ring-primary"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">Shaxsiy</div>
+                <div className="text-sm text-gray-500">Shaxsiy hisobingizdan e'lon joylashtirish</div>
+              </div>
+            </label>
+            {userStore ? (
+              <label className="flex items-center gap-3 p-4 bg-white rounded-lg border-2 cursor-pointer transition-colors hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="listingType"
+                  value="store"
+                  checked={listingType === 'store'}
+                  onChange={() => setListingType('store')}
+                  className="w-5 h-5 text-primary border-gray-300 focus:ring-primary"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">Do'kon</div>
+                  <div className="text-sm text-gray-500">{userStore.name} do'konidan e'lon joylashtirish</div>
+                </div>
+              </label>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-200 opacity-60">
+                <div className="font-medium text-gray-700">Do'kon</div>
+                <div className="text-sm text-gray-500">Do'kon yaratish uchun profilga o'ting</div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Title */}

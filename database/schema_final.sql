@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
 -- Stores Table
 CREATE TABLE IF NOT EXISTS stores (
   store_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  owner_telegram_id BIGINT NOT NULL REFERENCES users(telegram_user_id) ON DELETE CASCADE,
+  owner_telegram_id BIGINT NOT NULL UNIQUE REFERENCES users(telegram_user_id) ON DELETE CASCADE,
   name TEXT NOT NULL CHECK (LENGTH(name) <= 100),
   description TEXT CHECK (LENGTH(description) <= 500),
   category TEXT NOT NULL CHECK (category IN ('electronics', 'furniture', 'clothing', 'baby_kids', 'home_garden', 'games_hobbies', 'books_media', 'sports_outdoors', 'automotive', 'other')),

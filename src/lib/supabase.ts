@@ -222,7 +222,7 @@ export const getListing = async (listingId: string): Promise<Listing | null> => 
   return data
 }
 
-export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count'> & { subcategory_id?: string }): Promise<Listing | null> => {
+export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count' | 'store_id'> & { subcategory_id?: string; store_id?: string }): Promise<Listing | null> => {
   console.log('Creating listing with data:', listing)
   
   const { data, error } = await supabase
@@ -581,6 +581,10 @@ export const createStore = async (store: Omit<Store, 'store_id' | 'created_at' |
 
   if (error) {
     console.error('Error creating store:', error)
+    if (error.code === '23505') {
+      // Unique constraint violation - user already has a store
+      throw new Error('Sizda allaqachon do\'kon mavjud. Bitta foydalanuvchi faqat bitta do\'kon yarata oladi.')
+    }
     throw new Error(`Database error: ${error.message}`)
   }
 
@@ -640,6 +644,27 @@ export const getStores = async (limit: number = 3, userTelegramId?: number): Pro
   }
 
   return shuffled.slice(0, limit)
+}
+
+// Get user's single store (since one user can only have one store)
+export const getUserStore = async (ownerTelegramId: number): Promise<Store | null> => {
+  const { data, error } = await supabase
+    .from('stores')
+    .select('*, owner:users(*)')
+    .eq('owner_telegram_id', ownerTelegramId)
+    .eq('is_active', true)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No store found
+      return null
+    }
+    console.error('Error fetching user store:', error)
+    return null
+  }
+
+  return data
 }
 
 export const getUserStores = async (ownerTelegramId: number): Promise<Store[]> => {

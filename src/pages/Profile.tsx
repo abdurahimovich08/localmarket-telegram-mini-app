@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { getUser, getListings, getReviews, getUserStores } from '../lib/supabase'
+import { getUser, getListings, getReviews, getUserStores, getUserStore } from '../lib/supabase'
 import type { User, Listing, Review, Store } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
-import { StarIcon, PlusIcon, BuildingStorefrontIcon } from '@heroicons/react/24/solid'
+import { StarIcon, PlusIcon, BuildingStorefrontIcon, EyeIcon } from '@heroicons/react/24/solid'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()
@@ -16,6 +16,7 @@ export default function Profile() {
   const [listings, setListings] = useState<Listing[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [stores, setStores] = useState<Store[]>([])
+  const [userStore, setUserStore] = useState<Store | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'listings' | 'reviews' | 'stores'>('listings')
 
@@ -52,6 +53,10 @@ export default function Profile() {
         if (isOwnProfile) {
           const userStores = await getUserStores(userId)
           setStores(userStores)
+          
+          // Load single user store (one user = one store)
+          const singleStore = await getUserStore(userId)
+          setUserStore(singleStore)
         }
       } catch (error) {
         console.error('Error loading profile:', error)
@@ -146,15 +151,25 @@ export default function Profile() {
           <p className="text-sm text-gray-600 mt-4">📍 {user.neighborhood}</p>
         )}
 
-        {/* Create Store Button (Own Profile Only) */}
+        {/* Create Store / View Store Button (Own Profile Only) */}
         {isOwnProfile && (
-          <button
-            onClick={() => navigate('/create-store')}
-            className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Do'kon Yaratish
-          </button>
+          userStore ? (
+            <button
+              onClick={() => navigate(`/store/${userStore.store_id}`)}
+              className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+            >
+              <EyeIcon className="w-5 h-5" />
+              Do'konni Ko'rish
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/create-store')}
+              className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Do'kon Yaratish
+            </button>
+          )
         )}
 
         {/* User Stores (Own Profile Only) */}

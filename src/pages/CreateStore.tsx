@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { createStore } from '../lib/supabase'
+import { createStore, getUserStore } from '../lib/supabase'
 import { uploadImages } from '../lib/imageUpload'
 import { CATEGORIES, type ListingCategory } from '../types'
 import BackButton from '../components/BackButton'
@@ -20,8 +20,30 @@ export default function CreateStore() {
   const [category, setCategory] = useState<ListingCategory>('other')
   const [logo, setLogo] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+  const [existingStore, setExistingStore] = useState<{ store_id: string; name: string } | null>(null)
+  const [checkingStore, setCheckingStore] = useState(true)
+
+  // Check if user already has a store
+  useEffect(() => {
+    const checkExistingStore = async () => {
+      if (user) {
+        setCheckingStore(true)
+        const store = await getUserStore(user.telegram_user_id)
+        if (store) {
+          setExistingStore({ store_id: store.store_id, name: store.name })
+        }
+        setCheckingStore(false)
+      }
+    }
+    checkExistingStore()
+  }, [user])
 
   const handleSubmit = useCallback(async () => {
+    if (existingStore) {
+      alert('Sizda allaqachon do\'kon mavjud. Bitta foydalanuvchi faqat bitta do\'kon yarata oladi.')
+      navigate(`/store/${existingStore.store_id}`)
+      return
+    }
     if (!user) {
       alert('Foydalanuvchi ma\'lumotlari yuklanmoqda. Iltimos, kuting...')
       return
@@ -78,7 +100,7 @@ export default function CreateStore() {
     } finally {
       setLoading(false)
     }
-  }, [user, name, description, category, logo, banner, navigate])
+  }, [user, name, description, category, logo, banner, existingStore, navigate])
 
   const dataUrlToFile = (dataUrl: string, filename: string): File => {
     const arr = dataUrl.split(',')
@@ -159,7 +181,25 @@ export default function CreateStore() {
         </div>
       )}
 
-      <div className="p-4 space-y-6">
+      {checkingStore ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : existingStore ? (
+        <div className="p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Sizda allaqachon do'kon mavjud</h2>
+            <p className="text-gray-600 mb-4">{existingStore.name}</p>
+            <button
+              onClick={() => navigate(`/store/${existingStore.store_id}`)}
+              className="w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
+            >
+              Do'konni Ko'rish
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 space-y-6">
         {/* Banner Upload */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -261,7 +301,8 @@ export default function CreateStore() {
           />
           <p className="text-xs text-gray-500 mt-1">{description.length}/500</p>
         </div>
-      </div>
+        </div>
+      )}
 
       {loading && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
