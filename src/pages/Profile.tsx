@@ -177,6 +177,27 @@ export default function Profile() {
           )
         )}
 
+        {/* SOQQANI Tahrirlash Button (Own Profile Only) - Yellow, below store button */}
+        {isOwnProfile && (
+          services.length > 0 ? (
+            <button
+              onClick={() => setActiveTab('services')}
+              className="mt-3 w-full py-3 px-4 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <EyeIcon className="w-5 h-5" />
+              SOQQANI Tahrirlash ({services.length})
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/create-service')}
+              className="mt-3 w-full py-3 px-4 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <PlusIcon className="w-5 h-5" />
+              SOQQANI Tahrirlash
+            </button>
+          )
+        )}
+
         {/* User Stores (Own Profile Only) */}
         {isOwnProfile && stores.length > 0 && (
           <div className="mt-4">
