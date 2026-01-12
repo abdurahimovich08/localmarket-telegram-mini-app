@@ -26,6 +26,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { getDashboardOverview } from '../lib/dashboardStats'
 import { getUserServices } from '../lib/supabase'
+import ServiceListWithHealth from '../components/ServiceListWithHealth'
 import type { Service } from '../types'
 
 export default function Dashboard() {
@@ -126,6 +127,34 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Today Mini-Panel (Feature 1) */}
+        {overview?.today && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-sm p-4 border border-blue-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900">Bugun</h3>
+              <span className="text-xs text-gray-500">{new Date().toLocaleDateString('uz-UZ', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{overview.today.views}</div>
+                <div className="text-xs text-gray-600 mt-1">👁 Ko'rildi</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{overview.today.clicks}</div>
+                <div className="text-xs text-gray-600 mt-1">👉 Bosildi</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{overview.today.contacts}</div>
+                <div className="text-xs text-gray-600 mt-1">📞 Aloqa</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{overview.today.orders}</div>
+                <div className="text-xs text-gray-600 mt-1">💰 Buyurtma</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Block 1: Overview Metrics */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">

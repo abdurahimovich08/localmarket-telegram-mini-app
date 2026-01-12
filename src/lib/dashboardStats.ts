@@ -11,6 +11,12 @@ import { supabase } from './supabase'
 
 export interface DashboardOverview {
   period: '7d' | '30d'
+  today?: {
+    views: number
+    clicks: number
+    contacts: number
+    orders: number
+  }
   views: {
     current: number
     previous: number
@@ -68,10 +74,28 @@ export async function getDashboardOverview(
 
     const serviceIds = services.map(s => s.service_id)
 
+    // Get today's stats (for mini-panel)
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0)
+    const { data: todayInteractions } = await supabase
+      .from('service_interactions')
+      .select('interaction_type')
+      .in('service_id', serviceIds.length > 0 ? serviceIds : [''])
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', now.toISOString())
+
+    const today = {
+      views: (todayInteractions || []).filter((i: any) => i.interaction_type === 'view').length,
+      clicks: (todayInteractions || []).filter((i: any) => i.interaction_type === 'click').length,
+      contacts: (todayInteractions || []).filter((i: any) => i.interaction_type === 'contact').length,
+      orders: (todayInteractions || []).filter((i: any) => i.interaction_type === 'order').length,
+    }
+
     if (serviceIds.length === 0) {
       // No services yet
       return {
         period,
+        today,
         views: { current: 0, previous: 0, growth: 0 },
         clicks: { current: 0, previous: 0, growth: 0 },
         contacts: { current: 0, previous: 0, growth: 0 },
@@ -126,6 +150,7 @@ export async function getDashboardOverview(
 
     const overview: DashboardOverview = {
       period,
+      today,
       views: {
         current: current.views,
         previous: previous.views,

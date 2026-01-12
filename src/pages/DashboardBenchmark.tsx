@@ -11,7 +11,7 @@ import BottomNav from '../components/BottomNav'
 import { getServiceBenchmark } from '../lib/dashboardBenchmark'
 import { getUserServices } from '../lib/supabase'
 import type { Service } from '../types'
-import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, TrophyIcon } from '@heroicons/react/24/outline'
 
 export default function DashboardBenchmark() {
   const navigate = useNavigate()
@@ -190,6 +190,44 @@ export default function DashboardBenchmark() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* What Top Sellers Do Differently (Feature 4) */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-200">
+              <h3 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-2">
+                <TrophyIcon className="w-6 h-6 text-green-600" />
+                Top sellerlar qanday qiladi
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">5-7 ta teg</p>
+                    <p className="text-sm text-gray-600">Optimal teg soni - ko'p emas, kam ham emas</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Title'da intent bor</p>
+                    <p className="text-sm text-gray-600">Masalan: "Telegram bot", "Fast delivery", "Professional design"</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Javob vaqti {'<'} 1 soat</p>
+                    <p className="text-sm text-gray-600">Tezkor javob - ishonch va konversiyani oshiradi</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Portfolio rasmlari</p>
+                    <p className="text-sm text-gray-600">4 ta portfolio rasm ko'rsatish - conversion +30%</p>
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -23,6 +23,8 @@ export interface ServiceRankInfo {
   rankChange: number // positive = moved up, negative = moved down
   explanation: string[]
   matchedTags: string[]
+  isDrop?: boolean // Feature 3: Rank drop alert
+  dropSeverity?: 'minor' | 'major' | 'critical'
 }
 
 /**
@@ -105,16 +107,35 @@ export async function getServiceRankInfo(
       // For now, we'll calculate based on historical data
       const previousRank = await getPreviousRank(serviceId, query)
 
+      const currentRank = serviceIndex + 1
+      const rankChange = previousRank ? previousRank - currentRank : 0
+      
+      // Feature 3: Detect rank drops
+      const isDrop = rankChange < 0 && Math.abs(rankChange) >= 5 // Dropped by 5+ positions
+      let dropSeverity: 'minor' | 'major' | 'critical' | undefined
+      if (isDrop) {
+        const dropAmount = Math.abs(rankChange)
+        if (dropAmount >= 20) {
+          dropSeverity = 'critical'
+        } else if (dropAmount >= 10) {
+          dropSeverity = 'major'
+        } else {
+          dropSeverity = 'minor'
+        }
+      }
+
       const rankInfo: ServiceRankInfo = {
         serviceId,
         serviceTitle: service.title,
         query,
-        rank: serviceIndex + 1,
+        rank: currentRank,
         totalResults: rankedServices.length,
         previousRank,
-        rankChange: previousRank ? previousRank - (serviceIndex + 1) : 0,
+        rankChange,
         explanation: explanation.map((e: any) => e.reason || ''),
         matchedTags: queryTags,
+        isDrop,
+        dropSeverity,
       }
 
       rankInfos.push(rankInfo)

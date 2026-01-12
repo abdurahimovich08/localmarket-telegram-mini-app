@@ -11,7 +11,9 @@ import BottomNav from '../components/BottomNav'
 import { getServiceInsights } from '../lib/sellerInsights'
 import { getUserServices } from '../lib/supabase'
 import type { Service } from '../types'
-import { LightBulbIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { LightBulbIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, SparklesIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { applyRecommendation, generateActionableRecommendations, type RecommendationAction } from '../lib/recommendationActions'
+import { getService } from '../lib/supabase'
 
 export default function DashboardRecommendations() {
   const navigate = useNavigate()
@@ -19,7 +21,9 @@ export default function DashboardRecommendations() {
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [insights, setInsights] = useState<any>(null)
+  const [actionableRecommendations, setActionableRecommendations] = useState<RecommendationAction[]>([])
   const [loading, setLoading] = useState(true)
+  const [applyingAction, setApplyingAction] = useState<string | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -34,6 +38,12 @@ export default function DashboardRecommendations() {
           setSelectedService(userServices[0])
           const serviceInsights = await getServiceInsights(userServices[0].service_id)
           setInsights(serviceInsights)
+          
+          // Generate actionable recommendations (Feature 2)
+          if (serviceInsights) {
+            const actions = generateActionableRecommendations(serviceInsights)
+            setActionableRecommendations(actions)
+          }
         }
       } catch (error) {
         console.error('Error loading recommendations:', error)
@@ -51,10 +61,48 @@ export default function DashboardRecommendations() {
     try {
       const serviceInsights = await getServiceInsights(service.service_id)
       setInsights(serviceInsights)
+      
+      // Generate actionable recommendations
+      if (serviceInsights) {
+        const actions = generateActionableRecommendations(serviceInsights)
+        setActionableRecommendations(actions)
+      }
     } catch (error) {
       console.error('Error loading insights:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleApplyRecommendation = async (action: RecommendationAction) => {
+    if (!selectedService || applyingAction) return
+
+    setApplyingAction(action.type)
+    try {
+      const serviceData = await getService(selectedService.service_id)
+      if (!serviceData) {
+        alert('Xizmat ma\'lumotlari topilmadi')
+        return
+      }
+
+      const success = await applyRecommendation(selectedService.service_id, action, serviceData)
+      if (success) {
+        alert('Tavsiya qo\'llandi! Sahifa yangilanmoqda...')
+        // Reload insights
+        const serviceInsights = await getServiceInsights(selectedService.service_id)
+        setInsights(serviceInsights)
+        if (serviceInsights) {
+          const actions = generateActionableRecommendations(serviceInsights)
+          setActionableRecommendations(actions)
+        }
+      } else {
+        alert('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+      }
+    } catch (error) {
+      console.error('Error applying recommendation:', error)
+      alert('Xatolik yuz berdi')
+    } finally {
+      setApplyingAction(null)
     }
   }
 
@@ -126,6 +174,48 @@ export default function DashboardRecommendations() {
           </div>
         ) : insights ? (
           <div className="space-y-6">
+            {/* Actionable Recommendations (Feature 2: One-Click Fix) */}
+            {actionableRecommendations.length > 0 && (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-sm p-6 border border-blue-200">
+                <div className="flex items-start gap-3 mb-4">
+                  <SparklesIcon className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 mb-2">Bir bosishda qo'llash</h3>
+                    <p className="text-sm text-gray-600 mb-4">AI tavsiyalarini bir bosishda qo'llash</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {actionableRecommendations.map((action, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{action.description}</p>
+                      </div>
+                      <button
+                        onClick={() => handleApplyRecommendation(action)}
+                        disabled={applyingAction === action.type}
+                        className="ml-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                      >
+                        {applyingAction === action.type ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Qo'llanmoqda...
+                          </>
+                        ) : (
+                          <>
+                            <CheckIcon className="w-4 h-4" />
+                            Qo'llash
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Overall Suggestions */}
             {insights.suggestions.length > 0 && (
               <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl shadow-sm p-6 border border-yellow-200">

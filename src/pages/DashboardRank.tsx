@@ -11,7 +11,7 @@ import BottomNav from '../components/BottomNav'
 import { getServiceRankInfo, getPopularQueriesForCategory } from '../lib/dashboardRanking'
 import { getUserServices } from '../lib/supabase'
 import type { Service } from '../types'
-import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, TrophyIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, TrophyIcon, CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 export default function DashboardRank() {
   const navigate = useNavigate()
@@ -116,8 +116,29 @@ export default function DashboardRank() {
         ) : selectedService ? (
           rankInfo.length > 0 ? (
             <div className="space-y-4">
+              {/* Rank Drop Alert (Feature 3) */}
+              {rankInfo.some(r => r.isDrop && r.dropSeverity) && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-red-900 mb-1">🚨 Visibility pasaydi</h3>
+                      <p className="text-sm text-red-700 mb-2">
+                        {rankInfo.filter(r => r.isDrop).length} ta qidiruvda o'rningiz pasaygan.
+                      </p>
+                      <button
+                        onClick={() => navigate('/dashboard/recommendations')}
+                        className="text-sm text-red-700 hover:text-red-900 font-medium underline"
+                      >
+                        AI tavsiyalarini ko'rish →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {rankInfo.map((rank, index) => (
-                <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+                <div key={index} className={`bg-white rounded-xl shadow-sm p-6 ${rank.isDrop ? 'border-2 border-red-200' : ''}`}>
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="font-bold text-lg text-gray-900 mb-1">

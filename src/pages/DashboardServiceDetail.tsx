@@ -11,6 +11,8 @@ import BottomNav from '../components/BottomNav'
 import { getService } from '../lib/supabase'
 import { getServiceInsights } from '../lib/sellerInsights'
 import { getServiceBenchmark } from '../lib/dashboardBenchmark'
+import { getServiceRankInfo } from '../lib/dashboardRanking'
+import { calculateHealthScore, getHealthScoreBadge } from '../lib/serviceHealthScore'
 import type { Service } from '../types'
 
 export default function DashboardServiceDetail() {
@@ -20,6 +22,8 @@ export default function DashboardServiceDetail() {
   const [service, setService] = useState<Service | null>(null)
   const [insights, setInsights] = useState<any>(null)
   const [benchmark, setBenchmark] = useState<any>(null)
+  const [rankInfo, setRankInfo] = useState<any[]>([])
+  const [healthScore, setHealthScore] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,15 +32,23 @@ export default function DashboardServiceDetail() {
 
       setLoading(true)
       try {
-        const [serviceData, insightsData, benchmarkData] = await Promise.all([
+        const [serviceData, insightsData, benchmarkData, rankData] = await Promise.all([
           getService(id),
           getServiceInsights(id),
           getServiceBenchmark(id),
+          getServiceRankInfo(id, []),
         ])
 
         setService(serviceData)
         setInsights(insightsData)
         setBenchmark(benchmarkData)
+        setRankInfo(rankData)
+
+        // Calculate health score (Feature 5)
+        if (insightsData && benchmarkData) {
+          const health = calculateHealthScore(insightsData, benchmarkData, rankData)
+          setHealthScore(health)
+        }
       } catch (error) {
         console.error('Error loading service detail:', error)
       } finally {
@@ -78,6 +90,32 @@ export default function DashboardServiceDetail() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Health Score Badge (Feature 5) */}
+        {healthScore && (
+          <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Xizmat Holati</h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl font-bold text-gray-900">{healthScore.score}</span>
+                  <span className={`px-4 py-2 rounded-full font-medium ${getHealthScoreBadge(healthScore.score).bgColor} ${getHealthScoreBadge(healthScore.score).color}`}>
+                    {getHealthScoreBadge(healthScore.score).emoji} {getHealthScoreBadge(healthScore.score).text}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500 mb-2">Omillar</div>
+                <div className="space-y-1 text-xs">
+                  <div>Conversion: {healthScore.factors.conversion}/30</div>
+                  <div>Engagement: {healthScore.factors.engagement}/30</div>
+                  <div>Completeness: {healthScore.factors.completeness}/20</div>
+                  <div>Ranking: {healthScore.factors.ranking}/20</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="flex gap-3">
           <button
