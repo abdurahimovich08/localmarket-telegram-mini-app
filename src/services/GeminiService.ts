@@ -64,7 +64,11 @@ QOIDALAR:
 - Kirill, arab, yoki boshqa alifbolar QAT'IY TAVSIYA ETILMAYDI
 - Katta harflar QAT'IY TAVSIYA ETILMAYDI (barchasi kichik)
 - So'zlar orasida bo'shliq o'rniga defis (-) ishlatiladi
+${tagSuggestions}
 `
+  
+  return basePrompt
+}
 
 export interface ServiceData {
   title: string
@@ -91,11 +95,14 @@ interface ChatMessage {
 let chatHistory: ChatMessage[] = []
 
 export async function startChatSession() {
+  // Get dynamic system prompt with tag suggestions
+  const systemPrompt = await getSystemPrompt()
+  
   // Reset chat history for new session
   chatHistory = [
     {
       role: 'user',
-      parts: [{ text: SYSTEM_PROMPT }],
+      parts: [{ text: systemPrompt }],
     },
     {
       role: 'model',
