@@ -6,6 +6,7 @@ import { createService, updateService } from '../../lib/supabase'
 import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import type { ServiceData } from '../../services/GeminiService'
 import { sendMessage, startChatSession } from '../../services/GeminiService'
+import { validateAndNormalizeTags, sanitizeAITags, TAG_RULES } from '../../lib/tagUtils'
 import LogoUploader from '../LogoUploader'
 import PortfolioUploader from '../PortfolioUploader'
 import type { Service } from '../../types'
@@ -54,21 +55,7 @@ export default function ServiceReviewForm({
     return new File([u8arr], filename, { type: mime || 'image/jpeg' })
   }
 
-  // Validate and normalize tags: lowercase, remove duplicates, limit to 7
-  const validateAndNormalizeTags = (tags: string[]): string[] => {
-    // Convert to lowercase, remove non-Latin characters (keep only a-z, 0-9, spaces, hyphens)
-    const normalized = tags
-      .map(tag => tag.toLowerCase().trim())
-      .map(tag => tag.replace(/[^a-z0-9\s-]/g, '')) // Remove non-Latin characters
-      .map(tag => tag.replace(/\s+/g, '-')) // Replace spaces with hyphens
-      .filter(tag => tag.length > 0 && tag.length <= 20) // Min 1 char, max 20 chars
-    
-    // Remove duplicates
-    const unique = Array.from(new Set(normalized))
-    
-    // Limit to 7 tags
-    return unique.slice(0, 7)
-  }
+  // Note: validateAndNormalizeTags is now imported from lib/tagUtils.ts
 
   // AI tag correction function
   const handleFixTags = async () => {
@@ -390,10 +377,10 @@ FAQAT JSON formatda javob qaytar:
                     />
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-gray-500">
-                        {formData.tags.length}/7 ta teg (lotin alifbosi, kichik harflar)
+                        {formData.tags.length}/{TAG_RULES.MAX} ta teg (lotin alifbosi, kichik harflar)
                       </p>
-                      {formData.tags.length > 7 && (
-                        <p className="text-xs text-red-600">Maksimum 7 ta teg!</p>
+                      {formData.tags.length > TAG_RULES.MAX && (
+                        <p className="text-xs text-red-600">Maksimum {TAG_RULES.MAX} ta teg!</p>
                       )}
                     </div>
                     {formData.tags.length > 0 && (

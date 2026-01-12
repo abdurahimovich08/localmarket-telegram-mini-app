@@ -1,4 +1,5 @@
 // Secure Gemini Service - Uses Vercel API route instead of direct API calls
+import { TAG_RULES } from '../lib/tagUtils'
 
 const SYSTEM_PROMPT = `
 Sen - men SOQQA ilovasining professional HR va Marketing mutaxassisisan. 
@@ -25,15 +26,19 @@ QOIDALAR:
 }
 
 ⚠️ TEGLAR UCHUN QATTIQ QOIDALAR (MUHIM):
-- Teglar soni: 3-7 ta (kamida 3, ko'pi bilan 7)
-- Format: FAQAT lotin alifbosi (a-z), kichik harflar
+- Teglar soni: ${TAG_RULES.MIN}-${TAG_RULES.MAX} ta (kamida ${TAG_RULES.MIN}, ko'pi bilan ${TAG_RULES.MAX})
+- Format: FAQAT lotin alifbosi (a-z, 0-9), kichik harflar, defis (-) bilan so'zlarni ajratish
+- Har bir teg uzunligi: ${TAG_RULES.MIN_LENGTH}-${TAG_RULES.MAX_LENGTH} belgi
 - Dublikat: Bir xil teg ikki marta yozilmaydi
-- Masalan: ["logo", "design", "branding", "minimalist"] ✅
+- Intent-based: Umumiy so'zlar o'rniga aniq, maqsadli teglar
+  ✅ YAXSHI: ["web-development", "react-js", "responsive-design", "fast-delivery"]
+  ❌ YOMON: ["web", "design", "shop", "market"] (juda umumiy)
+- Masalan: ["logo-design", "brand-identity", "minimalist", "professional"] ✅
 - XATO: ["Логотип", "DESIGN", "telegram bot arzon", "Puthon"] ❌
-- To'g'ri: ["logo", "design", "telegram", "python"] ✅
-- Har bir teg bitta so'z yoki qisqa ibora (2-3 so'z, lekin lotin alifbosi)
+- To'g'ri: ["logo-design", "telegram-bot", "python", "web-development"] ✅
 - Kirill, arab, yoki boshqa alifbolar QAT'IY TAVSIYA ETILMAYDI
 - Katta harflar QAT'IY TAVSIYA ETILMAYDI (barchasi kichik)
+- So'zlar orasida bo'shliq o'rniga defis (-) ishlatiladi
 `
 
 export interface ServiceData {
