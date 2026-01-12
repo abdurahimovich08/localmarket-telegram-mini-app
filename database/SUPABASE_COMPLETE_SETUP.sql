@@ -122,10 +122,15 @@ CREATE POLICY "Allow public read access to tag_usage"
 ON tag_usage FOR SELECT
 USING (true);
 
+DROP POLICY IF EXISTS "Allow system to insert tag_usage" ON tag_usage;
+CREATE POLICY "Allow system to insert tag_usage"
+ON tag_usage FOR INSERT
+WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Allow system to update tag_usage" ON tag_usage;
 CREATE POLICY "Allow system to update tag_usage"
-ON tag_usage FOR ALL
-USING (true);
+ON tag_usage FOR UPDATE
+USING (true) WITH CHECK (true);
 
 -- =====================================================
 -- 3. SERVICE FEEDBACK TABLE (Conversion Tracking)
@@ -196,7 +201,7 @@ ALTER TABLE service_interactions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public insert to service_interactions" ON service_interactions;
 CREATE POLICY "Allow public insert to service_interactions"
 ON service_interactions FOR INSERT
-USING (true);
+WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow public read access to service_interactions" ON service_interactions;
 CREATE POLICY "Allow public read access to service_interactions"
@@ -231,7 +236,7 @@ ALTER TABLE experiments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public insert to experiments" ON experiments;
 CREATE POLICY "Allow public insert to experiments"
 ON experiments FOR INSERT
-USING (true);
+WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow public read access to experiments" ON experiments;
 CREATE POLICY "Allow public read access to experiments"
