@@ -122,7 +122,7 @@ export async function calculateUnifiedHealthScore(
     recommendations.push(`${3 - listing.tags.length} ta tag qo'shing - qidiruv natijalarini yaxshilash`)
   }
   if (!listing.image_url && !listing.logo_url) {
-    recommendations.push('Rasm qo'shing - ko'rishlar 2x oshadi')
+    recommendations.push("Rasm qo'shing - ko'rishlar 2x oshadi")
   }
   if (listing.description.length < 50) {
     recommendations.push('Tavsifni kengaytiring - foydalanuvchilar ishonchi oshadi')
