@@ -1,7 +1,7 @@
 /**
  * Dashboard Statistics API (Overview Block)
  * 
- * Phase 2: Unified analytics - includes services and products
+ * Phase 3: Unified analytics - includes services, products, and store products
  * Provides aggregated stats for seller dashboard:
  * - Views, clicks, contacts, orders
  * - Growth percentages
@@ -47,7 +47,7 @@ export interface DashboardOverview {
 }
 
 /**
- * Get dashboard overview stats for a seller (Phase 2: Unified - services + products)
+ * Get dashboard overview stats for a seller (Phase 3: Unified - services + products + store products)
  */
 export async function getDashboardOverview(
   providerTelegramId: number,
@@ -62,10 +62,19 @@ export async function getDashboardOverview(
     const previousStart = new Date(currentStart)
     previousStart.setDate(previousStart.getDate() - days)
 
-    // Get unified listings (Phase 2: services + products)
+    // Get unified listings (Phase 3: services + products + store products)
     const unifiedListings = await getUserUnifiedListings(providerTelegramId)
     
+    // Debug logging
+    console.log('[DashboardStats] Unified listings count:', unifiedListings.length)
+    console.log('[DashboardStats] Listing types:', {
+      services: unifiedListings.filter(l => l.type === 'service').length,
+      products: unifiedListings.filter(l => l.type === 'product').length,
+      storeProducts: unifiedListings.filter(l => l.type === 'store_product').length,
+    })
+    
     if (!unifiedListings || unifiedListings.length === 0) {
+      console.log('[DashboardStats] No unified listings found for user:', providerTelegramId)
       return {
         period,
         today: { views: 0, clicks: 0, contacts: 0, orders: 0 },
@@ -78,18 +87,24 @@ export async function getDashboardOverview(
       }
     }
 
-    // Get all listing IDs (services + products)
+    // Get all listing IDs (services + products + store products)
     const allListingIds = unifiedListings.map(l => l.listing_id)
+    console.log('[DashboardStats] All listing IDs:', allListingIds.length)
 
     // Get today's stats (for mini-panel)
     const todayStart = new Date(now)
     todayStart.setHours(0, 0, 0, 0)
-    const { data: todayInteractions } = await supabase
+    const { data: todayInteractions, error: todayError } = await supabase
       .from('listing_interactions')
       .select('interaction_type')
       .in('listing_id', allListingIds.length > 0 ? allListingIds : [''])
       .gte('created_at', todayStart.toISOString())
       .lte('created_at', now.toISOString())
+
+    if (todayError) {
+      console.error('[DashboardStats] Error fetching today interactions:', todayError)
+      // If table doesn't exist, this is expected - user needs to run migration
+    }
 
     const today = {
       views: (todayInteractions || []).filter((i: any) => i.interaction_type === 'view').length,
@@ -115,8 +130,9 @@ export async function getDashboardOverview(
       .lt('created_at', currentStart.toISOString())
 
     if (currentError || previousError) {
-      console.error('Error fetching interactions:', currentError || previousError)
-      // Continue with empty data rather than returning null
+      console.error('[DashboardStats] Error fetching interactions:', currentError || previousError)
+      // If table doesn't exist, return empty stats but don't fail
+      // User needs to run database migration
     }
 
     // Calculate current period metrics
@@ -143,6 +159,16 @@ export async function getDashboardOverview(
 
     // Count services (for backward compatibility)
     const servicesCount = unifiedListings.filter(l => l.type === 'service').length
+    const productsCount = unifiedListings.filter(l => l.type === 'product').length
+    const storeProductsCount = unifiedListings.filter(l => l.type === 'store_product').length
+
+    console.log('[DashboardStats] Overview:', {
+      totalListings: unifiedListings.length,
+      servicesCount,
+      productsCount,
+      storeProductsCount,
+      currentInteractions: current.views + current.clicks + current.contacts + current.orders,
+    })
 
     const overview: DashboardOverview = {
       period,
@@ -169,14 +195,14 @@ export async function getDashboardOverview(
       },
       conversionRate: current.views > 0 ? (current.orders / current.views) * 100 : 0,
       services: {
-        total: servicesCount,
-        active: servicesCount,
+        total: servicesCount + productsCount + storeProductsCount, // Show total listings
+        active: servicesCount + productsCount + storeProductsCount,
       },
     }
 
     return overview
   } catch (error) {
-    console.error('Error generating dashboard overview:', error)
+    console.error('[DashboardStats] Error generating dashboard overview:', error)
     return null
   }
 }

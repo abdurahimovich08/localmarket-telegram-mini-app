@@ -114,12 +114,13 @@ export async function getUserUnifiedListings(
       console.error('Error fetching user services:', servicesError)
     }
 
-    // Get products (listings)
+    // Get products (listings without store_id)
     const { data: products, error: productsError } = await supabase
       .from('listings')
       .select('*')
       .eq('seller_telegram_id', userTelegramId)
       .eq('status', 'active')
+      .is('store_id', null) // Only non-store products
 
     if (productsError) {
       console.error('Error fetching user products:', productsError)
@@ -128,7 +129,7 @@ export async function getUserUnifiedListings(
     // Get stores owned by user
     const { data: stores, error: storesError } = await supabase
       .from('stores')
-      .select('store_id')
+      .select('store_id, owner_telegram_id')
       .eq('owner_telegram_id', userTelegramId)
       .eq('is_active', true)
 
@@ -171,6 +172,14 @@ export async function getUserUnifiedListings(
         }
       }
     }
+    
+    // Debug logging (remove in production if needed)
+    console.log('[UnifiedListings] Debug:', {
+      services: unifiedServices.length,
+      products: unifiedProducts.length,
+      storeProducts: unifiedStoreProducts.length,
+      total: unifiedServices.length + unifiedProducts.length + unifiedStoreProducts.length
+    })
     
     // Combine and sort by created_at (newest first)
     const allListings = [...unifiedServices, ...unifiedProducts, ...unifiedStoreProducts].sort((a, b) => {
