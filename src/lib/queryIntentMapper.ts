@@ -3,10 +3,100 @@
  * 
  * Converts natural language queries into structured intents and tags
  * Example: "telegramda magazin ochish" → ["telegram-shop", "telegram-bot", "local-market"]
+ * 
+ * Performance: Uses caching to reduce AI calls and latency
  */
 
 import { normalizeTag } from './tagUtils'
 import { startChatSession, sendMessage } from '../services/GeminiService'
+
+// ============================================
+// QUERY INTENT CACHE (Performance optimization)
+// ============================================
+
+interface CachedIntent {
+  intent: QueryIntent
+  timestamp: number
+  hitCount: number
+}
+
+// In-memory cache (can be moved to Redis in production)
+const intentCache = new Map<string, CachedIntent>()
+
+// Cache TTL: 24 hours (frequently used queries stay cached longer)
+const CACHE_TTL = 24 * 60 * 60 * 1000
+
+// Max cache size: 1000 entries (LRU eviction)
+const MAX_CACHE_SIZE = 1000
+
+/**
+ * Get cache key from query (normalized)
+ */
+function getCacheKey(query: string): string {
+  return normalizeTag(query.toLowerCase().trim())
+}
+
+/**
+ * Get cached intent if available and not expired
+ */
+function getCachedIntent(query: string): QueryIntent | null {
+  const key = getCacheKey(query)
+  const cached = intentCache.get(key)
+
+  if (!cached) return null
+
+  // Check if expired
+  const age = Date.now() - cached.timestamp
+  if (age > CACHE_TTL) {
+    intentCache.delete(key)
+    return null
+  }
+
+  // Update hit count (for analytics)
+  cached.hitCount++
+  return cached.intent
+}
+
+/**
+ * Store intent in cache
+ */
+function setCachedIntent(query: string, intent: QueryIntent): void {
+  const key = getCacheKey(query)
+
+  // LRU eviction: remove oldest if cache is full
+  if (intentCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = Array.from(intentCache.entries())
+      .sort((a, b) => a[1].timestamp - b[1].timestamp)[0][0]
+    intentCache.delete(oldestKey)
+  }
+
+  intentCache.set(key, {
+    intent,
+    timestamp: Date.now(),
+    hitCount: 1,
+  })
+}
+
+/**
+ * Get cache statistics (for monitoring)
+ */
+export function getIntentCacheStats(): {
+  size: number
+  hitRate: number
+  topQueries: Array<{ query: string; hits: number }>
+} {
+  const entries = Array.from(intentCache.entries())
+  const topQueries = entries
+    .sort((a, b) => b[1].hitCount - a[1].hitCount)
+    .slice(0, 10)
+    .map(([query, cached]) => ({ query, hits: cached.hitCount }))
+
+  return {
+    size: intentCache.size,
+    hitRate: 0, // Would need to track misses separately
+    topQueries,
+  }
+}
 
 export interface QueryIntent {
   tags: string[]
@@ -18,6 +108,7 @@ export interface QueryIntent {
 /**
  * Map natural language query to structured intent and tags
  * Uses AI to understand user intent and extract relevant tags
+ * Performance: Uses caching to reduce AI calls
  */
 export async function mapQueryToIntent(query: string): Promise<QueryIntent> {
   if (!query || query.trim().length === 0) {
@@ -25,6 +116,12 @@ export async function mapQueryToIntent(query: string): Promise<QueryIntent> {
       tags: [],
       intent: '',
     }
+  }
+
+  // Check cache first (Performance optimization)
+  const cached = getCachedIntent(query)
+  if (cached) {
+    return cached
   }
 
   try {
@@ -67,11 +164,15 @@ Javob: {
           .map((tag: string) => normalizeTag(tag))
           .filter((tag: string) => tag.length > 0)
 
-        return {
+        const intent: QueryIntent = {
           tags: normalizedTags,
           category: parsed.category || undefined,
           intent: parsed.intent || query,
         }
+
+        // Cache the result
+        setCachedIntent(query, intent)
+        return intent
       } catch (e) {
         console.warn('Failed to parse AI response for query intent:', e)
       }
@@ -81,7 +182,10 @@ Javob: {
   }
 
   // Fallback: simple keyword extraction
-  return extractKeywordsAsTags(query)
+  const fallbackIntent = extractKeywordsAsTags(query)
+  // Cache fallback too (to avoid repeated AI calls for same query)
+  setCachedIntent(query, fallbackIntent)
+  return fallbackIntent
 }
 
 /**

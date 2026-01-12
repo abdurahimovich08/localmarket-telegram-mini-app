@@ -37,6 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_services_provider ON services(provider_telegram_i
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
 CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
 CREATE INDEX IF NOT EXISTS idx_services_created_at ON services(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_services_fingerprint ON services(fingerprint);
 
 -- =====================================================
 -- CONSTRAINTS

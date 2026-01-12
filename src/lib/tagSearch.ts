@@ -88,6 +88,43 @@ export function calculateServiceSearchScore(
   const popularityBoost = calculatePopularityBoost(service)
   totalScore += popularityBoost
 
+  // Priority A: Conversion-based boost
+  let conversionBoost = 0
+  try {
+    const conversionMetrics = await getTagConversionMetrics(queryTags)
+    for (const queryTag of normalizedQueryTags) {
+      const metric = conversionMetrics.get(queryTag)
+      if (metric) {
+        const boost = calculateConversionBoost(queryTag, metric)
+        conversionBoost += boost * 0.5 // Max 0.5 boost per tag
+      }
+    }
+    totalScore += conversionBoost
+  } catch (error) {
+    console.warn('Error calculating conversion boost:', error)
+    // Continue without conversion boost
+  }
+
+  // Priority B: Personalization boost
+  let personalizationBoost = 0
+  if (userTelegramId) {
+    try {
+      const userPreferences = await getUserTagPreferences(userTelegramId)
+      for (const queryTag of normalizedQueryTags) {
+        const boost = calculatePersonalizationBoost(queryTag, userPreferences)
+        personalizationBoost += boost
+
+        // Also check for related tags
+        const relatedBoost = getRelatedTagsBoost(queryTag, userPreferences)
+        personalizationBoost += relatedBoost
+      }
+      totalScore += personalizationBoost
+    } catch (error) {
+      console.warn('Error calculating personalization boost:', error)
+      // Continue without personalization
+    }
+  }
+
   if (includeExplanation && popularityBoost > 0) {
     const daysSinceCreation = service.created_at
       ? (Date.now() - new Date(service.created_at).getTime()) / (1000 * 60 * 60 * 24)
@@ -106,6 +143,13 @@ export function calculateServiceSearchScore(
         score: popularityBoost,
       })
     }
+  }
+
+  // Limit explanation to top 2-3 reasons (Priority 2: Prevent overload)
+  if (includeExplanation) {
+    // Sort by score (descending) and take top 3
+    explanation.sort((a, b) => b.score - a.score)
+    explanation = explanation.slice(0, 3)
   }
 
   return includeExplanation ? { score: totalScore, explanation } : totalScore
@@ -275,28 +319,33 @@ function calculatePopularityBoost(service: Service): number {
 /**
  * Search services by tags with ranking
  * Returns services with search scores and explanations (Priority 1)
+ * 
+ * Now includes conversion-based ranking and personalization
  */
-export function searchServicesByTags(
+export async function searchServicesByTags(
   services: Service[],
   queryTags: string[],
   limit: number = 20,
-  includeExplanation: boolean = false
-): Service[] | ScoredService[] {
+  includeExplanation: boolean = false,
+  userTelegramId?: number
+): Promise<Service[] | ScoredService[]> {
   if (!services || services.length === 0) return []
   if (!queryTags || queryTags.length === 0) return services
 
-  // Calculate scores for all services
-  const scoredServices = services.map(service => {
-    const result = calculateServiceSearchScore(service, queryTags, includeExplanation)
-    const score = typeof result === 'number' ? result : result.score
-    const explanation = typeof result === 'number' ? [] : result.explanation
+  // Calculate scores for all services (async)
+  const scoredServices = await Promise.all(
+    services.map(async service => {
+      const result = await calculateServiceSearchScore(service, queryTags, includeExplanation, userTelegramId)
+      const score = typeof result === 'number' ? result : result.score
+      const explanation = typeof result === 'number' ? [] : result.explanation
 
-    return {
-      service,
-      score,
-      explanation,
-    }
-  })
+      return {
+        service,
+        score,
+        explanation,
+      }
+    })
+  )
 
   // Sort by score (descending)
   scoredServices.sort((a, b) => b.score - a.score)
