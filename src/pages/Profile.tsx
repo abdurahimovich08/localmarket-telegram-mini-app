@@ -177,7 +177,18 @@ export default function Profile() {
           )
         )}
 
-        {/* SOQQANI Tahrirlash Button (Own Profile Only) - Yellow, below store button */}
+        {/* Dashboard Button (Own Profile Only) - Above SOQQA button */}
+        {isOwnProfile && (
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4 w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
+            <ChartBarIcon className="w-5 h-5" />
+            Dashboard
+          </button>
+        )}
+
+        {/* SOQQANI Tahrirlash Button (Own Profile Only) - Yellow, below dashboard button */}
         {isOwnProfile && (
           services.length > 0 ? (
             <button

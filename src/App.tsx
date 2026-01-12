@@ -17,6 +17,11 @@ import StoreDetail from './pages/StoreDetail'
 import AIChatCreationPage from './pages/AIChatCreationPage'
 import ServiceDetailsPage from './pages/ServiceDetailsPage'
 import ServiceEdit from './pages/ServiceEdit'
+import Dashboard from './pages/Dashboard'
+import DashboardRank from './pages/DashboardRank'
+import DashboardRecommendations from './pages/DashboardRecommendations'
+import DashboardBenchmark from './pages/DashboardBenchmark'
+import DashboardServiceDetail from './pages/DashboardServiceDetail'
 import { UserContext } from './contexts/UserContext'
 import Onboarding from './components/Onboarding'
 
@@ -135,6 +140,11 @@ function App() {
           <Route path="/create-service" element={<AIChatCreationPage />} />
           <Route path="/service/:id" element={<ServiceDetailsPage />} />
           <Route path="/service/:id/edit" element={<ServiceEdit />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/rank" element={<DashboardRank />} />
+          <Route path="/dashboard/recommendations" element={<DashboardRecommendations />} />
+          <Route path="/dashboard/benchmark" element={<DashboardBenchmark />} />
+          <Route path="/dashboard/services/:id" element={<DashboardServiceDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
