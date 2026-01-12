@@ -317,20 +317,70 @@ ALTER TABLE health_score_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rank_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seller_metrics_daily ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public access to dashboard_visits" ON dashboard_visits
-  FOR ALL USING (true) WITH CHECK (true);
+-- Dashboard visits policies
+DROP POLICY IF EXISTS "Allow public select dashboard_visits" ON dashboard_visits;
+CREATE POLICY "Allow public select dashboard_visits" ON dashboard_visits
+  FOR SELECT USING (true);
 
-CREATE POLICY "Allow public access to recommendation_applications" ON recommendation_applications
-  FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public insert dashboard_visits" ON dashboard_visits;
+CREATE POLICY "Allow public insert dashboard_visits" ON dashboard_visits
+  FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Allow public access to health_score_history" ON health_score_history
-  FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update dashboard_visits" ON dashboard_visits;
+CREATE POLICY "Allow public update dashboard_visits" ON dashboard_visits
+  FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow public access to rank_history" ON rank_history
-  FOR ALL USING (true) WITH CHECK (true);
+-- Recommendation applications policies
+DROP POLICY IF EXISTS "Allow public select recommendation_applications" ON recommendation_applications;
+CREATE POLICY "Allow public select recommendation_applications" ON recommendation_applications
+  FOR SELECT USING (true);
 
-CREATE POLICY "Allow public access to seller_metrics_daily" ON seller_metrics_daily
-  FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public insert recommendation_applications" ON recommendation_applications;
+CREATE POLICY "Allow public insert recommendation_applications" ON recommendation_applications
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update recommendation_applications" ON recommendation_applications;
+CREATE POLICY "Allow public update recommendation_applications" ON recommendation_applications
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Health score history policies
+DROP POLICY IF EXISTS "Allow public select health_score_history" ON health_score_history;
+CREATE POLICY "Allow public select health_score_history" ON health_score_history
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert health_score_history" ON health_score_history;
+CREATE POLICY "Allow public insert health_score_history" ON health_score_history
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update health_score_history" ON health_score_history;
+CREATE POLICY "Allow public update health_score_history" ON health_score_history
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Rank history policies
+DROP POLICY IF EXISTS "Allow public select rank_history" ON rank_history;
+CREATE POLICY "Allow public select rank_history" ON rank_history
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert rank_history" ON rank_history;
+CREATE POLICY "Allow public insert rank_history" ON rank_history
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update rank_history" ON rank_history;
+CREATE POLICY "Allow public update rank_history" ON rank_history
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Seller metrics daily policies
+DROP POLICY IF EXISTS "Allow public select seller_metrics_daily" ON seller_metrics_daily;
+CREATE POLICY "Allow public select seller_metrics_daily" ON seller_metrics_daily
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert seller_metrics_daily" ON seller_metrics_daily;
+CREATE POLICY "Allow public insert seller_metrics_daily" ON seller_metrics_daily
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update seller_metrics_daily" ON seller_metrics_daily;
+CREATE POLICY "Allow public update seller_metrics_daily" ON seller_metrics_daily
+  FOR UPDATE USING (true) WITH CHECK (true);
 
 -- Function to update seller metrics daily
 CREATE OR REPLACE FUNCTION update_seller_metrics_daily()
