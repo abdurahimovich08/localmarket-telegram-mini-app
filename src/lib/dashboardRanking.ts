@@ -71,12 +71,13 @@ export async function getServiceRankInfo(
 
       if (queryTags.length === 0) continue
 
-      // Search and rank services
+      // Search and rank services (no user ID for public ranking)
       const rankedServices = await searchServicesByTags(
         allServices as Service[],
         queryTags,
         50, // Top 50 results
-        true // Include explanations
+        true, // Include explanations
+        undefined // No user personalization for ranking analysis
       ) as any[]
 
       // Find our service in results

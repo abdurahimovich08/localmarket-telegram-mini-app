@@ -27,12 +27,17 @@ const SCORE_WEIGHTS = {
 /**
  * Calculate search score for a service based on query tags
  * Returns score and explanation (Priority 1: Search Explainability)
+ * 
+ * Now includes:
+ * - Conversion-based ranking (Priority A)
+ * - Personalization (Priority B)
  */
-export function calculateServiceSearchScore(
+export async function calculateServiceSearchScore(
   service: Service,
   queryTags: string[],
-  includeExplanation: boolean = false
-): number | { score: number; explanation: SearchExplanation[] } {
+  includeExplanation: boolean = false,
+  userTelegramId?: number
+): Promise<number | { score: number; explanation: SearchExplanation[] }> {
   if (!service.tags || service.tags.length === 0) {
     return includeExplanation ? { score: 0, explanation: [] } : 0
   }
