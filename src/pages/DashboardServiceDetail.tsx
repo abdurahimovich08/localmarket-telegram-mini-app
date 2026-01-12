@@ -24,6 +24,7 @@ export default function DashboardServiceDetail() {
   const [benchmark, setBenchmark] = useState<any>(null)
   const [rankInfo, setRankInfo] = useState<any[]>([])
   const [healthScore, setHealthScore] = useState<any>(null)
+  const [showHealthBreakdown, setShowHealthBreakdown] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -90,29 +91,147 @@ export default function DashboardServiceDetail() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Health Score Badge (Feature 5) */}
+        {/* Health Score Badge with Breakdown View (Feature A) */}
         {healthScore && (
           <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Xizmat Holati</h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl font-bold text-gray-900">{healthScore.score}</span>
-                  <span className={`px-4 py-2 rounded-full font-medium ${getHealthScoreBadge(healthScore.score).bgColor} ${getHealthScoreBadge(healthScore.score).color}`}>
-                    {getHealthScoreBadge(healthScore.score).emoji} {getHealthScoreBadge(healthScore.score).text}
-                  </span>
+            <button
+              onClick={() => setShowHealthBreakdown(!showHealthBreakdown)}
+              className="w-full"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Xizmat Holati</h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-bold text-gray-900">{healthScore.score}</span>
+                    <span className={`px-4 py-2 rounded-full font-medium ${getHealthScoreBadge(healthScore.score).bgColor} ${getHealthScoreBadge(healthScore.score).color}`}>
+                      {getHealthScoreBadge(healthScore.score).emoji} {getHealthScoreBadge(healthScore.score).text}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500 mb-2">Umumiy ball</div>
+                  <div className="text-lg font-bold text-gray-900">{healthScore.score}/100</div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500 mb-2">Omillar</div>
-                <div className="space-y-1 text-xs">
-                  <div>Conversion: {healthScore.factors.conversion}/30</div>
-                  <div>Engagement: {healthScore.factors.engagement}/30</div>
-                  <div>Completeness: {healthScore.factors.completeness}/20</div>
-                  <div>Ranking: {healthScore.factors.ranking}/20</div>
+            </button>
+
+            {/* Breakdown View (Feature A) */}
+            {showHealthBreakdown && (
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Batafsil Tahlil</h4>
+                
+                {/* Conversion */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Conversion</span>
+                    <span className={`text-sm font-semibold ${healthScore.factors.conversion >= 20 ? 'text-green-600' : healthScore.factors.conversion >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {healthScore.factors.conversion}/30
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        healthScore.factors.conversion >= 20 ? 'bg-green-500' : 
+                        healthScore.factors.conversion >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${(healthScore.factors.conversion / 30) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {healthScore.factors.conversion >= 20 ? '✅ Yaxshi' : 
+                     healthScore.factors.conversion >= 10 ? '⚠️ O\'rtacha' : 
+                     '❌ Yaxshilash kerak'} - Konversiya darajasi
+                  </p>
                 </div>
+
+                {/* Engagement */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Engagement</span>
+                    <span className={`text-sm font-semibold ${healthScore.factors.engagement >= 20 ? 'text-green-600' : healthScore.factors.engagement >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {healthScore.factors.engagement}/30
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        healthScore.factors.engagement >= 20 ? 'bg-green-500' : 
+                        healthScore.factors.engagement >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${(healthScore.factors.engagement / 30) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {healthScore.factors.engagement >= 20 ? '✅ Yaxshi' : 
+                     healthScore.factors.engagement >= 10 ? '⚠️ O\'rtacha' : 
+                     '❌ Yaxshilash kerak'} - Foydalanuvchi interaksiyasi
+                  </p>
+                </div>
+
+                {/* Completeness */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Completeness</span>
+                    <span className={`text-sm font-semibold ${healthScore.factors.completeness >= 15 ? 'text-green-600' : healthScore.factors.completeness >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {healthScore.factors.completeness}/20
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        healthScore.factors.completeness >= 15 ? 'bg-green-500' : 
+                        healthScore.factors.completeness >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${(healthScore.factors.completeness / 20) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {healthScore.factors.completeness >= 15 ? '✅ To\'liq' : 
+                     healthScore.factors.completeness >= 10 ? '⚠️ Qisman' : 
+                     '❌ Yaxshilash kerak'} - Ma'lumot to'liqligi
+                  </p>
+                </div>
+
+                {/* Ranking */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Ranking</span>
+                    <span className={`text-sm font-semibold ${healthScore.factors.ranking >= 15 ? 'text-green-600' : healthScore.factors.ranking >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {healthScore.factors.ranking}/20
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        healthScore.factors.ranking >= 15 ? 'bg-green-500' : 
+                        healthScore.factors.ranking >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${(healthScore.factors.ranking / 20) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {healthScore.factors.ranking >= 15 ? '✅ Yuqori' : 
+                     healthScore.factors.ranking >= 10 ? '⚠️ O\'rtacha' : 
+                     '❌ Yaxshilash kerak'} - Qidiruvdagi o'rni
+                  </p>
+                </div>
+
+                {/* Recommendations from health score */}
+                {healthScore.recommendations.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Tavsiyalar:</p>
+                    <ul className="space-y-1">
+                      {healthScore.recommendations.map((rec: string, index: number) => (
+                        <li key={index} className="text-xs text-gray-600 flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         )}
 

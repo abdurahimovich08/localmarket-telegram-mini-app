@@ -26,6 +26,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { getDashboardOverview } from '../lib/dashboardStats'
 import { getUserServices } from '../lib/supabase'
+import { recordDashboardVisit, getDashboardStreak, getHealthStreak } from '../lib/dashboardHistory'
 import ServiceListWithHealth from '../components/ServiceListWithHealth'
 import type { Service } from '../types'
 
@@ -35,6 +36,8 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [overview, setOverview] = useState<any>(null)
   const [services, setServices] = useState<Service[]>([])
+  const [streak, setStreak] = useState<any>(null)
+  const [healthStreak, setHealthStreak] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,13 +46,25 @@ export default function Dashboard() {
 
       setLoading(true)
       try {
-        const [overviewData, servicesData] = await Promise.all([
+        // Record visit (Feature C: Streak tracking)
+        await recordDashboardVisit(user.telegram_user_id)
+
+        const [overviewData, servicesData, streakData] = await Promise.all([
           getDashboardOverview(user.telegram_user_id, period),
           getUserServices(user.telegram_user_id),
+          getDashboardStreak(user.telegram_user_id),
         ])
 
         setOverview(overviewData)
         setServices(servicesData || [])
+
+        // Get health streak for first service (Feature C)
+        if (servicesData && servicesData.length > 0) {
+          const streak = await getHealthStreak(servicesData[0].service_id)
+          setHealthStreak(streak)
+        }
+
+        setStreak(streakData)
       } catch (error) {
         console.error('Error loading dashboard data:', error)
       } finally {
@@ -127,6 +142,32 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Streak Badges (Feature C: History & Streak) */}
+        {(streak?.currentStreak > 0 || healthStreak >= 7) && (
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl shadow-sm p-4 border border-orange-200">
+            <div className="flex items-center gap-4">
+              {streak?.currentStreak >= 7 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🔥</span>
+                  <div>
+                    <p className="font-bold text-gray-900">{streak.currentStreak} kun davomida</p>
+                    <p className="text-xs text-gray-600">Dashboard zanjir</p>
+                  </div>
+                </div>
+              )}
+              {healthStreak >= 7 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🟢</span>
+                  <div>
+                    <p className="font-bold text-gray-900">{healthStreak} kun davomida</p>
+                    <p className="text-xs text-gray-600">Health > 70 zanjir</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Today Mini-Panel (Feature 1) */}
         {overview?.today && (
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-sm p-4 border border-blue-200">

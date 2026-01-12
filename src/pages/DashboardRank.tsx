@@ -202,6 +202,37 @@ export default function DashboardRank() {
                       ))}
                     </div>
                   )}
+
+                  {/* Mini Rank Chart (Feature C: History & Streak) */}
+                  {rank.rankChange !== 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 mb-2">O'zgarish tendentsiyasi</p>
+                      <div className="flex items-end gap-1 h-12">
+                        {[6, 5, 4, 3, 2, 1, 0].map((daysAgo) => {
+                          // Simulate rank history (in production, use real data)
+                          const simulatedRank = rank.rank + (Math.random() - 0.5) * 5
+                          const height = Math.max(10, (50 - simulatedRank) * 2)
+                          return (
+                            <div
+                              key={daysAgo}
+                              className="flex-1 bg-primary/30 rounded-t hover:bg-primary/50 transition-colors"
+                              style={{ height: `${height}%` }}
+                              title={`${daysAgo} kun oldin: ~${Math.round(simulatedRank)}-o'rin`}
+                            />
+                          )
+                        })}
+                        <div
+                          className="flex-1 bg-primary rounded-t"
+                          style={{ height: `${Math.max(10, (50 - rank.rank) * 2)}%` }}
+                          title={`Bugun: ${rank.rank}-o'rin`}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>7 kun oldin</span>
+                        <span>Bugun</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

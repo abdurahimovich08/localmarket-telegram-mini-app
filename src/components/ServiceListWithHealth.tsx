@@ -9,8 +9,8 @@ import { getServiceInsights } from '../lib/sellerInsights'
 import { getServiceBenchmark } from '../lib/dashboardBenchmark'
 import { getServiceRankInfo } from '../lib/dashboardRanking'
 import { calculateHealthScore, getHealthScoreBadge } from '../lib/serviceHealthScore'
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import type { Service } from '../types'
-import { ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 
 interface ServiceListWithHealthProps {
   services: Service[]
@@ -19,6 +19,7 @@ interface ServiceListWithHealthProps {
 
 export default function ServiceListWithHealth({ services, navigate }: ServiceListWithHealthProps) {
   const [healthScores, setHealthScores] = useState<Record<string, any>>({})
+  const [expandedService, setExpandedService] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -75,28 +76,103 @@ export default function ServiceListWithHealth({ services, navigate }: ServiceLis
             const badge = health ? getHealthScoreBadge(health.score) : null
 
             return (
-              <button
+              <div
                 key={service.service_id}
-                onClick={() => navigate(`/dashboard/services/${service.service_id}`)}
-                className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+                className="rounded-lg border border-gray-200 hover:border-primary transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 truncate">{service.title}</h3>
-                      {badge && (
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${badge.bgColor} ${badge.color}`}>
-                          {badge.emoji} {health.score}
-                        </span>
+                <button
+                  onClick={() => setExpandedService(expandedService === service.service_id ? null : service.service_id)}
+                  className="w-full text-left p-4 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 truncate">{service.title}</h3>
+                        {badge && (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${badge.bgColor} ${badge.color}`}>
+                            {badge.emoji} {health.score}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {service.view_count} ko'rish • {service.category}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/dashboard/services/${service.service_id}`)
+                        }}
+                        className="px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded transition-colors"
+                      >
+                        Batafsil
+                      </button>
+                      {expandedService === service.service_id ? (
+                        <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5 text-gray-400" />
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">
-                      {service.view_count} ko'rish • {service.category}
-                    </p>
                   </div>
-                  <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" />
-                </div>
-              </button>
+                </button>
+
+                {/* Health Breakdown (Feature A) */}
+                {expandedService === service.service_id && health && (
+                  <div className="px-4 pb-4 pt-0 border-t border-gray-200">
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">Conversion</span>
+                          <span className="font-semibold">{health.factors.conversion}/30</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-green-500"
+                            style={{ width: `${(health.factors.conversion / 30) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">Engagement</span>
+                          <span className="font-semibold">{health.factors.engagement}/30</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500"
+                            style={{ width: `${(health.factors.engagement / 30) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">Completeness</span>
+                          <span className="font-semibold">{health.factors.completeness}/20</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-purple-500"
+                            style={{ width: `${(health.factors.completeness / 20) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">Ranking</span>
+                          <span className="font-semibold">{health.factors.ranking}/20</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-500"
+                            style={{ width: `${(health.factors.ranking / 20) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

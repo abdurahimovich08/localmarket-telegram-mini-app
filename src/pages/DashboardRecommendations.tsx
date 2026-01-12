@@ -188,15 +188,38 @@ export default function DashboardRecommendations() {
                   {actionableRecommendations.map((action, index) => (
                     <div
                       key={index}
-                      className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between"
+                      className="bg-white rounded-lg p-4 border border-gray-200"
                     >
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{action.description}</p>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 mb-2">{action.description}</p>
+                          
+                          {/* Impact Preview (Feature B) */}
+                          {action.expectedImpact && (
+                            <div className="flex flex-wrap gap-3 text-xs">
+                              {action.expectedImpact.ctr && (
+                                <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-medium">
+                                  Expected CTR: +{action.expectedImpact.ctr.toFixed(1)}%
+                                </span>
+                              )}
+                              {action.expectedImpact.conversion && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">
+                                  Conversion: +{action.expectedImpact.conversion}%
+                                </span>
+                              )}
+                              {action.expectedImpact.healthScore && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-medium">
+                                  Health: +{action.expectedImpact.healthScore}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <button
                         onClick={() => handleApplyRecommendation(action)}
                         disabled={applyingAction === action.type}
-                        className="ml-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                        className="w-full px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                       >
                         {applyingAction === action.type ? (
                           <>
