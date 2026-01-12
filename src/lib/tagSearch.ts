@@ -350,10 +350,26 @@ export async function searchServicesByTags(
   // Sort by score (descending)
   scoredServices.sort((a, b) => b.score - a.score)
 
-  // Filter out services with zero score and return top results
-  const filtered = scoredServices
-    .filter(item => item.score > 0)
-    .slice(0, limit)
+  // Filter out services with zero score
+  const filtered = scoredServices.filter(item => item.score > 0)
+
+  // Personalization echo prevention: Add exploration slot (Priority 1 fix)
+  // Insert 1 neutral result (random from middle of results) to prevent filter bubble
+  let results = filtered.slice(0, limit)
+  if (userTelegramId && filtered.length > limit && limit > 3) {
+    // Get a random service from middle of results (not top, not bottom)
+    const middleStart = Math.floor(filtered.length * 0.3)
+    const middleEnd = Math.floor(filtered.length * 0.7)
+    const explorationIndex = middleStart + Math.floor(Math.random() * (middleEnd - middleStart))
+    const explorationService = filtered[explorationIndex]
+
+    // Insert at random position (not first, not last)
+    const insertPosition = 1 + Math.floor(Math.random() * (results.length - 2))
+    results.splice(insertPosition, 0, explorationService)
+    results = results.slice(0, limit) // Keep limit
+  } else {
+    results = filtered.slice(0, limit)
+  }
 
   if (includeExplanation) {
     return filtered.map(item => ({

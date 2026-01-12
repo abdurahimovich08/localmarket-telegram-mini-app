@@ -98,6 +98,104 @@ export function getIntentCacheStats(): {
   }
 }
 
+// ============================================
+// QUERY INTENT PRECOMPUTATION (Priority 2)
+// ============================================
+
+/**
+ * Precompute intents for popular queries
+ * This ensures instant response for common searches
+ */
+export async function precomputePopularQueries(
+  queries: string[]
+): Promise<void> {
+  console.log(`Precomputing intents for ${queries.length} popular queries...`)
+
+  // Precompute in parallel (but limit concurrency to avoid overwhelming AI)
+  const batchSize = 5
+  for (let i = 0; i < queries.length; i += batchSize) {
+    const batch = queries.slice(i, i + batchSize)
+    await Promise.all(
+      batch.map(query => {
+        // Check if already cached
+        const cached = getCachedIntent(query)
+        if (cached) {
+          return Promise.resolve() // Already cached
+        }
+        // Precompute
+        return mapQueryToIntent(query).catch(err => {
+          console.warn(`Failed to precompute intent for "${query}":`, err)
+        })
+      })
+    )
+
+    // Small delay between batches to avoid rate limiting
+    if (i + batchSize < queries.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+  }
+
+  console.log('Precomputation complete')
+}
+
+/**
+ * Get popular queries from search logs
+ * This would typically come from analytics
+ */
+export async function getPopularQueries(limit: number = 20): Promise<string[]> {
+  try {
+    // Get most searched queries from service_interactions
+    const { data, error } = await supabase
+      .from('service_interactions')
+      .select('search_query')
+      .not('search_query', 'is', null)
+      .limit(1000)
+
+    if (error) {
+      console.error('Error fetching popular queries:', error)
+      return []
+    }
+
+    // Count occurrences
+    const queryCounts = new Map<string, number>()
+    for (const interaction of data || []) {
+      const query = interaction.search_query?.trim().toLowerCase()
+      if (query && query.length > 0) {
+        queryCounts.set(query, (queryCounts.get(query) || 0) + 1)
+      }
+    }
+
+    // Sort by count and return top N
+    const sorted = Array.from(queryCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([query]) => query)
+
+    return sorted
+  } catch (error) {
+    console.error('Error getting popular queries:', error)
+    return []
+  }
+}
+
+/**
+ * Initialize precomputation on app start
+ * Call this once when app loads
+ */
+export async function initializeQueryPrecomputation(): Promise<void> {
+  try {
+    const popularQueries = await getPopularQueries(20)
+    if (popularQueries.length > 0) {
+      // Precompute in background (don't block)
+      precomputePopularQueries(popularQueries).catch(err => {
+        console.error('Error in query precomputation:', err)
+      })
+    }
+  } catch (error) {
+    console.error('Error initializing query precomputation:', error)
+  }
+}
+
 export interface QueryIntent {
   tags: string[]
   category?: string
