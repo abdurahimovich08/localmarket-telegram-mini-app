@@ -10,6 +10,11 @@ async function getSystemPrompt(): Promise<string> {
     const suggestions = await getTagSuggestionsForAI()
     
     if (suggestions.topTags.length > 0 || suggestions.trendingTags.length > 0) {
+      // Prevent echo chamber: suggest emerging/niche tags too (Priority 3)
+      const emergingTags = suggestions.effectiveTags
+        .filter(tag => !suggestions.topTags.slice(0, 10).includes(tag))
+        .slice(0, 2)
+
       tagSuggestions = `
 
 📊 PLATFORM TAG STATISTICS (AI Self-Improvement):
@@ -19,6 +24,9 @@ Effective tags (high match rate): ${suggestions.effectiveTags.slice(0, 5).join('
 
 ⚠️ AVOID generic tags (low match rate): ${suggestions.avoidTags.slice(0, 3).join(', ')}
 💡 TIP: Use specific, intent-based tags like the top performers above.
+
+🆕 EMERGING TAGS (to diversify, prevent echo chamber):
+${emergingTags.length > 0 ? `Consider 1-2 of these if relevant: ${emergingTags.join(', ')}` : 'Look for niche tags that match the service but aren\'t overused'}
 `
     }
   } catch (error) {
