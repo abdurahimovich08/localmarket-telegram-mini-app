@@ -79,38 +79,36 @@ export function productListingToUnifiedListing(listing: ProductListing): Unified
 
 /**
  * Convert Store Product to UnifiedListing
- * (Store products are typically products within a store)
- * 
- * Note: If store products are stored differently, this adapter will need adjustment
+ * Store products are listings with a store_id field
  */
 export function storeProductToUnifiedListing(
-  product: any, // StoreProduct type - adjust based on actual structure
-  store: Store
+  listing: ProductListing, // Store products are regular listings with store_id
+  store: { owner_telegram_id: number; store_id: string }
 ): UnifiedListing {
-  // Extract tags from product
-  const tags: ServiceTag[] = (product.tags || []).map((tag: string) => ({
+  // Convert string tags to ServiceTag[] (products don't have tags yet, but prepare for future)
+  const tags: ServiceTag[] = (listing.tags || []).map((tag: string) => ({
     value: tag.toLowerCase(),
     weight: 0.7,
     source: 'user' as const,
   }))
 
   return {
-    listing_id: product.product_id || product.id,
+    listing_id: listing.listing_id,
     type: 'store_product',
     owner_telegram_id: store.owner_telegram_id,
-    title: product.title || product.name,
-    description: product.description || '',
-    category: product.category || store.category || '',
+    title: listing.title,
+    description: listing.description || '',
+    category: listing.category || '',
     tags,
-    status: product.status || 'active',
-    view_count: product.view_count || 0,
-    created_at: product.created_at || new Date().toISOString(),
-    updated_at: product.updated_at,
-    price: product.price?.toString() || 'Kelishiladi',
+    status: listing.status || 'active',
+    view_count: listing.view_count || 0,
+    created_at: listing.created_at || new Date().toISOString(),
+    updated_at: listing.updated_at,
+    price: listing.price?.toString() || 'Kelishiladi',
     price_type: 'fixed',
-    image_url: product.image_url || product.photos?.[0],
-    original_id: product.product_id || product.id,
-    original_type: 'store_product',
+    image_url: listing.photos?.[0],
+    original_id: listing.listing_id,
+    original_type: 'listing', // Store products are stored in listings table
   }
 }
 

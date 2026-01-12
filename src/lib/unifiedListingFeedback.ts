@@ -97,8 +97,7 @@ export async function getUnifiedTagConversionMetrics(
 
 /**
  * Get all listings for a user (unified)
- * Phase 2: Includes services and products
- * Phase 3: Will include store products
+ * Phase 3: Includes services, products, and store products
  */
 export async function getUserUnifiedListings(
   userTelegramId: number
@@ -126,14 +125,55 @@ export async function getUserUnifiedListings(
       console.error('Error fetching user products:', productsError)
     }
 
+    // Get stores owned by user
+    const { data: stores, error: storesError } = await supabase
+      .from('stores')
+      .select('store_id')
+      .eq('owner_telegram_id', userTelegramId)
+      .eq('is_active', true)
+
+    if (storesError) {
+      console.error('Error fetching user stores:', storesError)
+    }
+
+    // Get store products (listings with store_id)
+    let storeProducts: any[] = []
+    if (stores && stores.length > 0) {
+      const storeIds = stores.map(s => s.store_id)
+      const { data: storeListings, error: storeListingsError } = await supabase
+        .from('listings')
+        .select('*')
+        .in('store_id', storeIds)
+        .eq('status', 'active')
+
+      if (storeListingsError) {
+        console.error('Error fetching store products:', storeListingsError)
+      } else {
+        storeProducts = storeListings || []
+      }
+    }
+
     // Convert to unified listings
-    const { serviceToUnifiedListing, productListingToUnifiedListing } = await import('./unifiedListing')
+    const { serviceToUnifiedListing, productListingToUnifiedListing, storeProductToUnifiedListing } = await import('./unifiedListing')
     
     const unifiedServices = (services || []).map(serviceToUnifiedListing)
     const unifiedProducts = (products || []).map(productListingToUnifiedListing)
     
+    // Convert store products (need store info for adapter)
+    const unifiedStoreProducts: UnifiedListing[] = []
+    for (const storeListing of storeProducts) {
+      if (stores) {
+        const store = stores.find(s => s.store_id === storeListing.store_id)
+        if (store) {
+          // Create minimal store object for adapter
+          const storeObj = { owner_telegram_id: userTelegramId, store_id: store.store_id }
+          unifiedStoreProducts.push(storeProductToUnifiedListing(storeListing, storeObj))
+        }
+      }
+    }
+    
     // Combine and sort by created_at (newest first)
-    const allListings = [...unifiedServices, ...unifiedProducts].sort((a, b) => {
+    const allListings = [...unifiedServices, ...unifiedProducts, ...unifiedStoreProducts].sort((a, b) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
 

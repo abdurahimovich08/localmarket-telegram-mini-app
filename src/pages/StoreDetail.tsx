@@ -10,6 +10,7 @@ import {
   getStorePromotions,
   getPromotionListings
 } from '../lib/supabase'
+import { trackListingInteraction } from '../lib/unifiedListingFeedback'
 import type { Store, Listing, StorePost, StorePromotion } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
