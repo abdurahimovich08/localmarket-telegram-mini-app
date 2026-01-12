@@ -143,10 +143,10 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Streak Badges (Feature C: History & Streak) */}
-        {(streak?.currentStreak > 0 || healthStreak >= 7) && (
+        {((streak?.currentStreak && streak.currentStreak > 0) || (healthStreak && healthStreak >= 7)) && (
           <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl shadow-sm p-4 border border-orange-200">
             <div className="flex items-center gap-4">
-              {streak?.currentStreak >= 7 && (
+              {streak?.currentStreak && streak.currentStreak >= 7 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🔥</span>
                   <div>
@@ -155,12 +155,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-              {healthStreak >= 7 && (
+              {healthStreak && healthStreak >= 7 && (
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🟢</span>
                   <div>
                     <p className="font-bold text-gray-900">{healthStreak} kun davomida</p>
-                    <p className="text-xs text-gray-600">Health > 70 zanjir</p>
+                    <p className="text-xs text-gray-600">Health {'>'} 70 zanjir</p>
                   </div>
                 </div>
               )}
