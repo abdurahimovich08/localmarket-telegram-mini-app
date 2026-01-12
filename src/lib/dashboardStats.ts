@@ -1,6 +1,7 @@
 /**
  * Dashboard Statistics API (Overview Block)
  * 
+ * Phase 2: Unified analytics - includes services and products
  * Provides aggregated stats for seller dashboard:
  * - Views, clicks, contacts, orders
  * - Growth percentages
@@ -8,6 +9,7 @@
  */
 
 import { supabase } from './supabase'
+import { getUserUnifiedListings } from './unifiedListingFeedback'
 
 export interface DashboardOverview {
   period: '7d' | '30d'
@@ -45,7 +47,7 @@ export interface DashboardOverview {
 }
 
 /**
- * Get dashboard overview stats for a seller
+ * Get dashboard overview stats for a seller (Phase 2: Unified - services + products)
  */
 export async function getDashboardOverview(
   providerTelegramId: number,
@@ -60,27 +62,32 @@ export async function getDashboardOverview(
     const previousStart = new Date(currentStart)
     previousStart.setDate(previousStart.getDate() - days)
 
-    // Get services for this seller
-    const { data: services, error: servicesError } = await supabase
-      .from('services')
-      .select('service_id')
-      .eq('provider_telegram_id', providerTelegramId)
-      .eq('status', 'active')
-
-    if (servicesError || !services) {
-      console.error('Error fetching services:', servicesError)
-      return null
+    // Get unified listings (Phase 2: services + products)
+    const unifiedListings = await getUserUnifiedListings(providerTelegramId)
+    
+    if (!unifiedListings || unifiedListings.length === 0) {
+      return {
+        period,
+        today: { views: 0, clicks: 0, contacts: 0, orders: 0 },
+        views: { current: 0, previous: 0, growth: 0 },
+        clicks: { current: 0, previous: 0, growth: 0 },
+        contacts: { current: 0, previous: 0, growth: 0 },
+        orders: { current: 0, previous: 0, growth: 0 },
+        conversionRate: 0,
+        services: { total: 0, active: 0 },
+      }
     }
 
-    const serviceIds = services.map(s => s.service_id)
+    // Get all listing IDs (services + products)
+    const allListingIds = unifiedListings.map(l => l.listing_id)
 
     // Get today's stats (for mini-panel)
     const todayStart = new Date(now)
     todayStart.setHours(0, 0, 0, 0)
     const { data: todayInteractions } = await supabase
-      .from('service_interactions')
+      .from('listing_interactions')
       .select('interaction_type')
-      .in('service_id', serviceIds.length > 0 ? serviceIds : [''])
+      .in('listing_id', allListingIds.length > 0 ? allListingIds : [''])
       .gte('created_at', todayStart.toISOString())
       .lte('created_at', now.toISOString())
 
@@ -91,42 +98,28 @@ export async function getDashboardOverview(
       orders: (todayInteractions || []).filter((i: any) => i.interaction_type === 'order').length,
     }
 
-    if (serviceIds.length === 0) {
-      // No services yet
-      return {
-        period,
-        today,
-        views: { current: 0, previous: 0, growth: 0 },
-        clicks: { current: 0, previous: 0, growth: 0 },
-        contacts: { current: 0, previous: 0, growth: 0 },
-        orders: { current: 0, previous: 0, growth: 0 },
-        conversionRate: 0,
-        services: { total: 0, active: 0 },
-      }
-    }
-
-    // Get current period interactions
+    // Get current period interactions (unified)
     const { data: currentInteractions, error: currentError } = await supabase
-      .from('service_interactions')
+      .from('listing_interactions')
       .select('interaction_type')
-      .in('service_id', serviceIds)
+      .in('listing_id', allListingIds)
       .gte('created_at', currentStart.toISOString())
       .lte('created_at', now.toISOString())
 
-    // Get previous period interactions
+    // Get previous period interactions (for growth)
     const { data: previousInteractions, error: previousError } = await supabase
-      .from('service_interactions')
+      .from('listing_interactions')
       .select('interaction_type')
-      .in('service_id', serviceIds)
+      .in('listing_id', allListingIds)
       .gte('created_at', previousStart.toISOString())
       .lt('created_at', currentStart.toISOString())
 
     if (currentError || previousError) {
       console.error('Error fetching interactions:', currentError || previousError)
-      return null
+      // Continue with empty data rather than returning null
     }
 
-    // Aggregate current period
+    // Calculate current period metrics
     const current = {
       views: (currentInteractions || []).filter(i => i.interaction_type === 'view').length,
       clicks: (currentInteractions || []).filter(i => i.interaction_type === 'click').length,
@@ -134,7 +127,7 @@ export async function getDashboardOverview(
       orders: (currentInteractions || []).filter(i => i.interaction_type === 'order').length,
     }
 
-    // Aggregate previous period
+    // Calculate previous period metrics
     const previous = {
       views: (previousInteractions || []).filter(i => i.interaction_type === 'view').length,
       clicks: (previousInteractions || []).filter(i => i.interaction_type === 'click').length,
@@ -147,6 +140,9 @@ export async function getDashboardOverview(
       if (previous === 0) return current > 0 ? 100 : 0
       return ((current - previous) / previous) * 100
     }
+
+    // Count services (for backward compatibility)
+    const servicesCount = unifiedListings.filter(l => l.type === 'service').length
 
     const overview: DashboardOverview = {
       period,
@@ -173,14 +169,58 @@ export async function getDashboardOverview(
       },
       conversionRate: current.views > 0 ? (current.orders / current.views) * 100 : 0,
       services: {
-        total: services.length,
-        active: services.length,
+        total: servicesCount,
+        active: servicesCount,
       },
     }
 
     return overview
   } catch (error) {
     console.error('Error generating dashboard overview:', error)
+    return null
+  }
+}
+
+/**
+ * Get today's stats for mini-panel
+ */
+export async function getTodayStats(providerTelegramId: number): Promise<{
+  views: number
+  clicks: number
+  contacts: number
+  orders: number
+} | null> {
+  try {
+    const unifiedListings = await getUserUnifiedListings(providerTelegramId)
+    if (!unifiedListings || unifiedListings.length === 0) {
+      return { views: 0, clicks: 0, contacts: 0, orders: 0 }
+    }
+
+    const allListingIds = unifiedListings.map(l => l.listing_id)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const now = new Date()
+
+    const { data: interactions, error } = await supabase
+      .from('listing_interactions')
+      .select('interaction_type')
+      .in('listing_id', allListingIds)
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', now.toISOString())
+
+    if (error) {
+      console.error('Error fetching today stats:', error)
+      return null
+    }
+
+    return {
+      views: (interactions || []).filter(i => i.interaction_type === 'view').length,
+      clicks: (interactions || []).filter(i => i.interaction_type === 'click').length,
+      contacts: (interactions || []).filter(i => i.interaction_type === 'contact').length,
+      orders: (interactions || []).filter(i => i.interaction_type === 'order').length,
+    }
+  } catch (error) {
+    console.error('Error getting today stats:', error)
     return null
   }
 }
