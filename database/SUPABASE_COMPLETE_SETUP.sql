@@ -438,3 +438,4 @@ $$ LANGUAGE plpgsql;
 -- 4. Fingerprint column services jadvaliga qo'shildi (cold start abuse prevention)
 -- 5. Barcha funksiyalar va triggerlar yaratildi
 -- 6. Indexes performance uchun optimizatsiya qilindi
+-- 7. Unified listing system: unified_listing_interactions.sql faylini keyingi qadam sifatida run qiling
