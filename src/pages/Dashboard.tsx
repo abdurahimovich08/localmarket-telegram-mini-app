@@ -26,9 +26,12 @@ import {
 } from '@heroicons/react/24/outline'
 import { getDashboardOverview } from '../lib/dashboardStats'
 import { getUserServices } from '../lib/supabase'
+import { getUserUnifiedListings } from '../lib/unifiedListingFeedback'
 import { recordDashboardVisit, getDashboardStreak, getHealthStreak } from '../lib/dashboardHistory'
 import ServiceListWithHealth from '../components/ServiceListWithHealth'
+import UnifiedListingListWithHealth from '../components/UnifiedListingListWithHealth'
 import type { Service } from '../types'
+import type { UnifiedListing } from '../types/unified'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -36,6 +39,7 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<'7d' | '30d'>('7d')
   const [overview, setOverview] = useState<any>(null)
   const [services, setServices] = useState<Service[]>([])
+  const [unifiedListings, setUnifiedListings] = useState<UnifiedListing[]>([]) // Phase 2
   const [streak, setStreak] = useState<any>(null)
   const [healthStreak, setHealthStreak] = useState<number>(0)
   const [loading, setLoading] = useState(true)
@@ -49,19 +53,25 @@ export default function Dashboard() {
         // Record visit (Feature C: Streak tracking)
         await recordDashboardVisit(user.telegram_user_id)
 
-        const [overviewData, servicesData, streakData] = await Promise.all([
+        const [overviewData, servicesData, unifiedListingsData, streakData] = await Promise.all([
           getDashboardOverview(user.telegram_user_id, period),
           getUserServices(user.telegram_user_id),
+          getUserUnifiedListings(user.telegram_user_id), // Phase 2: Unified listings
           getDashboardStreak(user.telegram_user_id),
         ])
 
         setOverview(overviewData)
         setServices(servicesData || [])
+        setUnifiedListings(unifiedListingsData || []) // Phase 2
 
-        // Get health streak for first service (Feature C)
-        if (servicesData && servicesData.length > 0) {
-          const streak = await getHealthStreak(servicesData[0].service_id)
-          setHealthStreak(streak)
+        // Get health streak for first listing (Feature C)
+        if (unifiedListingsData && unifiedListingsData.length > 0) {
+          // TODO: Implement unified health streak
+          // For now, use first service if available
+          if (servicesData && servicesData.length > 0) {
+            const streak = await getHealthStreak(servicesData[0].service_id)
+            setHealthStreak(streak)
+          }
         }
 
         setStreak(streakData)

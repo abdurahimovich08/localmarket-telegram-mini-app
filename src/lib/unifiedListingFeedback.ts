@@ -97,32 +97,47 @@ export async function getUnifiedTagConversionMetrics(
 
 /**
  * Get all listings for a user (unified)
- * Phase 1: Only returns services
- * Phase 2: Will include products
+ * Phase 2: Includes services and products
  * Phase 3: Will include store products
  */
 export async function getUserUnifiedListings(
   userTelegramId: number
 ): Promise<UnifiedListing[]> {
-  // Phase 1: Only services
-  // TODO: Phase 2 - Add products
-  // TODO: Phase 3 - Add store products
-  
   try {
-    const { data: services, error } = await supabase
+    // Get services
+    const { data: services, error: servicesError } = await supabase
       .from('services')
       .select('*')
       .eq('provider_telegram_id', userTelegramId)
       .eq('status', 'active')
 
-    if (error) {
-      console.error('Error fetching user services:', error)
-      return []
+    if (servicesError) {
+      console.error('Error fetching user services:', servicesError)
+    }
+
+    // Get products (listings)
+    const { data: products, error: productsError } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('seller_telegram_id', userTelegramId)
+      .eq('status', 'active')
+
+    if (productsError) {
+      console.error('Error fetching user products:', productsError)
     }
 
     // Convert to unified listings
-    const { serviceToUnifiedListing } = await import('./unifiedListing')
-    return (services || []).map(serviceToUnifiedListing)
+    const { serviceToUnifiedListing, productListingToUnifiedListing } = await import('./unifiedListing')
+    
+    const unifiedServices = (services || []).map(serviceToUnifiedListing)
+    const unifiedProducts = (products || []).map(productListingToUnifiedListing)
+    
+    // Combine and sort by created_at (newest first)
+    const allListings = [...unifiedServices, ...unifiedProducts].sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+    return allListings
   } catch (error) {
     console.error('Error getting user unified listings:', error)
     return []
