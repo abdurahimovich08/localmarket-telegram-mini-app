@@ -26,7 +26,7 @@ Effective tags (high match rate): ${suggestions.effectiveTags.slice(0, 5).join('
     console.warn('Could not fetch tag analytics for AI prompt:', error)
   }
 
-  return `
+  const basePrompt = `
 Sen - men SOQQA ilovasining professional HR va Marketing mutaxassisisan. 
 Vazifang: Foydalanuvchi bilan o'zbek tilida samimiy suhbatlashib, uning xizmatlari haqida ma'lumot olish.
 
@@ -87,16 +87,8 @@ interface ChatMessage {
 }
 
 // Chat history stored in memory (per session)
-let chatHistory: ChatMessage[] = [
-  {
-    role: 'user',
-    parts: [{ text: SYSTEM_PROMPT }],
-  },
-  {
-    role: 'model',
-    parts: [{ text: 'Salom! SOQQA ilovasiga xush kelibsiz! Men sizning xizmatlaringizni yaratishga yordam beraman. Boshlash uchun, qanday xizmat ko\'rsatasiz? (Masalan: dasturlash, dizayn, tushuntirish va h.k.)' }],
-  },
-]
+// Will be initialized with dynamic prompt in startChatSession
+let chatHistory: ChatMessage[] = []
 
 export async function startChatSession() {
   // Reset chat history for new session
