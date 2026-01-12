@@ -105,20 +105,30 @@ export function calculateServiceSearchScore(
     // Continue without conversion boost
   }
 
-  // Priority B: Personalization boost
+  // Priority B: Personalization boost (with A/B testing and echo prevention)
   let personalizationBoost = 0
+  let usePersonalization = true
+
   if (userTelegramId) {
     try {
-      const userPreferences = await getUserTagPreferences(userTelegramId)
-      for (const queryTag of normalizedQueryTags) {
-        const boost = calculatePersonalizationBoost(queryTag, userPreferences)
-        personalizationBoost += boost
+      // A/B test: Should we use personalization?
+      const abTest = await testRankingFormula(service.service_id, userTelegramId, queryTags)
+      usePersonalization = abTest.usePersonalization
 
-        // Also check for related tags
-        const relatedBoost = getRelatedTagsBoost(queryTag, userPreferences)
-        personalizationBoost += relatedBoost
+      if (usePersonalization) {
+        const userPreferences = await getUserTagPreferences(userTelegramId)
+        for (const queryTag of normalizedQueryTags) {
+          const boost = calculatePersonalizationBoost(queryTag, userPreferences)
+          personalizationBoost += boost
+
+          // Also check for related tags
+          const relatedBoost = getRelatedTagsBoost(queryTag, userPreferences)
+          personalizationBoost += relatedBoost
+        }
+        // Cap personalization boost at 50% (echo prevention)
+        personalizationBoost = Math.min(personalizationBoost, totalScore * 0.5)
+        totalScore += personalizationBoost
       }
-      totalScore += personalizationBoost
     } catch (error) {
       console.warn('Error calculating personalization boost:', error)
       // Continue without personalization
