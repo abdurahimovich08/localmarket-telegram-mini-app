@@ -8,6 +8,24 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
+-- 0. CLEANUP OLD POLICIES (MUHIM!)
+-- =====================================================
+
+-- Eski policy'larni tozalash (agar mavjud bo'lsa)
+DROP POLICY IF EXISTS "seller insert interaction" ON service_interactions;
+DROP POLICY IF EXISTS "insert service interactions" ON service_interactions;
+DROP POLICY IF EXISTS "Allow insert service_interactions" ON service_interactions;
+DROP POLICY IF EXISTS "public insert service_interactions" ON service_interactions;
+
+DROP POLICY IF EXISTS "seller insert experiment" ON experiments;
+DROP POLICY IF EXISTS "insert experiments" ON experiments;
+DROP POLICY IF EXISTS "Allow insert experiments" ON experiments;
+
+DROP POLICY IF EXISTS "seller insert dashboard visit" ON dashboard_visits;
+DROP POLICY IF EXISTS "insert dashboard visits" ON dashboard_visits;
+DROP POLICY IF EXISTS "Allow insert dashboard_visits" ON dashboard_visits;
+
+-- =====================================================
 -- 1. SERVICES TABLE (asosiy jadval)
 -- =====================================================
 

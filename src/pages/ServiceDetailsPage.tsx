@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Star, ShieldCheck, ChevronRight, Share2, ArrowLeft } from 'lucide-react'
 import { getService } from '../lib/supabase'
+import { trackServiceInteraction } from '../lib/serviceFeedback'
+import { useUser } from '../contexts/UserContext'
 import type { Service } from '../types'
 
 const ServiceDetailsPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useUser()
   const [service, setService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
   const [showFullDescription, setShowFullDescription] = useState(false)
+  
+  // Get matched tags from URL state (passed from search)
+  const matchedTags = (location.state as any)?.matchedTags || []
+  const searchQuery = (location.state as any)?.searchQuery || null
 
   useEffect(() => {
     const loadService = async () => {
@@ -23,6 +31,30 @@ const ServiceDetailsPage = () => {
         const serviceData = await getService(id)
         if (serviceData) {
           setService(serviceData)
+          
+          // Track view interaction (Feature: Seller Feedback Loop)
+          if (user && serviceData) {
+            try {
+              // Extract tags from service (handle both string[] and ServiceTag[])
+              const serviceTags = serviceData.tags?.map((t: any) => 
+                typeof t === 'string' ? t : t.value
+              ) || []
+              
+              // Use matched tags from search, or fallback to service tags
+              const tagsToTrack = matchedTags.length > 0 ? matchedTags : serviceTags
+              
+              await trackServiceInteraction(
+                serviceData.service_id,
+                user.telegram_user_id,
+                'view',
+                tagsToTrack,
+                searchQuery || undefined
+              )
+            } catch (error) {
+              console.error('Error tracking service view:', error)
+              // Don't fail page load if tracking fails
+            }
+          }
         } else {
           navigate('/')
         }
@@ -37,8 +69,28 @@ const ServiceDetailsPage = () => {
     loadService()
   }, [id, navigate])
 
-  const handleOrder = () => {
-    if (!service?.provider?.username) return
+  const handleOrder = async () => {
+    if (!service?.provider?.username || !user || !service) return
+    
+    // Track contact interaction
+    try {
+      const serviceTags = service.tags?.map((t: any) => 
+        typeof t === 'string' ? t : t.value
+      ) || []
+      const tagsToTrack = matchedTags.length > 0 ? matchedTags : serviceTags
+      
+      await trackServiceInteraction(
+        service.service_id,
+        user.telegram_user_id,
+        'contact',
+        tagsToTrack,
+        searchQuery || undefined
+      )
+    } catch (error) {
+      console.error('Error tracking contact:', error)
+      // Continue even if tracking fails
+    }
+    
     // Open Telegram chat with provider
     const message = `Salom! Men sizning "${service.title}" xizmatingiz bilan qiziqaman. Narxi: ${service.price || 'Kelishiladi'}. Qanday murojaat qilishim mumkin?`
     window.open(`https://t.me/${service.provider.username}?text=${encodeURIComponent(message)}`, '_blank')
@@ -217,7 +269,29 @@ const ServiceDetailsPage = () => {
       {/* 8. Sticky Bottom Bar (Telegram style) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3 pb-8">
         <button 
-          onClick={() => service.provider?.username && window.open(`https://t.me/${service.provider.username}`, '_blank')}
+          onClick={async () => {
+            if (!service?.provider?.username || !user || !service) return
+            
+            // Track contact interaction (click on Chat button)
+            try {
+              const serviceTags = service.tags?.map((t: any) => 
+                typeof t === 'string' ? t : t.value
+              ) || []
+              const tagsToTrack = matchedTags.length > 0 ? matchedTags : serviceTags
+              
+              await trackServiceInteraction(
+                service.service_id,
+                user.telegram_user_id,
+                'contact',
+                tagsToTrack,
+                searchQuery || undefined
+              )
+            } catch (error) {
+              console.error('Error tracking contact:', error)
+            }
+            
+            window.open(`https://t.me/${service.provider.username}`, '_blank')
+          }}
           className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50"
         >
           Chat
