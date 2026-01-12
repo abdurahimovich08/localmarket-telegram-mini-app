@@ -853,6 +853,7 @@ export const getPromotionListings = async (promotionId: string): Promise<Listing
 }
 
 // Service operations (Service type is imported from types/index.ts)
+import { validateAndNormalizeTags } from './tagUtils'
 
 export const createService = async (serviceData: {
   title: string
@@ -866,6 +867,9 @@ export const createService = async (serviceData: {
   image_url?: string | null // Deprecated, use logo_url instead
   provider_telegram_id: number
 }): Promise<string | null> => {
+  // Validate and normalize tags before saving (backend validation)
+  const validatedTags = validateAndNormalizeTags(serviceData.tags)
+  
   const { data, error } = await supabase
     .from('services')
     .insert({
@@ -875,7 +879,7 @@ export const createService = async (serviceData: {
       category: serviceData.category,
       price_type: serviceData.priceType,
       price: serviceData.price,
-      tags: serviceData.tags,
+      tags: validatedTags, // Use validated tags
       logo_url: serviceData.logo_url || serviceData.image_url || null,
       portfolio_images: serviceData.portfolio_images || [],
       image_url: serviceData.logo_url || serviceData.image_url || null, // Backward compatibility
@@ -925,9 +929,15 @@ export const getUserServices = async (providerTelegramId: number): Promise<Servi
 }
 
 export const updateService = async (serviceId: string, updates: Partial<Service>): Promise<Service | null> => {
+  // Validate and normalize tags if they're being updated (backend validation)
+  const validatedUpdates = { ...updates }
+  if (updates.tags && Array.isArray(updates.tags)) {
+    validatedUpdates.tags = validateAndNormalizeTags(updates.tags)
+  }
+  
   const { data, error } = await supabase
     .from('services')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...validatedUpdates, updated_at: new Date().toISOString() })
     .eq('service_id', serviceId)
     .select('*, provider:users!provider_telegram_id(*)')
     .single()

@@ -101,7 +101,8 @@ FAQAT JSON formatda javob qaytar:
           if (tagMatches) {
             const tagsStr = tagMatches[1]
             const extractedTags = tagsStr.match(/"([^"]+)"/g)?.map(t => t.replace(/"/g, '')) || []
-            const fixedTags = validateAndNormalizeTags(extractedTags)
+            // Use sanitizeAITags for strict validation of AI output
+            const fixedTags = sanitizeAITags(extractedTags)
             setFormData({ ...formData, tags: fixedTags })
           } else {
             throw new Error('Could not extract tags from AI response')
