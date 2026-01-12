@@ -177,8 +177,8 @@ export default function Profile() {
           )
         )}
 
-        {/* Dashboard Button (Own Profile Only) - Above SOQQA button */}
-        {isOwnProfile && (
+        {/* Dashboard Button (Own Profile Only + Has Listings/Stores/Services) */}
+        {isOwnProfile && (listings.length > 0 || stores.length > 0 || services.length > 0) && (
           <button
             onClick={() => navigate('/dashboard')}
             className="mt-4 w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center gap-2"
