@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../contexts/UserContext'
 import { uploadImages, uploadToSupabase } from '../../lib/imageUpload'
 import { createService, updateService } from '../../lib/supabase'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import type { ServiceData } from '../../services/GeminiService'
+import { sendMessage, startChatSession } from '../../services/GeminiService'
 import LogoUploader from '../LogoUploader'
 import PortfolioUploader from '../PortfolioUploader'
 import type { Service } from '../../types'
@@ -31,6 +32,7 @@ export default function ServiceReviewForm({
   const [portfolio, setPortfolio] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isFixingTags, setIsFixingTags] = useState(false)
 
   // Load existing service data in edit mode
   useEffect(() => {
@@ -184,13 +186,15 @@ FAQAT JSON formatda javob qaytar:
 
       if (editMode && serviceId) {
         // Update existing service
+        // Ensure tags are validated before saving
+        const validatedTags = validateAndNormalizeTags(formData.tags)
         const updatedService = await updateService(serviceId, {
           title: formData.title.trim(),
           description: formData.description.trim(),
           category: formData.category,
           price_type: formData.priceType,
           price: formData.price.trim(),
-          tags: formData.tags,
+          tags: validatedTags,
           logo_url: logoUrl,
           portfolio_images: portfolioUrls,
           image_url: logoUrl, // Backward compatibility
@@ -203,8 +207,11 @@ FAQAT JSON formatda javob qaytar:
         }
       } else {
         // Create new service
+        // Ensure tags are validated before saving
+        const validatedTags = validateAndNormalizeTags(formData.tags)
         const newServiceId = await createService({
           ...formData,
+          tags: validatedTags,
           logo_url: logoUrl,
           portfolio_images: portfolioUrls,
           provider_telegram_id: user.telegram_user_id,
