@@ -90,7 +90,8 @@ FAQAT JSON formatda javob qaytar:
         try {
           const parsed = JSON.parse(jsonMatch[0])
           if (parsed.tags && Array.isArray(parsed.tags)) {
-            const fixedTags = validateAndNormalizeTags(parsed.tags)
+            // Use sanitizeAITags for strict validation of AI output
+            const fixedTags = sanitizeAITags(parsed.tags)
             setFormData({ ...formData, tags: fixedTags })
           } else {
             throw new Error('Invalid response format')
