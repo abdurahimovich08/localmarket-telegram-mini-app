@@ -59,7 +59,8 @@ export default function UnifiedListingListWithHealth({ listings, navigate }: Uni
       case 'product':
         return `/listing/${listing.listing_id}`
       case 'store_product':
-        return `/store-product/${listing.listing_id}` // Adjust based on your routing
+        // Store products are also displayed on /listing/{id} route (same as products)
+        return `/listing/${listing.listing_id}`
       default:
         return '/'
     }

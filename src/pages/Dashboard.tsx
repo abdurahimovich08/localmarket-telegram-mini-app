@@ -53,23 +53,21 @@ export default function Dashboard() {
         // Record visit (Feature C: Streak tracking)
         await recordDashboardVisit(user.telegram_user_id)
 
-        const [overviewData, servicesData, unifiedListingsData, streakData] = await Promise.all([
+        const [overviewData, unifiedListingsData, streakData] = await Promise.all([
           getDashboardOverview(user.telegram_user_id, period),
-          getUserServices(user.telegram_user_id),
-          getUserUnifiedListings(user.telegram_user_id), // Phase 2: Unified listings
+          getUserUnifiedListings(user.telegram_user_id),
           getDashboardStreak(user.telegram_user_id),
         ])
 
         setOverview(overviewData)
-        setServices(servicesData || [])
-        setUnifiedListings(unifiedListingsData || []) // Phase 2
+        setUnifiedListings(unifiedListingsData || [])
 
         // Get health streak for first listing (Feature C)
         if (unifiedListingsData && unifiedListingsData.length > 0) {
-          // TODO: Implement unified health streak
-          // For now, use first service if available
-          if (servicesData && servicesData.length > 0) {
-            const streak = await getHealthStreak(servicesData[0].service_id)
+          // Use first service for health streak (backward compatibility)
+          const firstService = unifiedListingsData.find(l => l.type === 'service')
+          if (firstService) {
+            const streak = await getHealthStreak(firstService.listing_id)
             setHealthStreak(streak)
           }
         }
@@ -292,30 +290,9 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Services List */}
-        {services.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Xizmatlarim</h2>
-            <div className="space-y-3">
-              {services.map((service) => (
-                <button
-                  key={service.service_id}
-                  onClick={() => navigate(`/dashboard/services/${service.service_id}`)}
-                  className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{service.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {service.view_count} ko'rish • {service.category}
-                      </p>
-                    </div>
-                    <ArrowTrendingUpIcon className="w-5 h-5 text-gray-400" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Unified Listings List (Services + Products + Store Products) */}
+        {unifiedListings.length > 0 && (
+          <UnifiedListingListWithHealth listings={unifiedListings} navigate={navigate} />
         )}
       </div>
 

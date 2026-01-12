@@ -57,8 +57,19 @@ export default function ListingDetail() {
   const handleToggleFavorite = async () => {
     if (!user || !listing) return
     
-    // Track interaction
+    // Track interaction with unified system
     if (user.telegram_user_id) {
+      const listingType: 'product' | 'store_product' = listing.store_id ? 'store_product' : 'product'
+      await trackListingInteraction(
+        listing.listing_id,
+        listingType,
+        user.telegram_user_id,
+        'click', // Favorite is treated as click
+        [],
+        undefined
+      )
+      
+      // Also track with legacy system
       trackUserInteraction(user.telegram_user_id, listing.listing_id, 'favorite')
     }
 
