@@ -7,6 +7,7 @@ import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
 import { StarIcon, PlusIcon, BuildingStorefrontIcon, EyeIcon } from '@heroicons/react/24/solid'
+import { ChartBarIcon, PencilIcon } from '@heroicons/react/24/outline'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()
