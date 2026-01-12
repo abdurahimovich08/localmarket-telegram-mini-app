@@ -52,6 +52,83 @@ export default function ServiceReviewForm({
     return new File([u8arr], filename, { type: mime || 'image/jpeg' })
   }
 
+  // Validate and normalize tags: lowercase, remove duplicates, limit to 7
+  const validateAndNormalizeTags = (tags: string[]): string[] => {
+    // Convert to lowercase, remove non-Latin characters (keep only a-z, 0-9, spaces, hyphens)
+    const normalized = tags
+      .map(tag => tag.toLowerCase().trim())
+      .map(tag => tag.replace(/[^a-z0-9\s-]/g, '')) // Remove non-Latin characters
+      .map(tag => tag.replace(/\s+/g, '-')) // Replace spaces with hyphens
+      .filter(tag => tag.length > 0 && tag.length <= 20) // Min 1 char, max 20 chars
+    
+    // Remove duplicates
+    const unique = Array.from(new Set(normalized))
+    
+    // Limit to 7 tags
+    return unique.slice(0, 7)
+  }
+
+  // AI tag correction function
+  const handleFixTags = async () => {
+    if (formData.tags.length === 0 || isFixingTags) return
+
+    setIsFixingTags(true)
+    setError(null)
+
+    try {
+      // Create a prompt for AI to fix tags
+      const prompt = `Quyidagi teglarni to'g'irlab ber. Qoidalar:
+1. FAQAT lotin alifbosi (a-z), kichik harflar
+2. 3-7 ta teg (eng muhimlarini tanla)
+3. Bir xil teg ikki marta bo'lmasin
+4. Har bir teg bitta so'z yoki qisqa ibora (2-3 so'z)
+
+Teglar: ${formData.tags.join(', ')}
+
+FAQAT JSON formatda javob qaytar:
+{
+  "tags": ["tag1", "tag2", "tag3"]
+}`
+
+      const chatSession = await startChatSession()
+      const response = await sendMessage(chatSession, prompt)
+
+      // Try to parse JSON from response
+      const text = response.message || ''
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0])
+          if (parsed.tags && Array.isArray(parsed.tags)) {
+            const fixedTags = validateAndNormalizeTags(parsed.tags)
+            setFormData({ ...formData, tags: fixedTags })
+          } else {
+            throw new Error('Invalid response format')
+          }
+        } catch (e) {
+          // If JSON parsing fails, try to extract tags from text
+          const tagMatches = text.match(/"tags":\s*\[(.*?)\]/s)
+          if (tagMatches) {
+            const tagsStr = tagMatches[1]
+            const extractedTags = tagsStr.match(/"([^"]+)"/g)?.map(t => t.replace(/"/g, '')) || []
+            const fixedTags = validateAndNormalizeTags(extractedTags)
+            setFormData({ ...formData, tags: fixedTags })
+          } else {
+            throw new Error('Could not extract tags from AI response')
+          }
+        }
+      } else {
+        throw new Error('AI did not return valid JSON')
+      }
+    } catch (error) {
+      console.error('Error fixing tags:', error)
+      setError('Teglarni to\'g\'irlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+    } finally {
+      setIsFixingTags(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -275,34 +352,66 @@ export default function ServiceReviewForm({
             </div>
           </div>
 
-          {/* Tags */}
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Teglar (vergul bilan ajrating)
-            </label>
-            <input
-              type="text"
-              value={formData.tags.join(', ')}
-              onChange={(e) => {
-                const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-                setFormData({ ...formData, tags })
-              }}
-              placeholder="Masalan: dasturlash, web, frontend"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-            {formData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+                  {/* Tags */}
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Teglar (vergul bilan ajrating)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleFixTags}
+                        disabled={isFixingTags || formData.tags.length === 0}
+                        className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-primary hover:text-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <SparklesIcon className="w-4 h-4" />
+                        {isFixingTags ? 'To\'g\'irlanmoqda...' : '✨ Teglarni to\'g\'irlash'}
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.tags.join(', ')}
+                      onChange={(e) => {
+                        const inputValue = e.target.value
+                        const tags = inputValue.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                        // Apply validation: lowercase, remove duplicates, limit to 7
+                        const validatedTags = validateAndNormalizeTags(tags)
+                        setFormData({ ...formData, tags: validatedTags })
+                      }}
+                      placeholder="Masalan: dasturlash, web, frontend"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-gray-500">
+                        {formData.tags.length}/7 ta teg (lotin alifbosi, kichik harflar)
+                      </p>
+                      {formData.tags.length > 7 && (
+                        <p className="text-xs text-red-600">Maksimum 7 ta teg!</p>
+                      )}
+                    </div>
+                    {formData.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {formData.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm flex items-center gap-1"
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newTags = formData.tags.filter((_, i) => i !== index)
+                                setFormData({ ...formData, tags: newTags })
+                              }}
+                              className="ml-1 hover:text-red-600 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
           {/* Submit Button */}
           <div className="pb-4">

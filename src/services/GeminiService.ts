@@ -20,9 +20,20 @@ QOIDALAR:
     "category": "Kategoriya",
     "priceType": "fixed" | "hourly" | "negotiable",
     "price": "Narx (string)",
-    "tags": ["tag1", "tag2"]
+    "tags": ["tag1", "tag2", "tag3"]
   }
 }
+
+⚠️ TEGLAR UCHUN QATTIQ QOIDALAR (MUHIM):
+- Teglar soni: 3-7 ta (kamida 3, ko'pi bilan 7)
+- Format: FAQAT lotin alifbosi (a-z), kichik harflar
+- Dublikat: Bir xil teg ikki marta yozilmaydi
+- Masalan: ["logo", "design", "branding", "minimalist"] ✅
+- XATO: ["Логотип", "DESIGN", "telegram bot arzon", "Puthon"] ❌
+- To'g'ri: ["logo", "design", "telegram", "python"] ✅
+- Har bir teg bitta so'z yoki qisqa ibora (2-3 so'z, lekin lotin alifbosi)
+- Kirill, arab, yoki boshqa alifbolar QAT'IY TAVSIYA ETILMAYDI
+- Katta harflar QAT'IY TAVSIYA ETILMAYDI (barchasi kichik)
 `
 
 export interface ServiceData {
