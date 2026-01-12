@@ -8,6 +8,18 @@
  */
 
 // ============================================
+// TAG TYPES
+// ============================================
+
+export type TagSource = 'ai' | 'user' | 'system'
+
+export interface ServiceTag {
+  value: string
+  weight: number // 0.1 - 1.0 (higher = more important for search/ranking)
+  source: TagSource
+}
+
+// ============================================
 // TAG RULES (Single Source of Truth)
 // ============================================
 
@@ -24,10 +36,17 @@ export const TAG_RULES = {
 // FALLBACK TAGS (When AI returns 0 or invalid tags)
 // ============================================
 
-export const FALLBACK_TAGS = [
+export const FALLBACK_TAGS: ServiceTag[] = [
+  { value: 'service', weight: 0.1, source: 'system' },
+  { value: 'local', weight: 0.2, source: 'system' },
+  { value: 'professional', weight: 0.3, source: 'system' },
+] as const
+
+// Generic tags that should be disabled for user input (only used as fallback)
+export const DISABLED_GENERIC_TAGS = [
   'service',
-  'local',
-  'professional',
+  'business',
+  'general',
 ] as const
 
 // ============================================
@@ -120,7 +139,51 @@ export function validateTag(tag: string): boolean {
 }
 
 /**
- * Validate and normalize an array of tags
+ * Calculate tag weight based on specificity and intent
+ * More specific tags get higher weight
+ */
+export function calculateTagWeight(tag: string): number {
+  const normalized = normalizeTag(tag)
+  
+  // Check if it's a generic/fallback tag (low weight)
+  if (DISABLED_GENERIC_TAGS.includes(normalized as any)) {
+    return 0.1
+  }
+  
+  // Intent-based tags (hyphenated, specific) get higher weight
+  if (normalized.includes('-')) {
+    // More specific = higher weight
+    const parts = normalized.split('-')
+    if (parts.length >= 2) {
+      return Math.min(0.9, 0.5 + (parts.length * 0.1))
+    }
+    return 0.7
+  }
+  
+  // Single word tags (medium weight)
+  return 0.5
+}
+
+/**
+ * Convert string tags to ServiceTag objects with weights
+ */
+export function enrichTagsWithWeights(tags: string[], source: TagSource = 'user'): ServiceTag[] {
+  if (!Array.isArray(tags)) return FALLBACK_TAGS
+  
+  return tags
+    .map(tag => normalizeTag(tag))
+    .filter(tag => validateTag(tag))
+    .map(tag => ({
+      value: tag,
+      weight: calculateTagWeight(tag),
+      source,
+    }))
+    .sort((a, b) => b.weight - a.weight) // Sort by weight (highest first)
+    .slice(0, TAG_RULES.MAX)
+}
+
+/**
+ * Validate and normalize an array of tags (returns string[] for backward compatibility)
  * - Normalizes each tag
  * - Removes duplicates
  * - Filters invalid tags
@@ -128,7 +191,7 @@ export function validateTag(tag: string): boolean {
  * - Adds fallback tags if result is empty
  */
 export function validateAndNormalizeTags(tags: string[]): string[] {
-  if (!Array.isArray(tags)) return [...FALLBACK_TAGS]
+  if (!Array.isArray(tags)) return FALLBACK_TAGS.map(t => t.value)
   
   // Normalize and validate
   const normalized = tags
@@ -143,12 +206,12 @@ export function validateAndNormalizeTags(tags: string[]): string[] {
   
   // If no valid tags, use fallback
   if (limited.length === 0) {
-    return [...FALLBACK_TAGS]
+    return FALLBACK_TAGS.map(t => t.value)
   }
   
   // If less than MIN (for AI generation), add fallback tags (but don't exceed MAX)
   if (limited.length < TAG_RULES.MIN) {
-    const fallbackToAdd = FALLBACK_TAGS.slice(0, TAG_RULES.MAX - limited.length)
+    const fallbackToAdd = FALLBACK_TAGS.slice(0, TAG_RULES.MAX - limited.length).map(t => t.value)
     return [...limited, ...fallbackToAdd].slice(0, TAG_RULES.MAX)
   }
   
@@ -160,7 +223,7 @@ export function validateAndNormalizeTags(tags: string[]): string[] {
  * This is called after AI returns tags to ensure they meet all requirements
  */
 export function sanitizeAITags(aiTags: string[]): string[] {
-  if (!Array.isArray(aiTags)) return [...FALLBACK_TAGS]
+  if (!Array.isArray(aiTags)) return FALLBACK_TAGS.map(t => t.value)
   
   // First pass: normalize and validate
   let sanitized = validateAndNormalizeTags(aiTags)
@@ -170,7 +233,7 @@ export function sanitizeAITags(aiTags: string[]): string[] {
   
   // Third pass: ensure minimum count
   if (sanitized.length < TAG_RULES.MIN) {
-    const fallbackToAdd = FALLBACK_TAGS.slice(0, TAG_RULES.MIN - sanitized.length)
+    const fallbackToAdd = FALLBACK_TAGS.slice(0, TAG_RULES.MIN - sanitized.length).map(t => t.value)
     sanitized = [...sanitized, ...fallbackToAdd].slice(0, TAG_RULES.MAX)
   }
   

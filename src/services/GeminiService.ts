@@ -1,7 +1,32 @@
 // Secure Gemini Service - Uses Vercel API route instead of direct API calls
 import { TAG_RULES } from '../lib/tagUtils'
+import { getTagSuggestionsForAI } from '../lib/tagAnalytics'
 
-const SYSTEM_PROMPT = `
+// Dynamic system prompt with tag suggestions
+async function getSystemPrompt(): Promise<string> {
+  // Get tag analytics (non-blocking, with fallback)
+  let tagSuggestions = ''
+  try {
+    const suggestions = await getTagSuggestionsForAI()
+    
+    if (suggestions.topTags.length > 0 || suggestions.trendingTags.length > 0) {
+      tagSuggestions = `
+
+📊 PLATFORM TAG STATISTICS (AI Self-Improvement):
+Top performing tags this week: ${suggestions.topTags.slice(0, 5).join(', ')}
+Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
+Effective tags (high match rate): ${suggestions.effectiveTags.slice(0, 5).join(', ')}
+
+⚠️ AVOID generic tags (low match rate): ${suggestions.avoidTags.slice(0, 3).join(', ')}
+💡 TIP: Use specific, intent-based tags like the top performers above.
+`
+    }
+  } catch (error) {
+    // If analytics fetch fails, continue without suggestions
+    console.warn('Could not fetch tag analytics for AI prompt:', error)
+  }
+
+  return `
 Sen - men SOQQA ilovasining professional HR va Marketing mutaxassisisan. 
 Vazifang: Foydalanuvchi bilan o'zbek tilida samimiy suhbatlashib, uning xizmatlari haqida ma'lumot olish.
 
@@ -95,6 +120,14 @@ export async function sendMessage(chat: any, message: string): Promise<ChatRespo
       role: 'user',
       parts: [{ text: message }],
     })
+
+    // Get updated system prompt (in case tag analytics changed)
+    const systemPrompt = await getSystemPrompt()
+    
+    // Update first message in history with latest system prompt
+    if (chatHistory.length > 0 && chatHistory[0].role === 'user') {
+      chatHistory[0].parts[0].text = systemPrompt
+    }
 
     // Call our secure API route
     const response = await fetch('/api/gemini', {

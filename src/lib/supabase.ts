@@ -855,6 +855,28 @@ export const getPromotionListings = async (promotionId: string): Promise<Listing
 // Service operations (Service type is imported from types/index.ts)
 import { validateAndNormalizeTags } from './tagUtils'
 
+/**
+ * Update tag usage statistics when a service is created/updated
+ */
+async function updateTagUsageStats(tags: string[]): Promise<void> {
+  if (!tags || tags.length === 0) return
+
+  try {
+    // Call the database function to update tag usage
+    const { error } = await supabase.rpc('update_tag_usage', {
+      tags_array: tags,
+    })
+
+    if (error) {
+      console.error('Error updating tag usage stats:', error)
+      // Don't throw - this is non-critical
+    }
+  } catch (error) {
+    console.error('Error calling update_tag_usage function:', error)
+    // Don't throw - this is non-critical
+  }
+}
+
 export const createService = async (serviceData: {
   title: string
   description: string
@@ -892,6 +914,11 @@ export const createService = async (serviceData: {
     console.error('Error creating service:', error)
     throw new Error(`Failed to create service: ${error.message}`)
   }
+
+  // Update tag usage statistics (non-blocking)
+  updateTagUsageStats(validatedTags).catch(err => 
+    console.error('Failed to update tag usage stats:', err)
+  )
 
   return data?.service_id || null
 }
@@ -945,6 +972,13 @@ export const updateService = async (serviceId: string, updates: Partial<Service>
   if (error) {
     console.error('Error updating service:', error)
     return null
+  }
+
+  // Update tag usage statistics if tags were updated (non-blocking)
+  if (validatedUpdates.tags && Array.isArray(validatedUpdates.tags)) {
+    updateTagUsageStats(validatedUpdates.tags).catch(err => 
+      console.error('Failed to update tag usage stats:', err)
+    )
   }
 
   return data as Service

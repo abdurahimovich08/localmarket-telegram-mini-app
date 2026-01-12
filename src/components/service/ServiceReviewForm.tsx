@@ -34,6 +34,7 @@ export default function ServiceReviewForm({
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isFixingTags, setIsFixingTags] = useState(false)
+  const [tagChangePreview, setTagChangePreview] = useState<{ before: string[]; after: string[] } | null>(null)
 
   // Load existing service data in edit mode
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function ServiceReviewForm({
 
     setIsFixingTags(true)
     setError(null)
+    const beforeTags = [...formData.tags]
 
     try {
       // Create a prompt for AI to fix tags
@@ -92,6 +94,12 @@ FAQAT JSON formatda javob qaytar:
           if (parsed.tags && Array.isArray(parsed.tags)) {
             // Use sanitizeAITags for strict validation of AI output
             const fixedTags = sanitizeAITags(parsed.tags)
+            
+            // Show preview if tags changed
+            if (JSON.stringify(beforeTags.sort()) !== JSON.stringify(fixedTags.sort())) {
+              setTagChangePreview({ before: beforeTags, after: fixedTags })
+            }
+            
             setFormData({ ...formData, tags: fixedTags })
           } else {
             throw new Error('Invalid response format')
@@ -104,6 +112,12 @@ FAQAT JSON formatda javob qaytar:
             const extractedTags = tagsStr.match(/"([^"]+)"/g)?.map(t => t.replace(/"/g, '')) || []
             // Use sanitizeAITags for strict validation of AI output
             const fixedTags = sanitizeAITags(extractedTags)
+            
+            // Show preview if tags changed
+            if (JSON.stringify(beforeTags.sort()) !== JSON.stringify(fixedTags.sort())) {
+              setTagChangePreview({ before: beforeTags, after: fixedTags })
+            }
+            
             setFormData({ ...formData, tags: fixedTags })
           } else {
             throw new Error('Could not extract tags from AI response')
@@ -370,8 +384,12 @@ FAQAT JSON formatda javob qaytar:
                       onChange={(e) => {
                         const inputValue = e.target.value
                         const tags = inputValue.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                        // Filter out disabled generic tags
+                        const filteredTags = tags.filter(tag => 
+                          !DISABLED_GENERIC_TAGS.includes(tag.toLowerCase() as any)
+                        )
                         // Apply validation: lowercase, remove duplicates, limit to 7
-                        const validatedTags = validateAndNormalizeTags(tags)
+                        const validatedTags = validateAndNormalizeTags(filteredTags)
                         setFormData({ ...formData, tags: validatedTags })
                       }}
                       placeholder="Masalan: dasturlash, web, frontend"
@@ -385,6 +403,42 @@ FAQAT JSON formatda javob qaytar:
                         <p className="text-xs text-red-600">Maksimum {TAG_RULES.MAX} ta teg!</p>
                       )}
                     </div>
+                    {/* Tag Change Preview */}
+                    {tagChangePreview && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs font-medium text-blue-900 mb-2">Teglar o'zgardi:</p>
+                        <div className="flex flex-wrap gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-600 mb-1">Oldin:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {tagChangePreview.before.map((tag, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs line-through">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-600 mb-1">Keyin:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {tagChangePreview.after.map((tag, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTagChangePreview(null)}
+                          className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          Yopish
+                        </button>
+                      </div>
+                    )}
+
                     {formData.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3">
                         {formData.tags.map((tag, index) => (
@@ -398,6 +452,7 @@ FAQAT JSON formatda javob qaytar:
                               onClick={() => {
                                 const newTags = formData.tags.filter((_, i) => i !== index)
                                 setFormData({ ...formData, tags: newTags })
+                                setTagChangePreview(null) // Clear preview when manually removing tags
                               }}
                               className="ml-1 hover:text-red-600 transition-colors"
                             >
