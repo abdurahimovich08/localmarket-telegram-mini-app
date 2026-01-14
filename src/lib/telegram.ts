@@ -187,6 +187,7 @@ export const shareListing = (listingId: string, title: string, price?: number) =
 }
 
 // Request location with caching (5 minutes)
+// First tries Telegram WebApp location API, then falls back to browser geolocation
 export const requestLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
   return new Promise((resolve) => {
     // Check cache first (5 minutes old location is still valid)
@@ -206,38 +207,66 @@ export const requestLocation = (): Promise<{ latitude: number; longitude: number
       }
     }
 
-    // Use browser geolocation API (LocationManager is not supported in version 6.0)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
+    // Try Telegram WebApp location API first
+    const webApp = initTelegram()
+    if (webApp && (webApp as any).requestLocation) {
+      try {
+        (webApp as any).requestLocation((location: { latitude: number; longitude: number }) => {
+          if (location && location.latitude && location.longitude) {
+            // Cache location for 5 minutes
+            localStorage.setItem('localmarket_user_location', JSON.stringify({
+              location,
+              timestamp: Date.now()
+            }))
+            resolve(location)
+          } else {
+            // Fallback to browser geolocation
+            requestBrowserLocation(resolve)
           }
-          
-          // Cache location for 5 minutes
-          localStorage.setItem('localmarket_user_location', JSON.stringify({
-            location,
-            timestamp: Date.now()
-          }))
-          
-          resolve(location)
-        },
-        (error) => {
-          console.warn('Location access denied or unavailable:', error.message)
-          resolve(null)
-        },
-        {
-          enableHighAccuracy: false, // Use less battery
-          timeout: 10000, // 10 seconds timeout
-          maximumAge: 5 * 60 * 1000 // Accept location up to 5 minutes old
-        }
-      )
-    } else {
-      console.warn('Geolocation is not supported by this browser')
-      resolve(null)
+        })
+        return
+      } catch (e) {
+        console.warn('Telegram location API not available, falling back to browser geolocation')
+      }
     }
+
+    // Fallback to browser geolocation API
+    requestBrowserLocation(resolve)
   })
+}
+
+// Browser geolocation fallback
+function requestBrowserLocation(resolve: (value: { latitude: number; longitude: number } | null) => void) {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }
+        
+        // Cache location for 5 minutes
+        localStorage.setItem('localmarket_user_location', JSON.stringify({
+          location,
+          timestamp: Date.now()
+        }))
+        
+        resolve(location)
+      },
+      (error) => {
+        console.warn('Location access denied or unavailable:', error.message)
+        resolve(null)
+      },
+      {
+        enableHighAccuracy: false, // Use less battery
+        timeout: 10000, // 10 seconds timeout
+        maximumAge: 5 * 60 * 1000 // Accept location up to 5 minutes old
+      }
+    )
+  } else {
+    console.warn('Geolocation is not supported by this browser')
+    resolve(null)
+  }
 }
 
 // Calculate distance between two coordinates (Haversine formula)

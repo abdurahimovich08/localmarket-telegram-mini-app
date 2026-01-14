@@ -25,12 +25,14 @@ import {
   ChatBubbleLeftIcon,
   ArrowUpTrayIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ShareIcon
 } from '@heroicons/react/24/outline'
 import { 
   BellIcon as BellIconSolid,
   HeartIcon as HeartIconSolid
 } from '@heroicons/react/24/solid'
+import LocationDisplay from '../components/LocationDisplay'
 
 type TabType = 'listings' | 'promotions' | 'posts'
 type SortType = 'newest' | 'cheapest' | 'popular'
@@ -238,14 +240,49 @@ export default function StoreDetail() {
     ? sortedListings.filter(l => l.category === selectedCategory)
     : sortedListings
 
+  const handleShare = () => {
+    const webApp = (window as any).Telegram?.WebApp
+    if (webApp) {
+      const shareText = `🏪 ${store.name}\n\n${store.description || 'Do\'konni ko\'ring'}\n\n${window.location.origin}/store/${store.store_id}`
+      webApp.sendData(JSON.stringify({
+        type: 'share',
+        text: shareText
+      }))
+    } else {
+      // Fallback: copy to clipboard
+      const url = `${window.location.origin}/store/${store.store_id}`
+      navigator.clipboard.writeText(url)
+      alert('Link nusxalandi!')
+    }
+  }
+
   return (
     <div className="min-h-screen gradient-purple-blue pb-24">
-      {/* Header - Neumorphic */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/20 border-b border-white/10">
-        <div className="flex items-center px-4 py-3">
+      {/* Sticky Header - Do'kon nomi va Share tugmasi */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/90 border-b border-white/10 shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
           <BackButton />
-          <h1 className="flex-1 text-center font-bold text-white text-lg truncate">{store.name}</h1>
-          <div className="w-10"></div>
+          <h1 className="flex-1 text-center font-bold text-white text-lg truncate px-2">
+            {store.name}
+          </h1>
+          <button
+            onClick={handleShare}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
+            title="Ulashish"
+          >
+            <ShareIcon className="w-6 h-6 text-white" />
+          </button>
+        </div>
+        
+        {/* Location Display - Sticky header ostida */}
+        <div className="px-4 pb-3">
+          <LocationDisplay 
+            onLocationChange={(location) => {
+              // Location o'zgarganda kerakli amallar
+              console.log('Location updated:', location)
+            }}
+            className="bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm"
+          />
         </div>
       </header>
 
