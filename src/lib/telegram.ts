@@ -266,3 +266,34 @@ export const formatDistance = (miles: number): string => {
   if (miles < 1) return `${miles.toFixed(1)} mi`
   return `${Math.round(miles)} mi`
 }
+
+// Get bot username from environment or try to extract from URL
+export const getBotUsername = (): string => {
+  // First, try environment variable
+  const envBotUsername = import.meta.env.VITE_BOT_USERNAME
+  if (envBotUsername) {
+    // Remove @ if present
+    return envBotUsername.replace('@', '')
+  }
+
+  // Try to extract from current URL if in Telegram
+  if (typeof window !== 'undefined') {
+    const url = window.location.href
+    // Telegram Mini App URLs can contain bot username
+    // Try to extract from referrer or other sources
+    const referrer = document.referrer
+    if (referrer) {
+      const match = referrer.match(/t\.me\/([^\/\?]+)/)
+      if (match && match[1]) {
+        const potentialBot = match[1]
+        // Check if it looks like a bot username (ends with 'bot' or 'BOT')
+        if (potentialBot.toLowerCase().endsWith('bot')) {
+          return potentialBot
+        }
+      }
+    }
+  }
+
+  // Default fallback - your bot username
+  return 'UZCHAT24BOT'
+}

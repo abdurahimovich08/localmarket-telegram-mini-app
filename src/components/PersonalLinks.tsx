@@ -24,7 +24,7 @@ interface PersonalLinksProps {
   botUsername?: string
 }
 
-export default function PersonalLinks({ stores, services, hasListings, botUsername = 'your_bot' }: PersonalLinksProps) {
+export default function PersonalLinks({ stores, services, hasListings, botUsername = 'UZCHAT24BOT' }: PersonalLinksProps) {
   const navigate = useNavigate()
   const { user } = useUser()
   const { setAppMode } = useAppMode()

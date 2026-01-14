@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getUser, getListings, getReviews, getUserStores, getUserStore, getUserServices } from '../lib/supabase'
+import { getBotUsername } from '../lib/telegram'
 import type { User, Listing, Review, Store, Service } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
@@ -164,7 +165,7 @@ export default function Profile() {
             stores={stores}
             services={services}
             hasListings={listings.length > 0}
-            botUsername={import.meta.env.VITE_BOT_USERNAME || 'your_bot'}
+            botUsername={getBotUsername()}
           />
         )}
 
