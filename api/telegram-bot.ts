@@ -109,56 +109,6 @@ async function trackReferral(userTelegramId: number, referralCode: string): Prom
   }
 }
 
-// Get user context for AI
-async function getUserContext(telegramUserId: number): Promise<any> {
-  const apiUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/user-context`
-    : `${miniAppUrl}/api/user-context`
-  
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_user_id: telegramUserId })
-    })
-    
-    if (!response.ok) {
-      console.error('Failed to get user context:', response.statusText)
-      return null
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error getting user context:', error)
-    return null
-  }
-}
-
-// Call Gemini AI for conversation
-async function callGeminiAI(message: string, chatHistory: any[] = [], userContext: any = null): Promise<any> {
-  const apiUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/gemini-chat`
-    : `${miniAppUrl}/api/gemini-chat`
-  
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, chatHistory, userContext })
-    })
-    
-    if (!response.ok) {
-      console.error('Failed to call Gemini AI:', response.statusText)
-      return null
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error calling Gemini AI:', error)
-    return null
-  }
-}
-
 // Handle /start command with AI conversation
 async function handleStartCommand(msg: any) {
   const botInstance = getBot()
@@ -403,6 +353,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Handle regular messages (for AI conversation continuation)
       else if (msg.text && !msg.text.startsWith('/')) {
         console.log('Handling regular message for AI conversation')
+        const botInstance = getBot()
+        if (!botInstance) return
+        
         // Store conversation state in memory (simple implementation)
         // In production, use Redis or database for conversation state
         const chatId = msg.chat.id
