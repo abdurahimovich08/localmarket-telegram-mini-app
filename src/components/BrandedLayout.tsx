@@ -12,7 +12,7 @@ import {
 } from '../lib/supabase'
 import type { Store, Service, Listing } from '../types'
 import { CATEGORIES } from '../types'
-import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon, FunnelIcon, XMarkIcon, UsersIcon, StarIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon, FunnelIcon, XMarkIcon, UsersIcon, StarIcon, ShoppingBagIcon, EyeIcon, FireIcon } from '@heroicons/react/24/outline'
 import { BellIcon as BellIconSolid } from '@heroicons/react/24/solid'
 import BottomNav from './BottomNav'
 import LocationDisplay from './LocationDisplay'
@@ -365,20 +365,30 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
                     </p>
                   )}
 
-                  {/* Social Proof Stats */}
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  {/* ✅ Premium Stats - Social Proof (StoreDetail style) */}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-gray-700">
+                      <ShoppingBagIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{listings.length}</span>
+                      <span className="text-xs text-gray-500">mahsulot</span>
+                    </div>
                     {store.subscriber_count > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5 text-gray-700">
                         <UsersIcon className="w-4 h-4" />
-                        <span>{store.subscriber_count} obunachi</span>
+                        <span className="text-sm font-semibold">{store.subscriber_count}</span>
+                        <span className="text-xs text-gray-500">obunachi</span>
                       </div>
                     )}
-                    {store.owner?.rating_average && store.owner.rating_average > 0 && (
-                      <div className="flex items-center gap-1">
-                        <StarIcon className="w-4 h-4 text-yellow-400" />
-                        <span>{store.owner.rating_average.toFixed(1)}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      const totalViews = listings.reduce((sum, l) => sum + (l.view_count || 0), 0)
+                      return totalViews > 0 ? (
+                        <div className="flex items-center gap-1.5 text-gray-700">
+                          <EyeIcon className="w-4 h-4" />
+                          <span className="text-sm font-semibold">{totalViews}</span>
+                          <span className="text-xs text-gray-500">ko'rish</span>
+                        </div>
+                      ) : null
+                    })()}
                   </div>
                 </div>
               </div>
