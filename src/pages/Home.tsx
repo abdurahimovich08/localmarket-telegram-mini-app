@@ -7,8 +7,10 @@ import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sor
 import { getEnhancedPersonalizedListings } from '../lib/recommendations'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
 import type { Listing, Store } from '../types'
+import { CATEGORIES } from '../types'
 import ListingCard from '../components/ListingCard'
 import ListingCardEbay from '../components/ListingCardEbay'
+import StoreProductCard from '../components/StoreProductCard'
 import Pagination from '../components/Pagination'
 import CategoryCarousel from '../components/CategoryCarousel'
 import CartIcon from '../components/CartIcon'
@@ -208,9 +210,18 @@ export default function Home() {
   }, [activeTab])
 
   const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
+  
+  // Get unique categories from listings for branded mode
+  const storeCategories = isBrandedMode 
+    ? Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
+    : []
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const filteredListings = isBrandedMode && selectedCategory
+    ? listings.filter(l => l.category === selectedCategory)
+    : listings
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className={`min-h-screen pb-20 ${isBrandedMode ? 'gradient-purple-blue' : 'bg-gray-50'}`}>
       {/* Header with Search - Only show in marketplace mode */}
       {!isBrandedMode && (
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
@@ -349,15 +360,69 @@ export default function Home() {
         </div>
       )}
 
+      {/* Category Filters - Only in branded mode */}
+      {isBrandedMode && storeCategories.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`neumorphic-category px-4 py-2 whitespace-nowrap ${
+                selectedCategory === null ? 'neumorphic-category-active' : ''
+              }`}
+            >
+              <span className="text-white font-medium">All</span>
+            </button>
+            {storeCategories.map((cat) => {
+              const category = CATEGORIES.find(c => c.value === cat)
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`neumorphic-category px-4 py-2 whitespace-nowrap flex items-center gap-2 ${
+                    selectedCategory === cat ? 'neumorphic-category-active' : ''
+                  }`}
+                >
+                  <span className="text-white text-lg">{category?.emoji || '📦'}</span>
+                  <span className="text-white text-sm">{category?.label || cat}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Product - Only in branded mode */}
+      {isBrandedMode && filteredListings.length > 0 && (
+        <div className="px-4 pt-2 pb-4">
+          <div className="neumorphic-card p-4">
+            <div className="relative aspect-[16/9] bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl overflow-hidden mb-3">
+              {filteredListings[0].photos && filteredListings[0].photos.length > 0 ? (
+                <img 
+                  src={filteredListings[0].photos[0]} 
+                  alt={filteredListings[0].title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white text-4xl">
+                  🛍️
+                </div>
+              )}
+            </div>
+            <h2 className="text-white text-xl font-bold mb-1">{filteredListings[0].title}</h2>
+            <p className="text-white/80 text-sm">{filteredListings[0].price ? `$${filteredListings[0].price.toLocaleString()}` : 'Bepul'}</p>
+          </div>
+        </div>
+      )}
+
       {/* Listings Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-gray-600">E'lonlar yuklanmoqda...</p>
+            <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isBrandedMode ? 'border-white' : 'border-primary'} mx-auto`}></div>
+            <p className={`mt-4 ${isBrandedMode ? 'text-white' : 'text-gray-600'}`}>E'lonlar yuklanmoqda...</p>
           </div>
         </div>
-      ) : displayedListings.length === 0 ? (
+      ) : (isBrandedMode ? filteredListings : displayedListings).length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">
             {activeTab === 'personalized' ? '🎯' : '💰'}
@@ -381,29 +446,41 @@ export default function Home() {
         </div>
       ) : (
         <div className="p-4">
-          {/* Results count */}
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {displayedListings.length} {displayedListings.length === 1 ? 'natija' : 'natija'} ko'rsatilmoqda
-            </p>
-            {activeTab === 'personalized' && personalizedListings.length > 0 && (
-              <span className="text-xs text-primary bg-blue-50 px-2 py-1 rounded-full">
-                Sizga mos
-              </span>
-            )}
-          </div>
-
-          {/* List (eBay-style) */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {paginatedListings.map((listing) => (
-              <div
-                key={listing.listing_id}
-                onClick={() => handleListingClick(listing)}
-              >
-                <ListingCardEbay listing={listing} />
+          {isBrandedMode ? (
+            /* Branded Mode - Neumorphic Grid */
+            <div className="grid grid-cols-2 gap-4">
+              {filteredListings.map((listing) => (
+                <StoreProductCard key={listing.listing_id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            /* Marketplace Mode - eBay-style List */
+            <>
+              {/* Results count */}
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  {displayedListings.length} {displayedListings.length === 1 ? 'natija' : 'natija'} ko'rsatilmoqda
+                </p>
+                {activeTab === 'personalized' && personalizedListings.length > 0 && (
+                  <span className="text-xs text-primary bg-blue-50 px-2 py-1 rounded-full">
+                    Sizga mos
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
+
+              {/* List (eBay-style) */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                {paginatedListings.map((listing) => (
+                  <div
+                    key={listing.listing_id}
+                    onClick={() => handleListingClick(listing)}
+                  >
+                    <ListingCardEbay listing={listing} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (

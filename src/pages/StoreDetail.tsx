@@ -12,9 +12,11 @@ import {
 } from '../lib/supabase'
 import { trackListingInteraction } from '../lib/unifiedListingFeedback'
 import type { Store, Listing, StorePost, StorePromotion } from '../types'
+import { CATEGORIES } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
+import StoreProductCard from '../components/StoreProductCard'
 import { 
   BellIcon, 
   CheckBadgeIcon,
@@ -48,6 +50,7 @@ export default function StoreDetail() {
   const [sortType, setSortType] = useState<SortType>('newest')
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   // Reset description state when store changes
   useEffect(() => {
@@ -228,39 +231,81 @@ export default function StoreDetail() {
   const storeUsername = store.owner?.username || `store_${store.store_id.slice(0, 8)}`
   const storeRating = store.owner?.rating_average || 0
   const sortedListings = getSortedListings()
-  const descriptionLines = store.description?.split('\n') || []
-  const shouldShowMoreButton = descriptionLines.length > 3 || (store.description && store.description.length > 150)
+  
+  // Get unique categories from listings
+  const storeCategories = Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const filteredListings = selectedCategory 
+    ? sortedListings.filter(l => l.category === selectedCategory)
+    : sortedListings
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div className="min-h-screen gradient-purple-blue pb-24">
+      {/* Header - Neumorphic */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/20 border-b border-white/10">
         <div className="flex items-center px-4 py-3">
           <BackButton />
-          <h1 className="flex-1 text-center font-semibold text-gray-900 truncate">{store.name}</h1>
+          <h1 className="flex-1 text-center font-bold text-white text-lg truncate">{store.name}</h1>
           <div className="w-10"></div>
         </div>
       </header>
 
-      {/* TOP BANNER - YouTube style (reduced height) */}
-      {store.banner_url ? (
-        <div className="relative w-full h-40 md:h-48 overflow-hidden bg-gray-100">
-          <img 
-            src={store.banner_url} 
-            alt={store.name}
-            className="w-full h-full object-cover object-center"
-          />
-        </div>
-      ) : (
-        <div className="relative w-full h-40 md:h-48 bg-gradient-to-r from-primary to-primary-dark overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white text-xl md:text-2xl font-bold">{store.name}</span>
+      {/* Featured Product - Neumorphic Card */}
+      {sortedListings.length > 0 && (
+        <div className="px-4 pt-4 pb-2">
+          <div className="neumorphic-card p-4">
+            <div className="relative aspect-[16/9] bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl overflow-hidden mb-3">
+              {sortedListings[0].photos && sortedListings[0].photos.length > 0 ? (
+                <img 
+                  src={sortedListings[0].photos[0]} 
+                  alt={sortedListings[0].title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white text-4xl">
+                  🛍️
+                </div>
+              )}
+            </div>
+            <h2 className="text-white text-xl font-bold mb-1">{sortedListings[0].title}</h2>
+            <p className="text-white/80 text-sm">{sortedListings[0].price ? `$${sortedListings[0].price.toLocaleString()}` : 'Bepul'}</p>
           </div>
         </div>
       )}
 
-      {/* STORE IDENTITY BLOCK - YouTube channel header style */}
-      <div className="px-4 pb-4 bg-white border-b border-gray-200 relative z-10">
+      {/* Category Filters - Neumorphic */}
+      {storeCategories.length > 0 && (
+        <div className="px-4 py-3">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`neumorphic-category px-4 py-2 whitespace-nowrap ${
+                selectedCategory === null ? 'neumorphic-category-active' : ''
+              }`}
+            >
+              <span className="text-white font-medium">All</span>
+            </button>
+            {storeCategories.map((cat) => {
+              const category = CATEGORIES.find(c => c.value === cat)
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`neumorphic-category px-4 py-2 whitespace-nowrap flex items-center gap-2 ${
+                    selectedCategory === cat ? 'neumorphic-category-active' : ''
+                  }`}
+                >
+                  <span className="text-white text-lg">{category?.emoji || '📦'}</span>
+                  <span className="text-white text-sm">{category?.label || cat}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* STORE IDENTITY BLOCK - Simplified for Neumorphic */}
+      <div className="px-4 pb-4 relative z-10">
         <div className="flex flex-row items-start">
           {/* Logo - Circular avatar (overlaps banner) */}
           {store.logo_url ? (
@@ -282,163 +327,91 @@ export default function StoreDetail() {
           {/* Store Info */}
           <div className="ml-3 mt-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">{store.name}</h2>
+              <h2 className="text-xl font-bold text-white leading-tight">{store.name}</h2>
               {store.is_verified && (
-                <CheckBadgeIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                <CheckBadgeIcon className="w-5 h-5 text-blue-300 flex-shrink-0" />
               )}
             </div>
             
-            <p className="text-gray-500 text-sm mt-1">
-              @{storeUsername} • {listings.length} mahsulot{store.subscriber_count > 0 && ` • ${store.subscriber_count} obunachi`}
+            <p className="text-white/70 text-sm mt-1">
+              {listings.length} mahsulot{store.subscriber_count > 0 && ` • ${store.subscriber_count} obunachi`}
             </p>
           </div>
         </div>
 
-        {/* DESCRIPTION BLOCK - with more/less toggle */}
+        {/* DESCRIPTION BLOCK - Simplified */}
         {store.description && (
-          <div className="mt-4">
-            <p className="text-sm text-gray-700 whitespace-pre-line">
-              {showFullDescription || !shouldShowMoreButton 
-                ? store.description 
-                : `${store.description.slice(0, 150)}${store.description.length > 150 ? '...' : ''}`
-              }
+          <div className="mt-3">
+            <p className="text-sm text-white/80 whitespace-pre-line line-clamp-2">
+              {store.description}
             </p>
-            {shouldShowMoreButton && (
-              <button
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="mt-1 text-sm text-primary hover:text-primary-dark flex items-center gap-1"
-              >
-                {showFullDescription ? (
-                  <>
-                    Kamroq <ChevronUpIcon className="w-4 h-4" />
-                  </>
-                ) : (
-                  <>
-                    Ko'proq <ChevronDownIcon className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            )}
           </div>
-        )}
-
-        {/* PRIMARY ACTION BUTTON - Subscribe/Subscribed */}
-        {!isOwner && user && (
-          <button
-            onClick={handleSubscribe}
-            disabled={subscribing}
-            className={`mt-4 w-full py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${
-              store.is_subscribed
-                ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                : 'bg-primary text-white hover:bg-primary-dark'
-            }`}
-          >
-            {store.is_subscribed ? (
-              <>
-                <BellIconSolid className="w-5 h-5" />
-                Obuna bo'lingan 🔔
-              </>
-            ) : (
-              <>
-                <BellIcon className="w-5 h-5" />
-                Obuna bo'lish
-              </>
-            )}
-          </button>
-        )}
-
-        {isOwner && (
-          <button
-            onClick={() => navigate(`/store/${store.store_id}/edit`)}
-            className="mt-4 w-full py-3 px-4 rounded-lg font-medium bg-primary text-white hover:bg-primary-dark transition-colors"
-          >
-            Do'konni tahrirlash
-          </button>
         )}
       </div>
 
-      {/* NAVIGATION TABS - Horizontal scroll */}
-      <div className="bg-white border-b border-gray-200 sticky top-14 z-40">
-        <div className="flex overflow-x-auto scrollbar-hide">
+
+      {/* CONTENT AREA - Products Grid (Listings Tab) */}
+      {activeTab === 'listings' && (
+        <div className="px-4 pb-4">
+          {filteredListings.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">😕</div>
+              <p className="text-white text-lg mb-2">Bu do'konda hozircha mahsulot yo'q</p>
+              <p className="text-white/70 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {filteredListings.map((listing) => (
+                <StoreProductCard key={listing.listing_id} listing={listing} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bottom Navigation - Neumorphic */}
+      <nav className="fixed bottom-0 left-0 right-0 neumorphic-nav z-50 safe-area-bottom">
+        <div className="flex justify-around items-center h-16 px-4">
           <button
             onClick={() => setActiveTab('listings')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'listings'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
+              activeTab === 'listings' ? 'neumorphic-nav-active' : ''
             }`}
           >
-            Mahsulotlar ({listings.length})
+            <span className="text-2xl mb-1">📦</span>
+            <span className="text-xs text-white font-medium">Katalog</span>
           </button>
           <button
             onClick={() => setActiveTab('promotions')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'promotions'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
+              activeTab === 'promotions' ? 'neumorphic-nav-active' : ''
             }`}
           >
-            Aksiyalar ({promotions.length})
+            <span className="text-2xl mb-1">🔥</span>
+            <span className="text-xs text-white font-medium">Aksiyalar</span>
           </button>
           <button
             onClick={() => setActiveTab('posts')}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'posts'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
+              activeTab === 'posts' ? 'neumorphic-nav-active' : ''
             }`}
           >
-            Postlar ({posts.length})
+            <span className="text-2xl mb-1">📭</span>
+            <span className="text-xs text-white font-medium">Postlar</span>
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* CONTENT AREA */}
-      <div className="p-4">
-        {/* MAHSULOTLAR TAB */}
-        {activeTab === 'listings' && (
-          <div>
-            {listings.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4">😕</div>
-                <p className="text-gray-600 text-lg mb-2">Bu do'konda hozircha mahsulot yo'q</p>
-                <p className="text-gray-500 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
-              </div>
-            ) : (
-              <>
-                {/* Sort Options */}
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Jami: {listings.length} mahsulot</span>
-                  <select
-                    value={sortType}
-                    onChange={(e) => setSortType(e.target.value as SortType)}
-                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="newest">Eng yangi</option>
-                    <option value="cheapest">Eng arzon</option>
-                    <option value="popular">Eng ko'p sotilgan</option>
-                  </select>
-                </div>
-
-                {/* Listings Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  {sortedListings.map((listing) => (
-                    <ListingCard key={listing.listing_id} listing={listing} />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
+      {/* CONTENT AREA - Tabs */}
+      <div className="p-4 pb-24">
         {/* AKSIYALAR TAB */}
         {activeTab === 'promotions' && (
           <div className="space-y-4">
             {promotions.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🔥</div>
-                <p className="text-gray-600 text-lg mb-2">Hozircha aksiyalar yo'q</p>
-                <p className="text-gray-500 text-sm">Tez orada yangi chegirmalar bo'ladi</p>
+                <p className="text-white text-lg mb-2">Hozircha aksiyalar yo'q</p>
+                <p className="text-white/70 text-sm">Tez orada yangi chegirmalar bo'ladi</p>
               </div>
             ) : (
               promotions.map((promo) => (
@@ -490,41 +463,41 @@ export default function StoreDetail() {
           </div>
         )}
 
-        {/* POSTLAR TAB - YouTube Community style */}
+        {/* POSTLAR TAB - Neumorphic style */}
         {activeTab === 'posts' && (
           <div className="space-y-4">
             {posts.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">📭</div>
-                <p className="text-gray-600 text-lg mb-2">Hozircha postlar yo'q</p>
-                <p className="text-gray-500 text-sm">Do'kon yangiliklari va e'lonlari shu yerda paydo bo'ladi</p>
+                <p className="text-white text-lg mb-2">Hozircha postlar yo'q</p>
+                <p className="text-white/70 text-sm">Do'kon yangiliklari va e'lonlari shu yerda paydo bo'ladi</p>
               </div>
             ) : (
               posts.map((post) => (
-                <div key={post.post_id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div key={post.post_id} className="neumorphic-product-card p-4">
                   {/* Post Header */}
                   <div className="flex items-center gap-3 mb-3">
                     {store.logo_url ? (
                       <img
                         src={store.logo_url}
                         alt={store.name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-lg text-primary font-semibold">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/30">
+                        <span className="text-lg text-white font-semibold">
                           {store.name[0].toUpperCase()}
                         </span>
                       </div>
                     )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{store.name}</span>
+                        <span className="font-semibold text-white">{store.name}</span>
                         {store.is_verified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
+                          <CheckBadgeIcon className="w-4 h-4 text-blue-300" />
                         )}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-white/70">
                         {new Date(post.created_at).toLocaleDateString('uz-UZ', {
                           year: 'numeric',
                           month: 'long',
@@ -535,7 +508,7 @@ export default function StoreDetail() {
                   </div>
 
                   {/* Post Content */}
-                  <p className="text-gray-700 mb-3 whitespace-pre-wrap">{post.content}</p>
+                  <p className="text-white/90 mb-3 whitespace-pre-wrap">{post.content}</p>
 
                   {/* Post Images */}
                   {post.images && post.images.length > 0 && (
@@ -556,23 +529,23 @@ export default function StoreDetail() {
                   )}
 
                   {/* Post Actions - Like, Comment, Share */}
-                  <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-6 pt-3 border-t border-white/20">
                     <button
                       onClick={() => togglePostLike(post.post_id)}
-                      className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition-colors"
+                      className="flex items-center gap-2 text-white/80 hover:text-red-300 transition-colors"
                     >
                       {likedPosts.has(post.post_id) ? (
-                        <HeartIconSolid className="w-5 h-5 text-red-500" />
+                        <HeartIconSolid className="w-5 h-5 text-red-300" />
                       ) : (
                         <HeartIcon className="w-5 h-5" />
                       )}
                       <span className="text-sm">Like</span>
                     </button>
-                    <button className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors">
+                    <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
                       <ChatBubbleLeftIcon className="w-5 h-5" />
                       <span className="text-sm">Comment</span>
                     </button>
-                    <button className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors">
+                    <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
                       <ArrowUpTrayIcon className="w-5 h-5" />
                       <span className="text-sm">Share</span>
                     </button>
@@ -584,7 +557,6 @@ export default function StoreDetail() {
         )}
       </div>
 
-      <BottomNav />
     </div>
   )
 }

@@ -99,25 +99,25 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Back to Marketplace button */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div className="min-h-screen gradient-purple-blue">
+      {/* Header - Neumorphic */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/20 border-b border-white/10">
         <div className="flex items-center px-4 py-3">
           <button
             onClick={resetAppMode}
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="p-2 -ml-2 text-white hover:text-white/80 transition-colors"
             title="Bozorga qaytish"
           >
             <ArrowLeftIcon className="w-6 h-6" />
           </button>
           <div className="flex-1 text-center">
-            <h1 className="text-lg font-semibold text-gray-900 truncate">
+            <h1 className="text-lg font-bold text-white truncate">
               {mode.kind === 'store' ? (store as Store).name : (service as Service).title}
             </h1>
           </div>
           <button
             onClick={handleShare}
-            className="p-2 -mr-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="p-2 -mr-2 text-white hover:text-white/80 transition-colors"
             title="Ulashish"
           >
             <ShareIcon className="w-6 h-6" />
@@ -125,29 +125,13 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
         </div>
       </header>
 
-      {/* Store/Service Identity Block (same design as StoreDetail) */}
+      {/* Store/Service Identity Block - Neumorphic */}
       {mode.kind === 'store' && store && (
-        <div className="bg-white border-b border-gray-200">
-          {store.banner_url ? (
-            <div className="relative w-full h-40 overflow-hidden bg-gray-100">
-              <img 
-                src={store.banner_url} 
-                alt={store.name}
-                className="w-full h-full object-cover object-center"
-              />
-            </div>
-          ) : (
-            <div className="relative w-full h-40 bg-gradient-to-r from-primary to-primary-dark overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white text-xl font-bold">{store.name}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="px-4 pb-4 relative z-10">
-            <div className="flex flex-row items-start">
+        <div className="px-4 pt-4 pb-2">
+          <div className="neumorphic-card p-4">
+            <div className="flex items-start gap-3">
               {store.logo_url ? (
-                <div className="-mt-12 w-20 h-20 rounded-full border-4 border-white overflow-hidden shadow-lg flex-shrink-0 bg-white">
+                <div className="w-16 h-16 rounded-full border-2 border-white/30 overflow-hidden flex-shrink-0">
                   <img
                     src={store.logo_url}
                     alt={store.name}
@@ -155,17 +139,22 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
                   />
                 </div>
               ) : (
-                <div className="-mt-12 w-20 h-20 rounded-full border-4 border-white shadow-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl text-primary font-bold">
+                <div className="w-16 h-16 rounded-full border-2 border-white/30 bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl text-white font-bold">
                     {store.name[0].toUpperCase()}
                   </span>
                 </div>
               )}
 
-              <div className="ml-3 mt-2 flex-1 min-w-0">
-                <h2 className="text-xl font-bold text-gray-900 leading-tight">{store.name}</h2>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-white leading-tight">{store.name}</h2>
+                  {store.is_verified && (
+                    <span className="text-blue-300">✓</span>
+                  )}
+                </div>
                 {store.description && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{store.description}</p>
+                  <p className="text-sm text-white/80 line-clamp-2">{store.description}</p>
                 )}
               </div>
             </div>
@@ -174,23 +163,25 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
       )}
 
       {mode.kind === 'service' && service && (
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-4 py-4">
+        <div className="px-4 pt-4 pb-2">
+          <div className="neumorphic-card p-4">
             <div className="flex items-start gap-3">
               {service.logo_url ? (
-                <img
-                  src={service.logo_url}
-                  alt={service.title}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
+                <div className="w-16 h-16 rounded-lg border-2 border-white/30 overflow-hidden flex-shrink-0">
+                  <img
+                    src={service.logo_url}
+                    alt={service.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               ) : (
-                <div className="w-16 h-16 rounded-lg bg-primary/20 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-lg border-2 border-white/30 bg-white/20 flex items-center justify-center flex-shrink-0">
                   <span className="text-2xl">🛠</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold text-gray-900">{service.title}</h2>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{service.description}</p>
+                <h2 className="text-xl font-bold text-white mb-1">{service.title}</h2>
+                <p className="text-sm text-white/80 line-clamp-2">{service.description}</p>
               </div>
             </div>
           </div>
@@ -198,26 +189,26 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
       )}
 
       {/* Content */}
-      <div className="pb-20">
+      <div className="pb-24">
         {children}
       </div>
 
-      {/* Scoped Navigation - Only show in branded mode */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
-        <div className="flex justify-around items-center h-16">
+      {/* Scoped Navigation - Neumorphic */}
+      <nav className="fixed bottom-0 left-0 right-0 neumorphic-nav z-50 safe-area-bottom">
+        <div className="flex justify-around items-center h-16 px-4">
           <button
             onClick={() => navigate('/')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-600 hover:text-primary transition-colors"
+            className="flex flex-col items-center justify-center flex-1 h-full transition-all"
           >
-            <span className="text-xl">📦</span>
-            <span className="text-xs mt-1">Katalog</span>
+            <span className="text-2xl mb-1">📦</span>
+            <span className="text-xs text-white font-medium">Katalog</span>
           </button>
           <button
             onClick={() => navigate('/cart')}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-600 hover:text-primary transition-colors"
+            className="flex flex-col items-center justify-center flex-1 h-full transition-all"
           >
-            <span className="text-xl">🛒</span>
-            <span className="text-xs mt-1">Buyurtma</span>
+            <span className="text-2xl mb-1">🛒</span>
+            <span className="text-xs text-white font-medium">Buyurtma</span>
           </button>
           <button
             onClick={() => {
@@ -227,10 +218,10 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
                 navigate(`/service/${mode.serviceId}`)
               }
             }}
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-600 hover:text-primary transition-colors"
+            className="flex flex-col items-center justify-center flex-1 h-full transition-all"
           >
-            <span className="text-xl">ℹ️</span>
-            <span className="text-xs mt-1">Ma'lumot</span>
+            <span className="text-2xl mb-1">ℹ️</span>
+            <span className="text-xs text-white font-medium">Ma'lumot</span>
           </button>
         </div>
       </nav>
