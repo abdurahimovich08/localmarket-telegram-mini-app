@@ -42,11 +42,9 @@ export function useEntityMutations(
     if (photos.length === 0) return []
 
     try {
-      // Compress images before upload
-      const compressedFiles = await compressDataUrls(photos, {
-        maxSizeMB: 0.5, // 500KB
-        maxWidthOrHeight: 1920,
-      })
+      // Compress images before upload (use appropriate preset)
+      const preset = entityType === 'store' ? 'banner' : 'listing'
+      const compressedFiles = await compressDataUrls(photos, {}, preset)
 
       // Upload compressed images
       const photoUrls = await uploadImages(compressedFiles)

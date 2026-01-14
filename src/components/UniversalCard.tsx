@@ -4,6 +4,7 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { ShoppingBagIcon } from '@heroicons/react/24/outline'
 import type { UnifiedProduct } from '../types/unified'
 import { formatDistance } from '../lib/telegram'
+import { cn } from '../lib/cn'
 
 type CardVariant = 'marketplace' | 'store' | 'service'
 type CardLayout = 'grid' | 'list' | 'compact'
@@ -31,12 +32,14 @@ export default function UniversalCard({
   showDistance = true,
   showCategory = true,
 }: UniversalCardProps) {
-  // Variant-based styling
+  // Variant-based styling with cn utility
   const getCardClasses = () => {
-    if (variant === 'store') {
-      return 'block neumorphic-product-card overflow-hidden'
-    }
-    return 'block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow'
+    return cn(
+      'block overflow-hidden transition-shadow',
+      variant === 'store' 
+        ? 'neumorphic-product-card' 
+        : 'bg-white rounded-lg shadow-sm hover:shadow-md'
+    )
   }
 
   const getImageContainerClasses = () => {

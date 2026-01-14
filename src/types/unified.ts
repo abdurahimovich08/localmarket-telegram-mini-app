@@ -178,72 +178,20 @@ export const LISTING_TYPE_HEALTH_RULES: Record<ListingType, HealthScoreRules> = 
 
 /**
  * Convert Listing to UnifiedProduct
+ * @deprecated Use CardAdapters.listingToUnifiedProduct instead
  */
 export const listingToUnifiedProduct = (listing: Listing): UnifiedProduct => {
-  const category = listing.category
-  const categoryEmoji = listing.category ? 
-    (listing.category === 'electronics' ? '📱' :
-     listing.category === 'furniture' ? '🪑' :
-     listing.category === 'clothing' ? '👕' :
-     listing.category === 'baby_kids' ? '👶' :
-     listing.category === 'home_garden' ? '🏠' :
-     listing.category === 'games_hobbies' ? '🎮' :
-     listing.category === 'books_media' ? '📚' :
-     listing.category === 'sports_outdoors' ? '🏋️' :
-     listing.category === 'automotive' ? '🚗' : '🎁') : undefined
-
-  return {
-    id: listing.listing_id,
-    type: listing.store_id ? 'store_product' : 'product',
-    title: listing.title,
-    description: listing.description,
-    category: listing.category,
-    categoryEmoji,
-    price: listing.price,
-    oldPrice: listing.old_price,
-    priceText: listing.is_free ? 'Bepul' : `${listing.price?.toLocaleString()} so'm`,
-    isFree: listing.is_free,
-    imageUrl: listing.photos?.[0],
-    imageUrls: listing.photos,
-    status: listing.status,
-    isBoosted: listing.is_boosted,
-    stockQty: listing.stock_qty,
-    neighborhood: listing.neighborhood,
-    distance: listing.distance,
-    ownerId: listing.seller_telegram_id,
-    ownerName: listing.seller?.first_name,
-    storeId: listing.store_id,
-    storeName: listing.store?.name,
-    createdAt: listing.created_at,
-    updatedAt: listing.updated_at,
-    viewCount: listing.view_count,
-    favoriteCount: listing.favorite_count,
-    detailUrl: `/listing/${listing.listing_id}`,
-    original: listing,
-  }
+  // Re-export from adapters for backward compatibility
+  const { listingToUnifiedProduct: adapter } = require('../components/cards/CardAdapters')
+  return adapter(listing)
 }
 
 /**
  * Convert Service to UnifiedProduct
+ * @deprecated Use CardAdapters.serviceToUnifiedProduct instead
  */
 export const serviceToUnifiedProduct = (service: Service): UnifiedProduct => {
-  return {
-    id: service.service_id,
-    type: 'service',
-    title: service.title,
-    description: service.description,
-    category: service.category,
-    price: service.price ? parseFloat(service.price) : undefined,
-    priceText: service.price || 'Kelishiladi',
-    priceType: service.price_type,
-    imageUrl: service.logo_url || service.image_url,
-    status: service.status === 'active' ? 'active' : 'inactive',
-    ownerId: service.provider_telegram_id,
-    ownerName: service.provider?.first_name,
-    createdAt: service.created_at,
-    updatedAt: service.updated_at,
-    viewCount: service.view_count,
-    detailUrl: `/service/${service.service_id}`,
-    original: service,
-  }
+  // Re-export from adapters for backward compatibility
+  const { serviceToUnifiedProduct: adapter } = require('../components/cards/CardAdapters')
+  return adapter(service)
 }
