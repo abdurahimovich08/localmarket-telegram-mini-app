@@ -42,9 +42,16 @@ export default async function handler(
     })
     return res.status(500).json({ 
       error: 'API key not configured',
-      details: 'Missing VITE_GEMINI_API_KEY or GEMINI_API_KEY environment variable'
+      details: 'Missing VITE_GEMINI_API_KEY or GEMINI_API_KEY environment variable. Please add it in Vercel Dashboard > Settings > Environment Variables'
     })
   }
+  
+  // Log API key status (without exposing the actual key)
+  console.log('Gemini API key status:', {
+    hasKey: !!API_KEY,
+    keyLength: API_KEY?.length || 0,
+    keyPrefix: API_KEY?.substring(0, 10) || 'none'
+  })
 
   try {
     const { message, chatHistory = [], userContext } = req.body
@@ -83,7 +90,23 @@ export default async function handler(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Gemini API error:', errorText)
+      console.error('Gemini API error:', response.status, errorText)
+      
+      // Parse error for better logging
+      try {
+        const errorJson = JSON.parse(errorText)
+        if (errorJson.error?.code === 403 && errorJson.error?.message?.includes('leaked')) {
+          console.error('⚠️ API KEY LEAKED - Please generate a new API key from https://aistudio.google.com/apikey')
+          return res.status(403).json({ 
+            error: 'API key leaked', 
+            details: 'Your API key was reported as leaked. Please generate a new API key from https://aistudio.google.com/apikey and update it in Vercel Dashboard > Settings > Environment Variables',
+            help: 'See GEMINI_API_KEY_FIX.md for instructions'
+          })
+        }
+      } catch (e) {
+        // Not JSON, use as-is
+      }
+      
       return res.status(response.status).json({ error: 'Gemini API error', details: errorText })
     }
 
