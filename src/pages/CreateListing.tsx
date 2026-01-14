@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { createListing, getSubcategories, getUserStore, getStore, getStoreCategories, type Subcategory, type StoreCategory } from '../lib/supabase'
+import { getSubcategories, getUserStore, getStore, getStoreCategories, type Subcategory, type StoreCategory } from '../lib/supabase'
+import { useEntityMutations } from '../hooks/useEntityMutations'
 import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
-import { uploadImages } from '../lib/imageUpload'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import { PhotoIcon, XMarkIcon, ChevronRightIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
@@ -16,7 +16,21 @@ export default function CreateListing() {
   const [searchParams] = useSearchParams()
   const { user } = useUser()
   const [currentStep, setCurrentStep] = useState<Step>('photos')
-  const [loading, setLoading] = useState(false)
+  
+  // ✅ useEntityMutations hook - image upload, compression, create, error handling
+  const { create, isLoading: isCreating, error: createError } = useEntityMutations('listing', {
+    onSuccess: (listing) => {
+      if (listing) {
+        console.log('Listing created successfully:', listing.listing_id)
+        // Navigate to home page
+        navigate('/')
+      }
+    },
+    onError: (error) => {
+      console.error('Error creating listing:', error)
+      alert(`E'lon yaratilmadi: ${error.message}. Iltimos, brauzer konsolini tekshiring.`)
+    },
+  })
   
   // Photos
   const [photos, setPhotos] = useState<string[]>([])
@@ -137,6 +151,7 @@ export default function CreateListing() {
     setCurrentStep('form')
   }
 
+  // ✅ useEntityMutations.create() - avtomatik image upload, compression, create
   const handleSubmit = useCallback(async () => {
     if (!user) {
       alert('Foydalanuvchi ma\'lumotlari yuklanmoqda. Iltimos, kuting...')
@@ -153,28 +168,18 @@ export default function CreateListing() {
       return
     }
 
-    setLoading(true)
     try {
-      // Upload photos
-      console.log('Starting photo upload...')
-      const photoFiles = photos.map((dataUrl, index) => {
-        const arr = dataUrl.split(',')
-        const mime = arr[0].match(/:(.*?);/)?.[1]
-        const bstr = atob(arr[1])
-        let n = bstr.length
-        const u8arr = new Uint8Array(n)
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n)
-        }
-        return new File([u8arr], `photo-${Date.now()}-${index}.jpg`, { type: mime || 'image/jpeg' })
-      })
-
-      console.log(`Uploading ${photoFiles.length} photos...`)
-      const photoUrls = await uploadImages(photoFiles)
-      console.log('Photos uploaded:', photoUrls)
-
-      console.log('Creating listing...')
-      const listing = await createListing({
+      // ✅ useEntityMutations.create() - avtomatik:
+      // 1. Image compression (compressDataUrls)
+      // 2. Image upload (uploadImages)
+      // 3. Create listing (createListing)
+      // 4. Query invalidation
+      // 5. Error handling (RLS block, etc.)
+      // 6. Navigation (onSuccess callback)
+      
+      // ⚠️ MUHIM: photos dataUrl array sifatida yuboriladi
+      // useEntityMutations avtomatik compress va upload qiladi
+      await create({
         seller_telegram_id: user.telegram_user_id,
         title: title.trim(),
         description: description.trim(),
@@ -184,7 +189,7 @@ export default function CreateListing() {
         is_free: isFree,
         category,
         condition,
-        photos: photoUrls,
+        photos: photos, // ✅ DataUrl array - useEntityMutations avtomatik compress va upload qiladi
         neighborhood: neighborhood.trim() || undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
@@ -194,21 +199,14 @@ export default function CreateListing() {
         store_id: listingType === 'store' && userStore ? userStore.store_id : undefined,
         store_category_id: listingType === 'store' && selectedStoreCategory ? selectedStoreCategory : undefined
       })
-
-      if (listing) {
-        console.log('Listing created successfully:', listing.listing_id)
-        navigate('/')
-      } else {
-        alert('E\'lon yaratilmadi. Iltimos, brauzer konsolini tekshiring.')
-      }
+      
+      // Navigation onSuccess callback'da amalga oshiriladi
     } catch (error: unknown) {
-      console.error('Error creating listing:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      alert(`E'lon yaratilmadi: ${errorMessage}. Iltimos, brauzer konsolini tekshiring.`)
-    } finally {
-      setLoading(false)
+      // Error handling useEntityMutations'da amalga oshiriladi
+      // Bu catch faqat additional handling uchun
+      console.error('Error in handleSubmit:', error)
     }
-  }, [user, title, description, photos, category, condition, price, oldPrice, stockQty, isFree, neighborhood, location, selectedSubcategory, listingType, userStore, selectedStoreCategory, navigate])
+  }, [user, title, description, photos, category, condition, price, oldPrice, stockQty, isFree, neighborhood, location, selectedSubcategory, listingType, userStore, selectedStoreCategory, create])
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -695,7 +693,7 @@ export default function CreateListing() {
         </div>
       </div>
 
-      {loading && (
+      {isCreating && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>

@@ -113,9 +113,18 @@ export default function UniversalCard({
       )
     }
 
+    // ✅ Edge case: price = null bo'lsa "Kelishiladi" ko'rsatish
+    if (data.price === null || data.price === undefined) {
+      return (
+        <span className={`text-lg font-bold ${colors.price}`}>
+          {data.priceText || 'Kelishiladi'}
+        </span>
+      )
+    }
+
     return (
       <span className={`text-lg font-bold ${colors.price}`}>
-        {data.priceText || `${data.price?.toLocaleString()} so'm`}
+        {data.priceText || `${data.price.toLocaleString()} so'm`}
       </span>
     )
   }
@@ -209,13 +218,21 @@ export default function UniversalCard({
       <div onClick={handleCardClick} className={cn(getCardClasses(), 'cursor-pointer')}>
         <div className="flex gap-3 p-3">
           <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
-            {data.imageUrl ? (
+            {/* ✅ Edge case: imageUrls = [] va imageUrl = undefined bo'lsa fallback UI */}
+            {(data.imageUrl || (data.imageUrls && data.imageUrls.length > 0)) ? (
               <img
-                src={data.imageUrl}
+                src={data.imageUrl || data.imageUrls?.[0]}
                 alt={data.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback agar rasm yuklanmasa
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
               />
-            ) : (
+            ) : null}
+            {/* Fallback UI - agar rasm yo'q bo'lsa yoki yuklanmasa */}
+            {(!data.imageUrl && (!data.imageUrls || data.imageUrls.length === 0)) && (
               <div className={`w-full h-full flex items-center justify-center ${variant === 'store' ? 'bg-gradient-to-br from-purple-400 to-pink-500 text-white/80' : 'bg-gray-100 text-gray-400'}`}>
                 <span className="text-xs">Rasm yo'q</span>
               </div>
@@ -247,13 +264,21 @@ export default function UniversalCard({
   return (
     <div onClick={handleCardClick} className={cn(getCardClasses(), 'cursor-pointer')}>
       <div className={getImageContainerClasses()}>
-        {data.imageUrl ? (
+        {/* ✅ Edge case: imageUrls = [] va imageUrl = undefined bo'lsa fallback UI */}
+        {(data.imageUrl || (data.imageUrls && data.imageUrls.length > 0)) ? (
           <img
-            src={data.imageUrl}
+            src={data.imageUrl || data.imageUrls?.[0]}
             alt={data.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback agar rasm yuklanmasa
+              e.currentTarget.style.display = 'none'
+              e.currentTarget.nextElementSibling?.classList.remove('hidden')
+            }}
           />
-        ) : (
+        ) : null}
+        {/* Fallback UI - agar rasm yo'q bo'lsa yoki yuklanmasa */}
+        {(!data.imageUrl && (!data.imageUrls || data.imageUrls.length === 0)) && (
           <div className={`w-full h-full flex items-center justify-center ${variant === 'store' ? 'text-white/80' : 'text-gray-400'}`}>
             <span className="text-sm">Rasm yo'q</span>
           </div>

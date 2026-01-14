@@ -968,6 +968,79 @@ export const getService = async (serviceId: string): Promise<Service | null> => 
   return data as Service
 }
 
+// Unified Items: Get single item by ID and type
+// This function checks unified_items VIEW for existence, then fetches full details from original tables
+export const getUnifiedItem = async (
+  itemId: string,
+  itemType?: 'product' | 'store_product' | 'service'
+): Promise<{ item: any; type: 'product' | 'store_product' | 'service' } | null> => {
+  try {
+    // Try to check existence in unified_items VIEW using RPC function
+    // This ensures the item exists and is active
+    const { data: unifiedCheck, error: unifiedError } = await supabase.rpc('search_unified_items', {
+      search_query: null,
+      item_type_filter: itemType || null,
+      category_filter: null,
+      min_price: null,
+      max_price: null,
+      owner_id_filter: null,
+      store_id_filter: null,
+      limit_count: 1000, // Get enough to find our item
+    })
+
+    // Find the item in unified results
+    const foundItem = unifiedCheck?.find((item: any) => item.item_id === itemId)
+    
+    if (foundItem) {
+      const detectedType = foundItem.item_type as 'product' | 'store_product' | 'service'
+      
+      // If itemType is specified and doesn't match, return null
+      if (itemType && detectedType !== itemType) {
+        return null
+      }
+
+      // Fetch full details from original table based on type
+      if (detectedType === 'service') {
+        const service = await getService(itemId)
+        if (service) {
+          return { item: service, type: 'service' }
+        }
+      } else {
+        const listing = await getListing(itemId)
+        if (listing) {
+          const type = listing.store_id ? 'store_product' : 'product'
+          // If itemType is specified and doesn't match, return null
+          if (itemType && type !== itemType) {
+            return null
+          }
+          return { item: listing, type }
+        }
+      }
+    }
+
+    // Fallback: Try direct table queries if unified_items check fails
+    if (itemType === 'service' || !itemType) {
+      const service = await getService(itemId)
+      if (service) {
+        return { item: service, type: 'service' }
+      }
+    }
+
+    if (itemType === 'product' || itemType === 'store_product' || !itemType) {
+      const listing = await getListing(itemId)
+      if (listing) {
+        const type = listing.store_id ? 'store_product' : 'product'
+        return { item: listing, type }
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error fetching unified item:', error)
+    return null
+  }
+}
+
 // Get user's store from referral (which store they came from)
 export const getUserReferralStore = async (userTelegramId: number): Promise<{ store_id: string; store_name: string; referral_code: string } | null> => {
   const { data, error } = await supabase

@@ -52,7 +52,7 @@ export default function Home() {
         limit: 100,
       }
     }
-  }, [mode.kind, mode.storeId])
+  }, [mode])
 
   // ✅ Query design: stable key with object params
   const queryKey = useMemo(() => [
@@ -64,7 +64,7 @@ export default function Home() {
       sort: 'created_at',
       page: currentPage,
     }
-  ], [mode.kind, mode.storeId, mode.serviceId, currentPage])
+  ], [mode, currentPage])
 
   // ✅ useUnifiedItems hook
   const { 

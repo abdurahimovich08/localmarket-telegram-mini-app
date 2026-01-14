@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
+import { useUnifiedItems } from '../hooks/useUnifiedItems'
+import { useEntityMutations } from '../hooks/useEntityMutations'
 import { 
   getStore, 
   getStoreCategories, 
@@ -8,14 +10,13 @@ import {
   updateStoreCategory, 
   deleteStoreCategory,
   reorderStoreCategories,
-  getStoreProducts,
-  updateStoreProduct,
   getStorePosts,
   createStorePost,
   updateStorePost,
   deleteStorePost
 } from '../lib/supabase'
 import type { Store, StoreCategory, Listing, StorePost } from '../types'
+import type { UnifiedProduct } from '../types/unified'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import { 
@@ -47,9 +48,26 @@ export default function StoreManagement() {
   const [categoryTitle, setCategoryTitle] = useState('')
   const [categoryEmoji, setCategoryEmoji] = useState('')
   
-  // Products
-  const [products, setProducts] = useState<Listing[]>([])
+  // Products - ✅ useUnifiedItems hook
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  
+  // ✅ useUnifiedItems hook - store products
+  const { 
+    data: unifiedProducts = [], 
+    isLoading: isLoadingProducts,
+    refetch: refetchProducts
+  } = useUnifiedItems({
+    storeId: id,
+    itemType: 'store_product',
+    enabled: !!id,
+  })
+
+  // ✅ useEntityMutations hook - update uchun
+  const { update: updateProduct, isLoading: isUpdatingProduct } = useEntityMutations('listing', {
+    onSuccess: () => {
+      refetchProducts()
+    },
+  })
   
   // Posts
   const [posts, setPosts] = useState<StorePost[]>([])
@@ -90,9 +108,8 @@ export default function StoreManagement() {
       const categoriesData = await getStoreCategories(id)
       setCategories(categoriesData)
       
-      // Load products
-      const productsData = await getStoreProducts(id)
-      setProducts(productsData)
+      // ✅ Products - useUnifiedItems hook avtomatik yuklaydi
+      // refetchProducts() chaqiriladi agar kerak bo'lsa
       
       // Load posts
       const postsData = await getStorePosts(id)
@@ -226,13 +243,47 @@ export default function StoreManagement() {
     }
   }
 
-  // Product stock update
+  // ✅ Product stock update - useEntityMutations hook
   const handleUpdateStock = async (productId: string, stockQty: number | null) => {
-    const updated = await updateStoreProduct(productId, { stock_qty: stockQty })
-    if (updated) {
-      setProducts(products.map(p => p.listing_id === updated.listing_id ? updated : p))
+    try {
+      await updateProduct(productId, { stock_qty: stockQty })
+      // Query avtomatik invalidate qilinadi va refetch qilinadi
+    } catch (error) {
+      console.error('Error updating stock:', error)
+      alert('Mavjudlikni yangilashda xatolik yuz berdi')
     }
   }
+  
+  // Convert UnifiedProduct to Listing format for compatibility
+  const products: Listing[] = unifiedProducts.map((item: UnifiedProduct) => ({
+    listing_id: item.id,
+    seller_telegram_id: item.ownerId,
+    title: item.title,
+    description: item.description || '',
+    price: item.price,
+    old_price: item.oldPrice,
+    stock_qty: item.stockQty,
+    is_free: item.isFree || false,
+    category: item.category,
+    condition: 'good' as const,
+    photos: item.imageUrls || (item.imageUrl ? [item.imageUrl] : []),
+    neighborhood: item.neighborhood,
+    latitude: null,
+    longitude: null,
+    status: item.status === 'active' ? 'active' : item.status === 'sold' ? 'sold' : 'deleted',
+    view_count: item.viewCount || 0,
+    favorite_count: item.favoriteCount || 0,
+    is_boosted: item.isBoosted || false,
+    boosted_until: null,
+    subcategory_id: null,
+    store_id: item.storeId || undefined,
+    store_category_id: null, // TODO: unified_items VIEW'ga qo'shish kerak
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    seller: undefined,
+    store: undefined,
+    store_category: undefined,
+  }))
 
   if (loading) {
     return (

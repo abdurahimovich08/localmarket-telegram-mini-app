@@ -126,25 +126,27 @@ export async function compressImages(
 }
 
 /**
- * Convert data URL to File and compress
+ * Convert data URL to File and compress with preset
  * 
  * @param dataUrl - Data URL string
  * @param filename - Output filename
  * @param options - Compression options
+ * @param preset - Compression preset (listing, banner, logo, portfolio)
  * @returns Compressed file
  */
 export async function compressDataUrl(
   dataUrl: string,
   filename: string = 'image.jpg',
-  options: CompressionOptions = {}
+  options: CompressionOptions = {},
+  preset?: CompressionPreset
 ): Promise<File> {
   // Convert data URL to File
   const response = await fetch(dataUrl)
   const blob = await response.blob()
   const file = new File([blob], filename, { type: blob.type })
   
-  // Compress
-  return compressImage(file, options)
+  // Compress with preset
+  return compressImage(file, options, preset)
 }
 
 /**
@@ -170,22 +172,4 @@ export async function compressDataUrls(
   )
   
   return files
-}
-
-/**
- * Convert data URL to File and compress with preset
- */
-export async function compressDataUrl(
-  dataUrl: string,
-  filename: string = 'image.jpg',
-  options: CompressionOptions = {},
-  preset?: CompressionPreset
-): Promise<File> {
-  // Convert data URL to File
-  const response = await fetch(dataUrl)
-  const blob = await response.blob()
-  const file = new File([blob], filename, { type: blob.type })
-  
-  // Compress with preset
-  return compressImage(file, options, preset)
 }

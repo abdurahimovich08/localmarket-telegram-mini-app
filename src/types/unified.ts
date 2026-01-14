@@ -28,6 +28,7 @@ export type ListingType = 'service' | 'product' | 'store_product'
 export interface UnifiedProduct {
   // Identification
   id: string
+  stableId?: string // entity_type:item_id format for cache and routing
   type: ListingType
   
   // Common display fields

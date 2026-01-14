@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useAppMode } from '../contexts/AppModeContext'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { getListings } from '../lib/supabase'
-import { requestLocation } from '../lib/telegram'
-import { sortListings } from '../lib/sorting'
+import { useSearchParams } from 'react-router-dom'
+import { useUnifiedItems } from '../hooks/useUnifiedItems'
+import { useNavigateWithCtx } from '../lib/preserveCtx'
 import { trackUserSearch, trackListingView } from '../lib/tracking'
-import type { Listing } from '../types'
-import ListingCard from '../components/ListingCard'
+import UniversalCard from '../components/UniversalCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
 import BackButton from '../components/BackButton'
 import CartIcon from '../components/CartIcon'
@@ -17,97 +15,74 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 export default function Search() {
   const { user } = useUser()
   const { mode } = useAppMode()
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const navigateWithCtx = useNavigateWithCtx()
+  const [searchParams] = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
   const initialCategory = searchParams.get('category') || undefined
   const [searchQuery, setSearchQuery] = useState(initialQuery)
-  const [listings, setListings] = useState<Listing[]>([])
-  const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState<SearchFiltersType>({
     category: initialCategory as any,
     radius: user?.search_radius_miles || 10,
   })
 
+  const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
+
+  // ✅ Filters: mode'ga qarab + search query + filterlar
+  const unifiedFilters = useMemo(() => {
+    const baseFilters: any = {
+      searchQuery: searchQuery.trim() || undefined,
+      category: filters.category || initialCategory || undefined,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      limit: 100,
+    }
+
+    // Store mode: faqat store mahsulotlar
+    if (mode.kind === 'store') {
+      baseFilters.itemType = 'store_product'
+      baseFilters.storeId = mode.storeId
+    } 
+    // Service mode: faqat services
+    else if (mode.kind === 'service') {
+      baseFilters.itemType = 'service'
+    }
+    // Marketplace mode: hamma itemlar (listing + service)
+    // itemType undefined = hammasi
+
+    return baseFilters
+  }, [searchQuery, filters, initialCategory, mode])
+
+  // ✅ useUnifiedItems hook
+  const { 
+    data: unifiedItems = [], 
+    isLoading, 
+    isError,
+    error,
+    refetch 
+  } = useUnifiedItems(unifiedFilters)
+
+  // Track search when query changes
   useEffect(() => {
-    let isMounted = true
-
-    const loadListings = async () => {
-      setLoading(true)
-      try {
-        // Track search if query exists
-        if (searchQuery.trim() && user?.telegram_user_id) {
-          trackUserSearch(
-            user.telegram_user_id,
-            searchQuery.trim(),
-            initialCategory,
-            0 // Will be updated after results
-          )
-        }
-
-        // Request location (will use cache if available)
-        const location = await requestLocation()
-        
-        if (!isMounted) return
-
-        // Get listings with filters
-        // CRITICAL: Always sorted by created_at DESC to show newest listings first
-        // No OFFSET - ensures new listings appear even when paginated
-        // Apply scoped filtering if in branded mode
-        const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
-        const data = await getListings({
-          search: searchQuery || undefined,
-          category: filters.category || initialCategory,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          condition: filters.condition,
-          radius: filters.radius || user?.search_radius_miles || 10,
-          userLat: location?.latitude,
-          userLon: location?.longitude,
-          recentOnly: filters.recentOnly,
-          boostedOnly: filters.boostedOnly,
-          limit: 100, // Fetch enough for pagination
-          // Scoped filtering for branded modes
-          scope: isBrandedMode ? (mode.kind === 'store' ? 'store' : 'service') : 'global',
-          storeId: mode.kind === 'store' ? mode.storeId : undefined,
-          serviceId: mode.kind === 'service' ? mode.serviceId : undefined,
-        })
-        
-        if (!isMounted) return
-
-        // Sort with advanced algorithm
-        const sorted = await sortListings(
-          data,
-          user?.telegram_user_id,
-          user?.search_radius_miles || 10
-        )
-        
-        if (isMounted) {
-          setListings(sorted)
-        }
-      } catch (error) {
-        console.error('Error loading listings:', error)
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
+    if (searchQuery.trim() && user?.telegram_user_id) {
+      trackUserSearch(
+        user.telegram_user_id,
+        searchQuery.trim(),
+        initialCategory,
+        unifiedItems.length
+      )
     }
+  }, [searchQuery, user?.telegram_user_id, initialCategory, unifiedItems.length])
 
-    const debounceTimer = setTimeout(() => {
-      loadListings()
-    }, 300)
-
-    return () => {
-      isMounted = false
-      clearTimeout(debounceTimer)
-    }
-  }, [searchQuery, filters, user?.search_radius_miles, user?.telegram_user_id, mode])
-
-  const handleListingClick = (listing: Listing) => {
-    // Track view with subcategory_id for granular recommendations
+  const handleCardClick = (item: typeof unifiedItems[0]) => {
+    // Track view
     if (user?.telegram_user_id) {
-      trackListingView(user.telegram_user_id, listing.listing_id, listing.subcategory_id)
+      trackListingView(user.telegram_user_id, item.id, undefined)
+    }
+    // ✅ Routing: entity_type bo'yicha + useNavigateWithCtx
+    if (item.type === 'service') {
+      navigateWithCtx(`/service/${item.id}`)
+    } else {
+      navigateWithCtx(`/listing/${item.id}`)
     }
   }
 
@@ -145,11 +120,31 @@ export default function Search() {
         <SearchFilters filters={filters} onFiltersChange={setFilters} />
       </header>
 
-      {loading ? (
+      {/* ✅ UI States: Loading/Error/Empty/Results */}
+      {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Qidirilmoqda...</p>
+          </div>
         </div>
-      ) : listings.length === 0 ? (
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Xatolik yuz berdi
+          </h2>
+          <p className="text-gray-600 text-center mb-6">
+            {error?.message || 'Qidiruvda xatolik yuz berdi'}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+          >
+            Qayta urinib ko'ring
+          </button>
+        </div>
+      ) : unifiedItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">🔍</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
@@ -164,24 +159,27 @@ export default function Search() {
       ) : (
         <div className="p-4">
           <p className="text-sm text-gray-600 mb-4">
-            {listings.length} {listings.length === 1 ? 'natija' : 'natija'} topildi
+            {unifiedItems.length} {unifiedItems.length === 1 ? 'natija' : 'natija'} topildi
             {initialCategory && (
               <span className="ml-2 text-primary">
-                • {listings.find(l => l.category === initialCategory) ? 'Kategoriya' : ''}
+                • Kategoriya: {initialCategory}
               </span>
             )}
           </p>
+          
+          {/* ✅ UniversalCard grid */}
           <div className="grid grid-cols-2 gap-4">
-            {listings.map((listing) => (
+            {unifiedItems.map((item) => (
               <div
-                key={listing.listing_id}
-                onClick={() => {
-                  handleListingClick(listing)
-                  navigate(`/listing/${listing.listing_id}`)
-                }}
+                key={item.stableId || item.id}
+                onClick={() => handleCardClick(item)}
                 className="cursor-pointer"
               >
-                <ListingCard listing={listing} />
+                <UniversalCard
+                  data={item}
+                  variant={isBrandedMode ? 'store' : 'marketplace'}
+                  layout="grid"
+                />
               </div>
             ))}
           </div>
