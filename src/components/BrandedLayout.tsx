@@ -52,6 +52,9 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
 
     if (mode.kind !== 'marketplace') {
       loadEntity()
+    } else {
+      // If marketplace mode, set loading to false immediately
+      setLoading(false)
     }
   }, [mode, resetAppMode])
 

@@ -17,65 +17,51 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
 
   // Parse URL context on mount and when location changes
   useEffect(() => {
-    const parseUrlContext = () => {
-      const searchParams = new URLSearchParams(location.search)
-      const ctx = searchParams.get('ctx')
+    const searchParams = new URLSearchParams(location.search)
+    const ctx = searchParams.get('ctx')
 
-      if (ctx) {
-        // Parse ctx parameter: store:<ID> or service:<ID>
-        const [type, id] = ctx.split(':')
-        
-        if (type === 'store' && id) {
-          setMode({ kind: 'store', storeId: id })
-          // Clean URL - remove ctx param after parsing
-          const newSearch = new URLSearchParams(searchParams)
-          newSearch.delete('ctx')
-          const newSearchString = newSearch.toString()
-          const newUrl = newSearchString 
-            ? `${location.pathname}?${newSearchString}`
-            : location.pathname
-          navigate(newUrl, { replace: true })
-          return
-        }
-        
-        if (type === 'service' && id) {
-          setMode({ kind: 'service', serviceId: id })
-          // Clean URL - remove ctx param after parsing
-          const newSearch = new URLSearchParams(searchParams)
-          newSearch.delete('ctx')
-          const newSearchString = newSearch.toString()
-          const newUrl = newSearchString 
-            ? `${location.pathname}?${newSearchString}`
-            : location.pathname
-          navigate(newUrl, { replace: true })
-          return
-        }
+    if (ctx) {
+      // Parse ctx parameter: store:<ID> or service:<ID>
+      const [type, id] = ctx.split(':')
+      
+      if (type === 'store' && id) {
+        setMode({ kind: 'store', storeId: id })
+        // Clean URL - remove ctx param after parsing
+        const newSearch = new URLSearchParams(searchParams)
+        newSearch.delete('ctx')
+        const newSearchString = newSearch.toString()
+        const newUrl = newSearchString 
+          ? `${location.pathname}?${newSearchString}`
+          : location.pathname
+        navigate(newUrl, { replace: true })
+        return
       }
-
-      // If no ctx param, check if we're in a store/service detail page
-      // and reset to marketplace mode if navigating away
-      const path = location.pathname
-      if (path.startsWith('/store/') && !path.includes('/edit')) {
-        const storeId = path.split('/store/')[1]?.split('/')[0]
-        if (storeId && mode.kind === 'store' && mode.storeId === storeId) {
-          // Already in store mode for this store, keep it
-          return
-        }
-      } else if (path.startsWith('/service/') && !path.includes('/edit')) {
-        const serviceId = path.split('/service/')[1]?.split('/')[0]
-        if (serviceId && mode.kind === 'service' && mode.serviceId === serviceId) {
-          // Already in service mode for this service, keep it
-          return
-        }
-      } else if (path === '/' && mode.kind !== 'marketplace') {
-        // On home page but not in marketplace mode - could be intentional
-        // Don't auto-reset, let user control via "Back to Marketplace" button
+      
+      if (type === 'service' && id) {
+        setMode({ kind: 'service', serviceId: id })
+        // Clean URL - remove ctx param after parsing
+        const newSearch = new URLSearchParams(searchParams)
+        newSearch.delete('ctx')
+        const newSearchString = newSearch.toString()
+        const newUrl = newSearchString 
+          ? `${location.pathname}?${newSearchString}`
+          : location.pathname
+        navigate(newUrl, { replace: true })
         return
       }
     }
 
-    parseUrlContext()
-  }, [location, navigate])
+    // If no ctx param and we're not on a store/service detail page, 
+    // and we're not on home page in branded mode, reset to marketplace
+    const path = location.pathname
+    if (!ctx && path !== '/' && !path.startsWith('/store/') && !path.startsWith('/service/')) {
+      // Only reset if we're navigating away from branded pages
+      if (mode.kind !== 'marketplace') {
+        // Don't auto-reset on navigation - let user control via "Back to Marketplace" button
+        // setMode({ kind: 'marketplace' })
+      }
+    }
+  }, [location.search, location.pathname, navigate]) // Only depend on location changes, not mode
 
   const setAppMode = (newMode: AppMode) => {
     setMode(newMode)

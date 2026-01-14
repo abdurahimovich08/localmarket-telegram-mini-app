@@ -125,13 +125,14 @@ function App() {
     )
   }
 
+  // Wrap in error boundary to catch any rendering errors
   return (
     <UserContext.Provider value={{ user, setUser }}>
-      <AppModeProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <AppModeProvider>
           <AppRoutes />
-        </BrowserRouter>
-      </AppModeProvider>
+        </AppModeProvider>
+      </BrowserRouter>
     </UserContext.Provider>
   )
 }
