@@ -61,6 +61,10 @@ export const getListings = async (filters?: {
   limit?: number // Maximum number of listings to return
   page?: number // Page number (1-indexed) for pagination - DEPRECATED: Use cursor-based instead
   afterTimestamp?: string // Cursor-based pagination: show listings after this timestamp (deprecated)
+  // Scoped filtering for branded modes
+  scope?: 'global' | 'store' | 'service'
+  storeId?: string // Filter by store_id when scope is 'store'
+  serviceId?: string // Filter by service provider when scope is 'service'
 }): Promise<Listing[]> => {
   // IMPORTANT: Always order by created_at DESC to ensure new listings appear first
   // NEVER use OFFSET-based pagination - it breaks when new listings are added
@@ -115,6 +119,29 @@ export const getListings = async (filters?: {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     query = query.gte('created_at', sevenDaysAgo.toISOString())
   }
+
+  // Scoped filtering for branded modes
+  if (filters?.scope === 'store' && filters?.storeId) {
+    query = query.eq('store_id', filters.storeId)
+  } else if (filters?.scope === 'service' && filters?.serviceId) {
+    // For services, we need to filter by provider_telegram_id
+    // First, get the service to find the provider
+    const { data: serviceData, error: serviceError } = await supabase
+      .from('services')
+      .select('provider_telegram_id')
+      .eq('service_id', filters.serviceId)
+      .eq('status', 'active')
+      .single()
+    
+    if (serviceError || !serviceData?.provider_telegram_id) {
+      // Service not found or error, return empty
+      console.warn('Service not found for scoped filtering:', filters.serviceId)
+      return []
+    }
+    
+    query = query.eq('seller_telegram_id', serviceData.provider_telegram_id)
+  }
+  // If scope is 'global' or undefined, no additional filtering (show all)
 
   // Advanced search with fuzzy matching, synonyms, transliteration
   if (filters?.search && filters.search.trim()) {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { supabase } from '../lib/supabase'
-import { getStores } from '../lib/supabase'
+import { useAppMode } from '../contexts/AppModeContext'
+import { supabase, getListings, getStores } from '../lib/supabase'
 import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
 import { getEnhancedPersonalizedListings } from '../lib/recommendations'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
@@ -19,6 +19,7 @@ type TabType = 'personalized' | 'deals'
 
 export default function Home() {
   const { user } = useUser()
+  const { mode } = useAppMode()
   const navigate = useNavigate()
   const [listings, setListings] = useState<Listing[]>([])
   const [personalizedListings, setPersonalizedListings] = useState<Listing[]>([])
@@ -42,58 +43,86 @@ export default function Home() {
         setLoading(true)
       }
       try {
-        // CRITICAL: Barcha e'lonlarni olamiz, hech qanday filter yo'q
-        // Database allaqachon "Hamma uchun ochiq" - frontend ham ochiq bo'lishi kerak
-        // Joylashuv filtri (radius, userLat, userLon) OLIB TASHLANDI
-        // Seller filtri OLIB TASHLANDI
+        // Determine scope based on app mode
+        const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
         
-        const { data, error } = await supabase
-          .from('listings')
-          .select(`
-            *,
-            seller:users!seller_telegram_id(telegram_user_id, first_name, username, profile_photo_url)
-          `)
-          .eq('status', 'active') // Faqat faol e'lonlar
-          .order('is_boosted', { ascending: false }) // Targ'ib qilinganlar birinchi
-          .order('created_at', { ascending: false }) // Eng yangisi tepada
-          .limit(100) // Performance uchun limit
+        let allListings: Listing[] = []
+        
+        if (isBrandedMode) {
+          // Use scoped getListings for branded mode
+          if (mode.kind === 'store') {
+            allListings = await getListings({
+              scope: 'store',
+              storeId: mode.storeId,
+              limit: 100
+            })
+          } else if (mode.kind === 'service') {
+            allListings = await getListings({
+              scope: 'service',
+              serviceId: mode.serviceId,
+              limit: 100
+            })
+          }
+        } else {
+          // Marketplace mode: get all listings
+          const { data, error } = await supabase
+            .from('listings')
+            .select(`
+              *,
+              seller:users!seller_telegram_id(telegram_user_id, first_name, username, profile_photo_url)
+            `)
+            .eq('status', 'active') // Faqat faol e'lonlar
+            .order('is_boosted', { ascending: false }) // Targ'ib qilinganlar birinchi
+            .order('created_at', { ascending: false }) // Eng yangisi tepada
+            .limit(100) // Performance uchun limit
 
-        if (error) {
-          console.error('Error fetching listings:', error)
-          return
+          if (error) {
+            console.error('Error fetching listings:', error)
+            return
+          }
+
+          allListings = data || []
         }
 
         if (!isMounted) return
 
-        const allListings = data || []
+        console.log(`${isBrandedMode ? 'Scoped' : 'All'} listings loaded:`, allListings.length, "ta")
 
-        console.log("Barcha e'lonlar yuklandi:", allListings.length, "ta")
-
-        // Sort with advanced algorithm (only first 50)
+        // Sort with advanced algorithm
         const sorted = await sortListings(
           allListings,
           user?.telegram_user_id,
-          100 // Max radius (barcha e'lonlar)
+          100 // Max radius
         )
 
-        // Get enhanced personalized listings (search + view history) - limit to 30
-        const personalized = user?.telegram_user_id
-          ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
-          : await getPersonalizedListings(sorted, user?.telegram_user_id, 100, 30)
+        // In branded mode, show all listings (no personalization/deals tabs)
+        if (isBrandedMode) {
+          if (isMounted) {
+            setListings(sorted)
+            setPersonalizedListings(sorted) // Use same list for display
+            setDealsListings([]) // No deals in branded mode
+          }
+        } else {
+          // Marketplace mode: use personalization
+          // Get enhanced personalized listings (search + view history) - limit to 30
+          const personalized = user?.telegram_user_id
+            ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
+            : await getPersonalizedListings(sorted, user?.telegram_user_id, 100, 30)
 
-        // Get deals of the day - limit to 20
-        const deals = getDealsOfDay(sorted, 20)
+          // Get deals of the day - limit to 20
+          const deals = getDealsOfDay(sorted, 20)
 
-        if (isMounted) {
-          setListings(sorted)
-          setPersonalizedListings(personalized)
-          setDealsListings(deals)
-        }
+          if (isMounted) {
+            setListings(sorted)
+            setPersonalizedListings(personalized)
+            setDealsListings(deals)
+          }
 
-        // Load random stores
-        const randomStores = await getStores(3, user?.telegram_user_id)
-        if (isMounted) {
-          setStores(randomStores)
+          // Load random stores (only in marketplace mode)
+          const randomStores = await getStores(3, user?.telegram_user_id)
+          if (isMounted) {
+            setStores(randomStores)
+          }
         }
       } catch (error) {
         console.error('Error loading listings:', error)
@@ -140,7 +169,7 @@ export default function Home() {
         clearInterval(refreshInterval)
       }
     }
-  }, [user?.telegram_user_id]) // search_radius_miles dependency olib tashlandi - endi kerak emas
+  }, [user?.telegram_user_id, mode]) // Reload when mode changes
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -178,57 +207,61 @@ export default function Home() {
     setCurrentPage(1)
   }, [activeTab])
 
+  const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header with Search */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="px-4 py-3 space-y-3">
-          {/* Top Row: Logo + Actions */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
-            <div className="flex items-center gap-2 relative z-50">
-              <CartIcon />
-              <Link
-                to="/create"
-                className="p-2 text-primary hover:text-primary/80 transition-colors relative z-50"
-                title="E'lon Yaratish"
-              >
-                <PlusCircleIcon className="w-6 h-6" />
-              </Link>
+      {/* Header with Search - Only show in marketplace mode */}
+      {!isBrandedMode && (
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+          <div className="px-4 py-3 space-y-3">
+            {/* Top Row: Logo + Actions */}
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
+              <div className="flex items-center gap-2 relative z-50">
+                <CartIcon />
+                <Link
+                  to="/create"
+                  className="p-2 text-primary hover:text-primary/80 transition-colors relative z-50"
+                  title="E'lon Yaratish"
+                >
+                  <PlusCircleIcon className="w-6 h-6" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <MagnifyingGlassIcon className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Qidiruv..."
+                className="w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <button
+                  onClick={handleSearch}
+                  className="p-1.5 text-gray-400 hover:text-primary transition-colors"
+                  title="QR Scanner"
+                >
+                  <QrCodeIcon className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
+        </header>
+      )}
 
-          {/* Search Bar */}
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <MagnifyingGlassIcon className="w-5 h-5" />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Qidiruv..."
-              className="w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button
-                onClick={handleSearch}
-                className="p-1.5 text-gray-400 hover:text-primary transition-colors"
-                title="QR Scanner"
-              >
-                <QrCodeIcon className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Category Carousel - Only show in marketplace mode */}
+      {!isBrandedMode && <CategoryCarousel />}
 
-      {/* Category Carousel */}
-      <CategoryCarousel />
-
-      {/* Stores Section */}
-      {stores.length > 0 && (
+      {/* Stores Section - Only show in marketplace mode */}
+      {!isBrandedMode && stores.length > 0 && (
         <div className="bg-white border-b border-gray-200 py-4">
           <div className="px-4 mb-3">
             <h2 className="text-lg font-semibold text-gray-900">Do'konlar</h2>
@@ -282,37 +315,39 @@ export default function Home() {
         </div>
       )}
 
-      {/* Tabs: Siz uchun / Kun narxlari */}
-      <div className="bg-white border-b border-gray-200 sticky top-[140px] z-30">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('personalized')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'personalized'
-                ? 'text-primary'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Siz uchun
-            {activeTab === 'personalized' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('deals')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
-              activeTab === 'deals'
-                ? 'text-primary'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Kun narxlari
-            {activeTab === 'deals' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
-            )}
-          </button>
+      {/* Tabs: Siz uchun / Kun narxlari - Only show in marketplace mode */}
+      {!isBrandedMode && (
+        <div className="bg-white border-b border-gray-200 sticky top-[140px] z-30">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('personalized')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+                activeTab === 'personalized'
+                  ? 'text-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Siz uchun
+              {activeTab === 'personalized' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('deals')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+                activeTab === 'deals'
+                  ? 'text-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Kun narxlari
+              {activeTab === 'deals' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Listings Grid */}
       {loading ? (
@@ -395,7 +430,7 @@ export default function Home() {
         </div>
       )}
 
-      <BottomNav />
+      {/* BottomNav is handled by layout components */}
     </div>
   )
 }

@@ -7,6 +7,12 @@ export interface TelegramUser {
   photo_url?: string
 }
 
+// App Mode Types
+export type AppMode =
+  | { kind: 'marketplace' }
+  | { kind: 'store'; storeId: string }
+  | { kind: 'service'; serviceId: string }
+
 export interface User {
   telegram_user_id: number
   username?: string
@@ -67,7 +73,7 @@ export interface Listing {
   store_id?: string // Optional: associated store
   store?: Store // Populated store info
   // "Yangi" badge frontend'da aniqlanadi (so'nggi 24-72 soatda yaratilgan)
-  // Hech qachon WHERE created_at > last_seen_at qilmaymiz - xavfli!
+  // Hech qanday WHERE created_at > last_seen_at qilmaymiz - xavfli!
 }
 
 export interface Favorite {

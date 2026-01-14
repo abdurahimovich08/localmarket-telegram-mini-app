@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
+import { useAppMode } from '../contexts/AppModeContext'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getListings } from '../lib/supabase'
 import { requestLocation } from '../lib/telegram'
@@ -15,6 +16,7 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 export default function Search() {
   const { user } = useUser()
+  const { mode } = useAppMode()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
@@ -51,6 +53,8 @@ export default function Search() {
         // Get listings with filters
         // CRITICAL: Always sorted by created_at DESC to show newest listings first
         // No OFFSET - ensures new listings appear even when paginated
+        // Apply scoped filtering if in branded mode
+        const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
         const data = await getListings({
           search: searchQuery || undefined,
           category: filters.category || initialCategory,
@@ -62,7 +66,11 @@ export default function Search() {
           userLon: location?.longitude,
           recentOnly: filters.recentOnly,
           boostedOnly: filters.boostedOnly,
-          limit: 100 // Fetch enough for pagination
+          limit: 100, // Fetch enough for pagination
+          // Scoped filtering for branded modes
+          scope: isBrandedMode ? (mode.kind === 'store' ? 'store' : 'service') : 'global',
+          storeId: mode.kind === 'store' ? mode.storeId : undefined,
+          serviceId: mode.kind === 'service' ? mode.serviceId : undefined,
         })
         
         if (!isMounted) return
@@ -94,7 +102,7 @@ export default function Search() {
       isMounted = false
       clearTimeout(debounceTimer)
     }
-  }, [searchQuery, filters, user?.search_radius_miles, user?.telegram_user_id])
+  }, [searchQuery, filters, user?.search_radius_miles, user?.telegram_user_id, mode])
 
   const handleListingClick = (listing: Listing) => {
     // Track view with subcategory_id for granular recommendations

@@ -6,6 +6,7 @@ import type { User, Listing, Review, Store, Service } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
+import PersonalLinks from '../components/PersonalLinks'
 import { StarIcon, PlusIcon, BuildingStorefrontIcon, EyeIcon } from '@heroicons/react/24/solid'
 import { ChartBarIcon, PencilIcon } from '@heroicons/react/24/outline'
 
@@ -155,6 +156,16 @@ export default function Profile() {
 
         {user.neighborhood && (
           <p className="text-sm text-gray-600 mt-4">📍 {user.neighborhood}</p>
+        )}
+
+        {/* Personal Links Section (Own Profile Only) - Show even if no store/service yet */}
+        {isOwnProfile && (
+          <PersonalLinks 
+            stores={stores}
+            services={services}
+            hasListings={listings.length > 0}
+            botUsername={import.meta.env.VITE_BOT_USERNAME || 'your_bot'}
+          />
         )}
 
         {/* Create Store / View Store Button (Own Profile Only) */}

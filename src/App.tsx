@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { initTelegram, getTelegramUser } from './lib/telegram'
 import { createOrUpdateUser, getUser } from './lib/supabase'
@@ -23,6 +23,9 @@ import DashboardRecommendations from './pages/DashboardRecommendations'
 import DashboardBenchmark from './pages/DashboardBenchmark'
 import DashboardServiceDetail from './pages/DashboardServiceDetail'
 import { UserContext } from './contexts/UserContext'
+import { AppModeProvider, useAppMode } from './contexts/AppModeContext'
+import MarketplaceLayout from './components/MarketplaceLayout'
+import BrandedLayout from './components/BrandedLayout'
 import Onboarding from './components/Onboarding'
 
 function App() {
@@ -124,31 +127,76 @@ function App() {
 
   return (
     <UserContext.Provider value={{ user, setUser }}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/create" element={<CreateListing />} />
-          <Route path="/my-listings" element={<MyListings />} />
-          <Route path="/profile/:id?" element={<Profile />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/create-store" element={<CreateStore />} />
-          <Route path="/store/:id/edit" element={<EditStore />} />
-          <Route path="/store/:id" element={<StoreDetail />} />
-          <Route path="/create-service" element={<AIChatCreationPage />} />
-          <Route path="/service/:id" element={<ServiceDetailsPage />} />
-          <Route path="/service/:id/edit" element={<ServiceEdit />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/rank" element={<DashboardRank />} />
-          <Route path="/dashboard/recommendations" element={<DashboardRecommendations />} />
-          <Route path="/dashboard/benchmark" element={<DashboardBenchmark />} />
-          <Route path="/dashboard/services/:id" element={<DashboardServiceDetail />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <AppModeProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AppModeProvider>
     </UserContext.Provider>
+  )
+}
+
+// Separate component to use useAppMode hook
+function AppRoutes() {
+  const { mode } = useAppMode()
+  
+  // Determine which layout to use based on app mode
+  const useBrandedLayout = mode.kind === 'store' || mode.kind === 'service'
+  
+  // Pages that should always use marketplace layout (admin, creation, etc.)
+  const alwaysMarketplacePaths = [
+    '/create',
+    '/my-listings',
+    '/profile',
+    '/favorites',
+    '/search',
+    '/create-store',
+    '/store/:id/edit',
+    '/create-service',
+    '/service/:id/edit',
+    '/dashboard'
+  ]
+  
+  // Layout wrapper that chooses layout based on route and app mode
+  const LayoutWrapper = ({ children }: { children: React.ReactNode }) => {
+    const location = useLocation()
+    const path = location.pathname
+    
+    const isMarketplacePage = alwaysMarketplacePaths.some(marketplacePath => 
+      path.startsWith(marketplacePath.replace('/:id', '').replace(':id?', ''))
+    )
+    
+    // Use branded layout only on home and cart pages when in branded mode
+    if (useBrandedLayout && (path === '/' || path === '/cart') && !isMarketplacePage) {
+      return <BrandedLayout>{children}</BrandedLayout>
+    }
+    
+    return <MarketplaceLayout>{children}</MarketplaceLayout>
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<LayoutWrapper><Home /></LayoutWrapper>} />
+      <Route path="/listing/:id" element={<LayoutWrapper><ListingDetail /></LayoutWrapper>} />
+      <Route path="/create" element={<MarketplaceLayout><CreateListing /></MarketplaceLayout>} />
+      <Route path="/my-listings" element={<MarketplaceLayout><MyListings /></MarketplaceLayout>} />
+      <Route path="/profile/:id?" element={<MarketplaceLayout><Profile /></MarketplaceLayout>} />
+      <Route path="/favorites" element={<MarketplaceLayout><Favorites /></MarketplaceLayout>} />
+      <Route path="/search" element={<MarketplaceLayout><Search /></MarketplaceLayout>} />
+      <Route path="/cart" element={<LayoutWrapper><Cart /></LayoutWrapper>} />
+      <Route path="/create-store" element={<MarketplaceLayout><CreateStore /></MarketplaceLayout>} />
+      <Route path="/store/:id/edit" element={<MarketplaceLayout><EditStore /></MarketplaceLayout>} />
+      <Route path="/store/:id" element={<MarketplaceLayout><StoreDetail /></MarketplaceLayout>} />
+      <Route path="/create-service" element={<MarketplaceLayout><AIChatCreationPage /></MarketplaceLayout>} />
+      <Route path="/service/:id" element={<MarketplaceLayout><ServiceDetailsPage /></MarketplaceLayout>} />
+      <Route path="/service/:id/edit" element={<MarketplaceLayout><ServiceEdit /></MarketplaceLayout>} />
+      <Route path="/dashboard" element={<MarketplaceLayout><Dashboard /></MarketplaceLayout>} />
+      <Route path="/dashboard/rank" element={<MarketplaceLayout><DashboardRank /></MarketplaceLayout>} />
+      <Route path="/dashboard/recommendations" element={<MarketplaceLayout><DashboardRecommendations /></MarketplaceLayout>} />
+      <Route path="/dashboard/benchmark" element={<MarketplaceLayout><DashboardBenchmark /></MarketplaceLayout>} />
+      <Route path="/dashboard/services/:id" element={<MarketplaceLayout><DashboardServiceDetail /></MarketplaceLayout>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 

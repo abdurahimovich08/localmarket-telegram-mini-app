@@ -21,21 +21,46 @@ bot.setMyCommands([
   { command: 'help', description: 'Show help and safety tips' },
 ]);
 
-// /start command
-bot.onText(/\/start/, (msg) => {
+// /start command - supports deep links for stores and services
+bot.onText(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const miniAppUrl = process.env.MINI_APP_URL || 'https://your-app-url.com';
+  const payload = match[1]?.trim(); // Get everything after /start
   
-  bot.sendMessage(chatId, `
+  let appUrl = miniAppUrl;
+  let welcomeMessage = `
 🏪 Welcome to LocalMarket!
 
 Buy and sell items in your neighborhood, all within Telegram!
 
 Tap the button below to open the Mini App:
-  `, {
+  `;
+  
+  // Parse deep link payloads: store_<ID> or service_<ID>
+  if (payload) {
+    if (payload.startsWith('store_')) {
+      const storeId = payload.replace('store_', '');
+      appUrl = `${miniAppUrl}/?ctx=store:${storeId}`;
+      welcomeMessage = `
+🏪 Store Link
+
+Tap the button below to view this store:
+      `;
+    } else if (payload.startsWith('service_')) {
+      const serviceId = payload.replace('service_', '');
+      appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`;
+      welcomeMessage = `
+🛠 Service Link
+
+Tap the button below to view this service:
+      `;
+    }
+  }
+  
+  bot.sendMessage(chatId, welcomeMessage, {
     reply_markup: {
       inline_keyboard: [[
-        { text: '🚀 Open LocalMarket', web_app: { url: miniAppUrl } }
+        { text: '🚀 Open LocalMarket', web_app: { url: appUrl } }
       ]]
     }
   });
