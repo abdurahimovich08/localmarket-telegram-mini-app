@@ -266,6 +266,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_store_categories_updated_at ON store_categories;
 CREATE TRIGGER trigger_update_store_categories_updated_at
   BEFORE UPDATE ON store_categories
   FOR EACH ROW

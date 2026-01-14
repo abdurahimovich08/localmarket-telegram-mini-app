@@ -87,6 +87,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_set_store_referral_code ON stores;
 CREATE TRIGGER trigger_set_store_referral_code
 BEFORE INSERT ON stores
 FOR EACH ROW
