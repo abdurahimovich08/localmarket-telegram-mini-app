@@ -32,9 +32,8 @@ function getBot(): TelegramBot | null {
 
 // Get user context for AI
 async function getUserContext(telegramUserId: number): Promise<any> {
-  const apiUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/user-context`
-    : `${miniAppUrl}/api/user-context`
+  // Always use production URL to avoid Vercel deployment protection
+  const apiUrl = `${miniAppUrl}/api/user-context`
   
   try {
     const response = await fetch(apiUrl, {
@@ -58,9 +57,8 @@ async function getUserContext(telegramUserId: number): Promise<any> {
 
 // Call Gemini AI for conversation
 async function callGeminiAI(message: string, chatHistory: any[] = [], userContext: any = null): Promise<any> {
-  const apiUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/gemini-chat`
-    : `${miniAppUrl}/api/gemini-chat`
+  // Always use production URL to avoid Vercel deployment protection
+  const apiUrl = `${miniAppUrl}/api/gemini-chat`
   
   try {
     const response = await fetch(apiUrl, {
@@ -84,9 +82,8 @@ async function callGeminiAI(message: string, chatHistory: any[] = [], userContex
 
 // Track referral in backend
 async function trackReferral(userTelegramId: number, referralCode: string): Promise<{ success: boolean; store_id?: string; store_name?: string }> {
-  const apiUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/track-referral`
-    : `${miniAppUrl}/api/track-referral`
+  // Always use production URL to avoid Vercel deployment protection
+  const apiUrl = `${miniAppUrl}/api/track-referral`
   
   try {
     const response = await fetch(apiUrl, {
