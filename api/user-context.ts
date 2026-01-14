@@ -59,7 +59,7 @@ export default async function handler(
       .from('services')
       .select('service_id')
       .eq('provider_telegram_id', telegram_user_id)
-      .eq('is_active', true)
+      .eq('status', 'active')
 
     if (servicesError) {
       console.error('Error fetching services:', servicesError)
