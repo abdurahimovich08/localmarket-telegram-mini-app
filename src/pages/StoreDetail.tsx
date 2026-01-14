@@ -234,7 +234,6 @@ export default function StoreDetail() {
   
   // Get unique categories from listings
   const storeCategories = Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const filteredListings = selectedCategory 
     ? sortedListings.filter(l => l.category === selectedCategory)
     : sortedListings
