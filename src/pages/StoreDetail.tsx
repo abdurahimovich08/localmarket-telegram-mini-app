@@ -15,8 +15,7 @@ import type { Store, Listing, StorePost, StorePromotion } from '../types'
 import { CATEGORIES } from '../types'
 import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
-import ListingCard from '../components/ListingCard'
-import StoreProductCard from '../components/StoreProductCard'
+import PremiumProductCard from '../components/PremiumProductCard'
 import { 
   BellIcon, 
   CheckBadgeIcon,
@@ -26,7 +25,13 @@ import {
   ArrowUpTrayIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ShareIcon
+  ShareIcon,
+  FireIcon,
+  SparklesIcon,
+  UsersIcon,
+  ShoppingBagIcon,
+  FunnelIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
 import { 
   BellIcon as BellIconSolid,
@@ -53,6 +58,7 @@ export default function StoreDetail() {
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Reset description state when store changes
   useEffect(() => {
@@ -256,71 +262,44 @@ export default function StoreDetail() {
     }
   }
 
+  // Calculate store stats for social proof
+  const totalViews = listings.reduce((sum, l) => sum + (l.view_count || 0), 0)
+  const totalFavorites = listings.reduce((sum, l) => sum + (l.favorite_count || 0), 0)
+  const activePromotions = promotions.filter(p => new Date(p.end_date) > new Date()).length
+
   return (
-    <div className="min-h-screen gradient-purple-blue pb-24">
-      {/* Sticky Header - Do'kon nomi va Share tugmasi */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/90 border-b border-white/10 shadow-lg">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-24">
+      {/* Premium Sticky Header */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <BackButton />
-          <h1 className="flex-1 text-center font-bold text-white text-lg truncate px-2">
+          <h1 className="flex-1 text-center font-bold text-gray-900 text-lg truncate px-2">
             {store.name}
           </h1>
           <button
             onClick={handleShare}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
             title="Ulashish"
           >
-            <ShareIcon className="w-6 h-6 text-white" />
+            <ShareIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
         
-        {/* Location Display - Sticky header ostida */}
+        {/* Location Display */}
         <div className="px-4 pb-3">
           <LocationDisplay 
             onLocationChange={(location) => {
-              // Location o'zgarganda kerakli amallar
               console.log('Location updated:', location)
             }}
-            className="bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm"
+            className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-200"
           />
         </div>
       </header>
 
-      {/* Category Filters - Neumorphic */}
-      {storeCategories.length > 0 && (
-        <div className="px-4 py-3">
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`neumorphic-category px-4 py-2 whitespace-nowrap ${
-                selectedCategory === null ? 'neumorphic-category-active' : ''
-              }`}
-            >
-              <span className="text-white font-medium">All</span>
-            </button>
-            {storeCategories.map((cat) => {
-              const category = CATEGORIES.find(c => c.value === cat)
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`neumorphic-category px-4 py-2 whitespace-nowrap flex items-center gap-2 ${
-                    selectedCategory === cat ? 'neumorphic-category-active' : ''
-                  }`}
-                >
-                  <span className="text-white text-lg">{category?.emoji || '📦'}</span>
-                  <span className="text-white text-sm">{category?.label || cat}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* YOUTUBE STYLE STORE HEADER */}
+      {/* Premium Hero Section */}
       <div className="relative">
-        {/* Background Photo (YouTube Style) */}
-        <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 overflow-hidden">
+        {/* Banner with Parallax Effect */}
+        <div className="relative w-full h-64 md:h-80 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 overflow-hidden">
           {store.banner_url ? (
             <img
               src={store.banner_url}
@@ -329,225 +308,362 @@ export default function StoreDetail() {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-6xl text-white/30">🏪</span>
+              <span className="text-7xl text-white/20">🏪</span>
             </div>
           )}
-          {/* Gradient overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+          {/* Premium Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
         </div>
 
-        {/* Store Identity Block (YouTube Style) */}
-        <div className="px-4 pb-4 relative -mt-16 z-10">
-          <div className="flex flex-row items-end gap-4">
-            {/* Logo - Circular avatar (overlaps banner) */}
-            {store.logo_url ? (
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white">
-                <img
-                  src={store.logo_url}
-                  alt={store.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center flex-shrink-0">
-                <span className="text-3xl md:text-4xl text-white font-bold">
-                  {store.name[0].toUpperCase()}
-                </span>
-              </div>
-            )}
-
-            {/* Store Info - Logo yonida */}
-            <div className="flex-1 min-w-0 pb-2">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl md:text-2xl font-bold text-white leading-tight truncate">
-                  {store.name}
-                </h2>
-                {store.is_verified && (
-                  <CheckBadgeIcon className="w-6 h-6 text-blue-400 flex-shrink-0" />
-                )}
-              </div>
-              
-              {/* Username - Store nomi ostida */}
-              {store.owner?.username && (
-                <p className="text-white/80 text-sm md:text-base">
-                  @{store.owner.username}
-                </p>
+        {/* Store Identity - Premium Design */}
+        <div className="px-4 pb-6 relative -mt-20 z-10">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 border border-gray-100">
+            <div className="flex items-start gap-4 mb-4">
+              {/* Premium Logo */}
+              {store.logo_url ? (
+                <div className="w-28 h-28 rounded-2xl border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white ring-4 ring-indigo-100">
+                  <img
+                    src={store.logo_url}
+                    alt={store.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-28 h-28 rounded-2xl border-4 border-white shadow-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 ring-4 ring-indigo-100">
+                  <span className="text-4xl text-white font-bold">
+                    {store.name[0].toUpperCase()}
+                  </span>
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* Store Stats */}
-          <div className="mt-3 flex items-center gap-4 text-white/90">
-            <span className="text-sm">
-              {listings.length} mahsulot
-            </span>
-            {store.subscriber_count > 0 && (
-              <span className="text-sm">
-                {store.subscriber_count} obunachi
-              </span>
+              {/* Store Info */}
+              <div className="flex-1 min-w-0 pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight truncate">
+                    {store.name}
+                  </h2>
+                  {store.is_verified && (
+                    <div className="flex-shrink-0">
+                      <CheckBadgeIcon className="w-6 h-6 text-blue-500" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Username */}
+                {store.owner?.username && (
+                  <p className="text-gray-600 text-sm mb-3">
+                    @{store.owner.username}
+                  </p>
+                )}
+
+                {/* Premium Stats - Social Proof */}
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-gray-700">
+                    <ShoppingBagIcon className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{listings.length}</span>
+                    <span className="text-xs text-gray-500">mahsulot</span>
+                  </div>
+                  {store.subscriber_count > 0 && (
+                    <div className="flex items-center gap-1.5 text-gray-700">
+                      <UsersIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{store.subscriber_count}</span>
+                      <span className="text-xs text-gray-500">obunachi</span>
+                    </div>
+                  )}
+                  {totalViews > 0 && (
+                    <div className="flex items-center gap-1.5 text-gray-700">
+                      <EyeIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{totalViews}</span>
+                      <span className="text-xs text-gray-500">ko'rish</span>
+                    </div>
+                  )}
+                  {activePromotions > 0 && (
+                    <div className="flex items-center gap-1.5 text-orange-600">
+                      <FireIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{activePromotions}</span>
+                      <span className="text-xs text-gray-500">aksiya</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {store.description && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
+                  {store.description}
+                </p>
+              </div>
+            )}
+
+            {/* Subscribe Button - Premium CTA */}
+            {!isOwner && (
+              <button
+                onClick={handleSubscribe}
+                disabled={subscribing}
+                className={`mt-4 w-full py-3.5 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg ${
+                  store.is_subscribed
+                    ? 'bg-gray-600 hover:bg-gray-700'
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                }`}
+              >
+                {subscribing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Kuting...
+                  </span>
+                ) : store.is_subscribed ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <BellIconSolid className="w-5 h-5" />
+                    Obuna bo'lingan
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <BellIcon className="w-5 h-5" />
+                    Obuna bo'lish
+                  </span>
+                )}
+              </button>
             )}
           </div>
-
-          {/* DESCRIPTION BLOCK */}
-          {store.description && (
-            <div className="mt-3">
-              <p className="text-sm text-white/90 whitespace-pre-line line-clamp-3">
-                {store.description}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
+      {/* Premium Category Filters */}
+      {storeCategories.length > 0 && (
+        <div className="px-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-bold text-gray-900">Kategoriyalar</h3>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <FunnelIcon className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${
+                selectedCategory === null
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300'
+              }`}
+            >
+              Barchasi
+            </button>
+            {storeCategories.map((cat) => {
+              const category = CATEGORIES.find(c => c.value === cat)
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all flex items-center gap-2 ${
+                    selectedCategory === cat
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <span className="text-lg">{category?.emoji || '📦'}</span>
+                  <span>{category?.label || cat}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-      {/* CONTENT AREA - Products Grid (Listings Tab) */}
+      {/* Sort & Filter Bar */}
+      <div className="px-4 mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">
+            {filteredListings.length} ta mahsulot
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={sortType}
+            onChange={(e) => setSortType(e.target.value as SortType)}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="newest">Yangi</option>
+            <option value="cheapest">Arzon</option>
+            <option value="popular">Mashhur</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Premium Products Grid */}
       {activeTab === 'listings' && (
         <div className="px-4 pb-4">
           {filteredListings.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
               <div className="text-6xl mb-4">😕</div>
-              <p className="text-white text-lg mb-2">Bu do'konda hozircha mahsulot yo'q</p>
-              <p className="text-white/70 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
+              <p className="text-gray-900 text-lg font-semibold mb-2">Bu do'konda hozircha mahsulot yo'q</p>
+              <p className="text-gray-500 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {filteredListings.map((listing) => (
-                <StoreProductCard key={listing.listing_id} listing={listing} />
+                <PremiumProductCard 
+                  key={listing.listing_id} 
+                  listing={listing}
+                  onAddToCart={() => {
+                    // Add to cart logic
+                    console.log('Add to cart:', listing.listing_id)
+                  }}
+                />
               ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Bottom Navigation - Neumorphic */}
-      <nav className="fixed bottom-0 left-0 right-0 neumorphic-nav z-50 safe-area-bottom">
+      {/* Bottom Navigation - Premium Design */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 z-50 safe-area-bottom shadow-lg">
         <div className="flex justify-around items-center h-16 px-4">
           <button
             onClick={() => setActiveTab('listings')}
             className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
-              activeTab === 'listings' ? 'neumorphic-nav-active' : ''
+              activeTab === 'listings' ? 'text-indigo-600' : 'text-gray-500'
             }`}
           >
-            <span className="text-2xl mb-1">📦</span>
-            <span className="text-xs text-white font-medium">Katalog</span>
+            <ShoppingBagIcon className={`w-6 h-6 mb-1 ${activeTab === 'listings' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-xs font-medium">Katalog</span>
           </button>
           <button
             onClick={() => setActiveTab('promotions')}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
-              activeTab === 'promotions' ? 'neumorphic-nav-active' : ''
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+              activeTab === 'promotions' ? 'text-indigo-600' : 'text-gray-500'
             }`}
           >
-            <span className="text-2xl mb-1">🔥</span>
-            <span className="text-xs text-white font-medium">Aksiyalar</span>
+            {activePromotions > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {activePromotions}
+              </span>
+            )}
+            <FireIcon className={`w-6 h-6 mb-1 ${activeTab === 'promotions' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-xs font-medium">Aksiyalar</span>
           </button>
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
-              activeTab === 'posts' ? 'neumorphic-nav-active' : ''
+              activeTab === 'posts' ? 'text-indigo-600' : 'text-gray-500'
             }`}
           >
-            <span className="text-2xl mb-1">📭</span>
-            <span className="text-xs text-white font-medium">Postlar</span>
+            <ChatBubbleLeftIcon className={`w-6 h-6 mb-1 ${activeTab === 'posts' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-xs font-medium">Postlar</span>
           </button>
         </div>
       </nav>
 
-      {/* CONTENT AREA - Tabs */}
+      {/* Tabs Content */}
       <div className="p-4 pb-24">
-        {/* AKSIYALAR TAB */}
+        {/* Promotions Tab */}
         {activeTab === 'promotions' && (
           <div className="space-y-4">
             {promotions.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
                 <div className="text-6xl mb-4">🔥</div>
-                <p className="text-white text-lg mb-2">Hozircha aksiyalar yo'q</p>
-                <p className="text-white/70 text-sm">Tez orada yangi chegirmalar bo'ladi</p>
+                <p className="text-gray-900 text-lg font-semibold mb-2">Hozircha aksiyalar yo'q</p>
+                <p className="text-gray-500 text-sm">Tez orada yangi chegirmalar bo'ladi</p>
               </div>
             ) : (
               promotions.map((promo) => (
-                <div key={promo.promotion_id} className="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl p-4 text-white shadow-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="text-2xl font-bold mb-1">
-                        {promo.discount_percent ? `${promo.discount_percent}% chegirma` : 'Aksiya'}
-                      </div>
-                      {promo.title && (
-                        <h3 className="text-lg font-semibold mb-1">{promo.title}</h3>
-                      )}
-                      {promo.description && (
-                        <p className="text-sm opacity-90 mb-2">{promo.description}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs opacity-75 mb-1">Tugash sanasi</div>
-                      <div className="text-sm font-semibold">{formatTimeRemaining(promo.end_date)}</div>
-                    </div>
+                <div key={promo.promotion_id} className="bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 rounded-2xl p-5 text-white shadow-xl overflow-hidden relative">
+                  {/* Animated Background Pattern */}
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute inset-0" style={{
+                      backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+                      backgroundSize: '20px 20px'
+                    }}></div>
                   </div>
                   
-                  {promotionListings[promo.promotion_id] && promotionListings[promo.promotion_id].length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      {promotionListings[promo.promotion_id].slice(0, 4).map((listing) => (
-                        <div 
-                          key={listing.listing_id}
-                          onClick={() => navigate(`/listing/${listing.listing_id}`)}
-                          className="bg-white/20 backdrop-blur-sm rounded-lg p-2 cursor-pointer hover:bg-white/30 transition-colors"
-                        >
-                          {listing.photos && listing.photos.length > 0 && (
-                            <img
-                              src={listing.photos[0]}
-                              alt={listing.title}
-                              className="w-full aspect-square object-cover rounded-lg mb-2"
-                            />
-                          )}
-                          <p className="text-white text-sm font-medium truncate">{listing.title}</p>
-                          <p className="text-white text-xs opacity-90">
-                            {listing.price ? `$${listing.price}` : 'Bepul'}
-                          </p>
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="text-3xl font-black mb-2">
+                          {promo.discount_percent ? `${promo.discount_percent}% CHEGIRMA` : 'AKSIYA'}
                         </div>
-                      ))}
+                        {promo.title && (
+                          <h3 className="text-xl font-bold mb-2">{promo.title}</h3>
+                        )}
+                        {promo.description && (
+                          <p className="text-sm opacity-95 mb-3">{promo.description}</p>
+                        )}
+                      </div>
+                      <div className="text-right bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2">
+                        <div className="text-xs opacity-90 mb-1">Tugash sanasi</div>
+                        <div className="text-sm font-bold">{formatTimeRemaining(promo.end_date)}</div>
+                      </div>
                     </div>
-                  )}
+                    
+                    {promotionListings[promo.promotion_id] && promotionListings[promo.promotion_id].length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        {promotionListings[promo.promotion_id].slice(0, 4).map((listing) => (
+                          <div 
+                            key={listing.listing_id}
+                            onClick={() => navigate(`/listing/${listing.listing_id}`)}
+                            className="bg-white/20 backdrop-blur-sm rounded-xl p-3 cursor-pointer hover:bg-white/30 transition-all transform hover:scale-105"
+                          >
+                            {listing.photos && listing.photos.length > 0 && (
+                              <img
+                                src={listing.photos[0]}
+                                alt={listing.title}
+                                className="w-full aspect-square object-cover rounded-lg mb-2"
+                              />
+                            )}
+                            <p className="text-white text-sm font-bold truncate mb-1">{listing.title}</p>
+                            <p className="text-white text-xs opacity-90">
+                              {listing.price ? `${listing.price.toLocaleString()} so'm` : 'Bepul'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </div>
         )}
 
-        {/* POSTLAR TAB - Neumorphic style */}
+        {/* Posts Tab */}
         {activeTab === 'posts' && (
           <div className="space-y-4">
             {posts.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
                 <div className="text-6xl mb-4">📭</div>
-                <p className="text-white text-lg mb-2">Hozircha postlar yo'q</p>
-                <p className="text-white/70 text-sm">Do'kon yangiliklari va e'lonlari shu yerda paydo bo'ladi</p>
+                <p className="text-gray-900 text-lg font-semibold mb-2">Hozircha postlar yo'q</p>
+                <p className="text-gray-500 text-sm">Do'kon yangiliklari va e'lonlari shu yerda paydo bo'ladi</p>
               </div>
             ) : (
               posts.map((post) => (
-                <div key={post.post_id} className="neumorphic-product-card p-4">
+                <div key={post.post_id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   {/* Post Header */}
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-4">
                     {store.logo_url ? (
                       <img
                         src={store.logo_url}
                         alt={store.name}
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
+                        className="w-12 h-12 rounded-xl object-cover border-2 border-gray-100"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/30">
-                        <span className="text-lg text-white font-semibold">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-2 border-gray-100">
+                        <span className="text-xl text-white font-bold">
                           {store.name[0].toUpperCase()}
                         </span>
                       </div>
                     )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{store.name}</span>
+                        <span className="font-bold text-gray-900">{store.name}</span>
                         {store.is_verified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-blue-300" />
+                          <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
                         )}
                       </div>
-                      <div className="text-xs text-white/70">
+                      <div className="text-xs text-gray-500">
                         {new Date(post.created_at).toLocaleDateString('uz-UZ', {
                           year: 'numeric',
                           month: 'long',
@@ -558,11 +674,11 @@ export default function StoreDetail() {
                   </div>
 
                   {/* Post Content */}
-                  <p className="text-white/90 mb-3 whitespace-pre-wrap">{post.content}</p>
+                  <p className="text-gray-800 mb-4 whitespace-pre-wrap leading-relaxed">{post.content}</p>
 
                   {/* Post Images */}
                   {post.images && post.images.length > 0 && (
-                    <div className={`mb-3 grid gap-2 ${
+                    <div className={`mb-4 grid gap-3 ${
                       post.images.length === 1 ? 'grid-cols-1' : 
                       post.images.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
                     }`}>
@@ -571,33 +687,33 @@ export default function StoreDetail() {
                           key={idx}
                           src={img}
                           alt={`Post image ${idx + 1}`}
-                          className="w-full rounded-lg object-cover"
+                          className="w-full rounded-xl object-cover"
                           style={{ aspectRatio: '1/1' }}
                         />
                       ))}
                     </div>
                   )}
 
-                  {/* Post Actions - Like, Comment, Share */}
-                  <div className="flex items-center gap-6 pt-3 border-t border-white/20">
+                  {/* Post Actions */}
+                  <div className="flex items-center gap-6 pt-4 border-t border-gray-100">
                     <button
                       onClick={() => togglePostLike(post.post_id)}
-                      className="flex items-center gap-2 text-white/80 hover:text-red-300 transition-colors"
+                      className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition-colors"
                     >
                       {likedPosts.has(post.post_id) ? (
-                        <HeartIconSolid className="w-5 h-5 text-red-300" />
+                        <HeartIconSolid className="w-5 h-5 text-red-500" />
                       ) : (
                         <HeartIcon className="w-5 h-5" />
                       )}
-                      <span className="text-sm">Like</span>
+                      <span className="text-sm font-medium">Like</span>
                     </button>
-                    <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+                    <button className="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors">
                       <ChatBubbleLeftIcon className="w-5 h-5" />
-                      <span className="text-sm">Comment</span>
+                      <span className="text-sm font-medium">Comment</span>
                     </button>
-                    <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+                    <button className="flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors">
                       <ArrowUpTrayIcon className="w-5 h-5" />
-                      <span className="text-sm">Share</span>
+                      <span className="text-sm font-medium">Share</span>
                     </button>
                   </div>
                 </div>
@@ -606,7 +722,6 @@ export default function StoreDetail() {
           </div>
         )}
       </div>
-
     </div>
   )
 }
