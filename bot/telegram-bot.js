@@ -39,8 +39,26 @@ bot.onText(/\/start(.*)/, (msg, match) => {
     }
     
     let appUrl = miniAppUrl;
-    let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`;
-    let buttonText = '🚀 Open LocalMarket';
+    let welcomeMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
+      `📱 **Nimalar qila olasiz:**\n\n` +
+      `🛍️ **Sotib olish:**\n` +
+      `• Mahalliy e'lonlarni ko'rish\n` +
+      `• Kategoriya bo'yicha qidirish\n` +
+      `• Narx va masofa bo'yicha filtrlash\n` +
+      `• Sevimlilarga qo'shish\n` +
+      `• Sotuvchi bilan bevosita chat\n\n` +
+      `💰 **Sotish:**\n` +
+      `• E'lon yaratish (rasm bilan)\n` +
+      `• Do'kon yaratish va boshqarish\n` +
+      `• Xizmatlar ko'rsatish\n` +
+      `• Buyurtmalarni kuzatish\n\n` +
+      `⭐ **Qo'shimcha imkoniyatlar:**\n` +
+      `• Reyting va sharhlar\n` +
+      `• Joylashuv asosida qidirish\n` +
+      `• Shaxsiy profil va statistika\n` +
+      `• Savat va buyurtmalar\n\n` +
+      `👇 **Ilovani ochish uchun quyidagi tugmani bosing:**`;
+    let buttonText = '🚀 LocalMarket\'ni Ochish';
     
     // Parse deep link payloads: store_<ID> or service_<ID>
     if (payload) {

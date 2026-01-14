@@ -77,8 +77,26 @@ async function handleStartCommand(msg: any) {
   const payload = text.replace('/start', '').trim()
   
   let appUrl = miniAppUrl
-  let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`
-  let buttonText = '🚀 Open LocalMarket'
+  let welcomeMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
+    `📱 **Nimalar qila olasiz:**\n\n` +
+    `🛍️ **Sotib olish:**\n` +
+    `• Mahalliy e'lonlarni ko'rish\n` +
+    `• Kategoriya bo'yicha qidirish\n` +
+    `• Narx va masofa bo'yicha filtrlash\n` +
+    `• Sevimlilarga qo'shish\n` +
+    `• Sotuvchi bilan bevosita chat\n\n` +
+    `💰 **Sotish:**\n` +
+    `• E'lon yaratish (rasm bilan)\n` +
+    `• Do'kon yaratish va boshqarish\n` +
+    `• Xizmatlar ko'rsatish\n` +
+    `• Buyurtmalarni kuzatish\n\n` +
+    `⭐ **Qo'shimcha imkoniyatlar:**\n` +
+    `• Reyting va sharhlar\n` +
+    `• Joylashuv asosida qidirish\n` +
+    `• Shaxsiy profil va statistika\n` +
+    `• Savat va buyurtmalar\n\n` +
+    `👇 **Ilovani ochish uchun quyidagi tugmani bosing:**`
+  let buttonText = '🚀 LocalMarket\'ni Ochish'
   let referralCode: string | null = null
   let storeId: string | null = null
   
@@ -88,13 +106,25 @@ async function handleStartCommand(msg: any) {
       // Old format: store_<UUID>
       storeId = payload.replace('store_', '')
       appUrl = `${miniAppUrl}/?ctx=store:${storeId}`
-      welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`
+      welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:\n\n` +
+        `📱 **Do'konda nimalar bor:**\n` +
+        `• Mahsulotlar va xizmatlar\n` +
+        `• Narxlar va tavsiflar\n` +
+        `• Buyurtma berish imkoniyati\n` +
+        `• Do'kon egasi bilan chat\n\n` +
+        `👇 **Tugmani bosing:**`
       buttonText = '🛍 Do\'konni Ochish'
     } else if (payload.startsWith('service_')) {
       // Service format: service_<UUID>
       const serviceId = payload.replace('service_', '')
       appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`
-      welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`
+      welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:\n\n` +
+        `📱 **Xizmat haqida:**\n` +
+        `• Xizmat tavsifi va narxi\n` +
+        `• Xizmat ko'rsatuvchi profil\n` +
+        `• Buyurtma berish imkoniyati\n` +
+        `• Xizmat ko'rsatuvchi bilan chat\n\n` +
+        `👇 **Tugmani bosing:**`
       buttonText = '🚀 Xizmatni Ochish'
     } else {
       // New format: referral code directly (e.g., a9xK2)
@@ -105,7 +135,13 @@ async function handleStartCommand(msg: any) {
         if (trackingResult.success && trackingResult.store_id) {
           storeId = trackingResult.store_id
           appUrl = `${miniAppUrl}/?ctx=store:${storeId}`
-          welcomeMessage = `🏪 ${trackingResult.store_name || 'Do\'kon'} do'koniga ulandingiz!\n\nDo'konni ko'rish uchun quyidagi tugmani bosing:`
+          welcomeMessage = `🏪 ${trackingResult.store_name || 'Do\'kon'} do'koniga ulandingiz!\n\n` +
+            `📱 **Do'konda nimalar bor:**\n` +
+            `• Mahsulotlar va xizmatlar\n` +
+            `• Narxlar va tavsiflar\n` +
+            `• Buyurtma berish imkoniyati\n` +
+            `• Do'kon egasi bilan chat\n\n` +
+            `👇 **Do'konni ko'rish uchun quyidagi tugmani bosing:**`
           buttonText = '🛍 Do\'konni Ochish'
         } else {
           // Invalid referral code - still show welcome but don't track
