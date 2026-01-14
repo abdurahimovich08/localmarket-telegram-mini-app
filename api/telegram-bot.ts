@@ -30,6 +30,56 @@ function getBot(): TelegramBot | null {
   return bot
 }
 
+// Get user context for AI
+async function getUserContext(telegramUserId: number): Promise<any> {
+  const apiUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/user-context`
+    : `${miniAppUrl}/api/user-context`
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_user_id: telegramUserId })
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to get user context:', response.statusText)
+      return null
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error getting user context:', error)
+    return null
+  }
+}
+
+// Call Gemini AI for conversation
+async function callGeminiAI(message: string, chatHistory: any[] = [], userContext: any = null): Promise<any> {
+  const apiUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/gemini-chat`
+    : `${miniAppUrl}/api/gemini-chat`
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, chatHistory, userContext })
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to call Gemini AI:', response.statusText)
+      return null
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error calling Gemini AI:', error)
+    return null
+  }
+}
+
 // Track referral in backend
 async function trackReferral(userTelegramId: number, referralCode: string): Promise<{ success: boolean; store_id?: string; store_name?: string }> {
   const apiUrl = process.env.VERCEL_URL 
@@ -59,7 +109,57 @@ async function trackReferral(userTelegramId: number, referralCode: string): Prom
   }
 }
 
-// Handle /start command with deep links
+// Get user context for AI
+async function getUserContext(telegramUserId: number): Promise<any> {
+  const apiUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/user-context`
+    : `${miniAppUrl}/api/user-context`
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram_user_id: telegramUserId })
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to get user context:', response.statusText)
+      return null
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error getting user context:', error)
+    return null
+  }
+}
+
+// Call Gemini AI for conversation
+async function callGeminiAI(message: string, chatHistory: any[] = [], userContext: any = null): Promise<any> {
+  const apiUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/gemini-chat`
+    : `${miniAppUrl}/api/gemini-chat`
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, chatHistory, userContext })
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to call Gemini AI:', response.statusText)
+      return null
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error calling Gemini AI:', error)
+    return null
+  }
+}
+
+// Handle /start command with AI conversation
 async function handleStartCommand(msg: any) {
   const botInstance = getBot()
   if (!botInstance) return
@@ -72,34 +172,16 @@ async function handleStartCommand(msg: any) {
   // Format: /start store_<ID> or /start service_<ID> or /start <REFERRAL_CODE>
   const payload = text.replace('/start', '').trim()
   
-  let appUrl = miniAppUrl
-  let welcomeMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
-    `📱 **Nimalar qila olasiz:**\n\n` +
-    `🛍️ **Sotib olish:**\n` +
-    `• Mahalliy e'lonlarni ko'rish\n` +
-    `• Kategoriya bo'yicha qidirish\n` +
-    `• Narx va masofa bo'yicha filtrlash\n` +
-    `• Sevimlilarga qo'shish\n` +
-    `• Sotuvchi bilan bevosita chat\n\n` +
-    `💰 **Sotish:**\n` +
-    `• E'lon yaratish (rasm bilan)\n` +
-    `• Do'kon yaratish va boshqarish\n` +
-    `• Xizmatlar ko'rsatish\n` +
-    `• Buyurtmalarni kuzatish\n\n` +
-    `⭐ **Qo'shimcha imkoniyatlar:**\n` +
-    `• Reyting va sharhlar\n` +
-    `• Joylashuv asosida qidirish\n` +
-    `• Shaxsiy profil va statistika\n` +
-    `• Savat va buyurtmalar\n\n` +
-    `👇 **Ilovani ochish uchun quyidagi tugmani bosing:**`
-  let buttonText = '🚀 LocalMarket\'ni Ochish'
-  let referralCode: string | null = null
-  let storeId: string | null = null
-  
-  // Parse deep link payloads
-  if (payload) {
+  // If there's a payload (deep link), handle it directly without AI
+  if (payload && (payload.startsWith('store_') || payload.startsWith('service_') || payload.length > 0 && !payload.includes(' '))) {
+    // Handle deep links and referral codes (existing logic)
+    let appUrl = miniAppUrl
+    let welcomeMessage = ''
+    let buttonText = '🚀 LocalMarket\'ni Ochish'
+    let referralCode: string | null = null
+    let storeId: string | null = null
+    
     if (payload.startsWith('store_')) {
-      // Old format: store_<UUID>
       storeId = payload.replace('store_', '')
       appUrl = `${miniAppUrl}/?ctx=store:${storeId}`
       welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:\n\n` +
@@ -111,7 +193,6 @@ async function handleStartCommand(msg: any) {
         `👇 **Tugmani bosing:**`
       buttonText = '🛍 Do\'konni Ochish'
     } else if (payload.startsWith('service_')) {
-      // Service format: service_<UUID>
       const serviceId = payload.replace('service_', '')
       appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`
       welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:\n\n` +
@@ -123,9 +204,8 @@ async function handleStartCommand(msg: any) {
         `👇 **Tugmani bosing:**`
       buttonText = '🚀 Xizmatni Ochish'
     } else {
-      // New format: referral code directly (e.g., a9xK2)
+      // Referral code
       referralCode = payload
-      // Backend'ga referral tracking yuborish
       if (telegramUserId && referralCode) {
         const trackingResult = await trackReferral(telegramUserId, referralCode)
         if (trackingResult.success && trackingResult.store_id) {
@@ -139,22 +219,97 @@ async function handleStartCommand(msg: any) {
             `• Do'kon egasi bilan chat\n\n` +
             `👇 **Do'konni ko'rish uchun quyidagi tugmani bosing:**`
           buttonText = '🛍 Do\'konni Ochish'
-        } else {
-          // Invalid referral code - still show welcome but don't track
-          console.warn('Invalid referral code:', referralCode)
         }
       }
     }
+    
+    if (welcomeMessage) {
+      botInstance.sendMessage(chatId, welcomeMessage, {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: buttonText, web_app: { url: appUrl } }
+          ]]
+        }
+      }).catch((error) => {
+        console.error('Error sending message:', error)
+      })
+    }
+    return
   }
   
-  botInstance.sendMessage(chatId, welcomeMessage, {
+  // No payload - start AI conversation
+  if (!telegramUserId) {
+    console.error('No telegram user ID')
+    return
+  }
+  
+  // Get user context
+  const userContext = await getUserContext(telegramUserId)
+  
+  // Start AI conversation
+  const initialMessage = "Salom! LocalMarket'ga xush kelibsiz! Siz nima qilmoqchisiz?"
+  const aiResponse = await callGeminiAI(initialMessage, [], userContext)
+  
+  if (!aiResponse) {
+    // Fallback to default message
+    const defaultMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
+      `Siz nima qilmoqchisiz?\n\n` +
+      `🛍️ Mahsulot sotib olish\n` +
+      `💰 Mahsulot sotish\n` +
+      `🏪 Do'kon yaratish\n` +
+      `🛠 Xizmat ko'rsatish\n\n` +
+      `👇 Ilovani ochish uchun quyidagi tugmani bosing:`
+    
+    botInstance.sendMessage(chatId, defaultMessage, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🚀 LocalMarket\'ni Ochish', web_app: { url: miniAppUrl } }
+        ]]
+      }
+    }).catch((error) => {
+      console.error('Error sending message:', error)
+    })
+    return
+  }
+  
+  // Send AI response
+  const responseMessage = aiResponse.message || initialMessage
+  const intent = aiResponse.intent || 'unknown'
+  const route = aiResponse.route || '/'
+  
+  // Build app URL based on intent
+  let appUrl = miniAppUrl
+  if (route && route !== '/') {
+    appUrl = `${miniAppUrl}${route}`
+  }
+  
+  // Create keyboard with options based on intent
+  const keyboard: any[] = []
+  
+  if (intent === 'buyer') {
+    keyboard.push([{ text: '🛍️ Bozorni Ko\'rish', web_app: { url: `${miniAppUrl}/` } }])
+  } else if (intent === 'store_create') {
+    keyboard.push([{ text: '🏪 Do\'kon Yaratish', web_app: { url: `${miniAppUrl}/create-store` } }])
+  } else if (intent === 'store_view' && userContext?.storeId) {
+    keyboard.push([{ text: '🏪 Do\'konni Ko\'rish', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}` } }])
+  } else if (intent === 'store_edit' && userContext?.storeId) {
+    keyboard.push([{ text: '✏️ Do\'konni Tahrirlash', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}/edit` } }])
+  } else if (intent === 'service_create') {
+    keyboard.push([{ text: '🛠 Xizmat Yaratish', web_app: { url: `${miniAppUrl}/create-service` } }])
+  } else if (intent === 'listing_create') {
+    keyboard.push([{ text: '📦 E\'lon Yaratish', web_app: { url: `${miniAppUrl}/create` } }])
+  } else {
+    // Default: show main app
+    keyboard.push([{ text: '🚀 LocalMarket\'ni Ochish', web_app: { url: appUrl } }])
+  }
+  
+  botInstance.sendMessage(chatId, responseMessage, {
     reply_markup: {
-      inline_keyboard: [[
-        { text: buttonText, web_app: { url: appUrl } }
-      ]]
-    }
+      inline_keyboard: keyboard
+    },
+    parse_mode: 'Markdown'
   }).catch((error) => {
-    console.error('Error sending message:', error)
+    console.error('Error sending AI message:', error)
   })
 }
 
@@ -242,8 +397,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Handle /start command
       if (text.startsWith('/start')) {
-        console.log('Handling /start command')
+        console.log('Handling /start command with AI')
         await handleStartCommand(msg)
+      }
+      // Handle regular messages (for AI conversation continuation)
+      else if (msg.text && !msg.text.startsWith('/')) {
+        console.log('Handling regular message for AI conversation')
+        // Store conversation state in memory (simple implementation)
+        // In production, use Redis or database for conversation state
+        const chatId = msg.chat.id
+        const telegramUserId = msg.from?.id
+        
+        if (telegramUserId) {
+          // Get user context
+          const userContext = await getUserContext(telegramUserId)
+          
+          // Call AI with user message
+          const aiResponse = await callGeminiAI(msg.text, [], userContext)
+          
+          if (aiResponse) {
+            const responseMessage = aiResponse.message || 'Kechirasiz, javob olishda xatolik yuz berdi.'
+            const intent = aiResponse.intent || 'unknown'
+            const route = aiResponse.route || '/'
+            
+            // Build app URL based on intent
+            let appUrl = miniAppUrl
+            if (route && route !== '/') {
+              appUrl = `${miniAppUrl}${route}`
+            }
+            
+            // Create keyboard
+            const keyboard: any[] = []
+            if (intent === 'buyer') {
+              keyboard.push([{ text: '🛍️ Bozorni Ko\'rish', web_app: { url: `${miniAppUrl}/` } }])
+            } else if (intent === 'store_create') {
+              keyboard.push([{ text: '🏪 Do\'kon Yaratish', web_app: { url: `${miniAppUrl}/create-store` } }])
+            } else if (intent === 'store_view' && userContext?.storeId) {
+              keyboard.push([{ text: '🏪 Do\'konni Ko\'rish', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}` } }])
+            } else if (intent === 'store_edit' && userContext?.storeId) {
+              keyboard.push([{ text: '✏️ Do\'konni Tahrirlash', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}/edit` } }])
+            } else if (intent === 'service_create') {
+              keyboard.push([{ text: '🛠 Xizmat Yaratish', web_app: { url: `${miniAppUrl}/create-service` } }])
+            } else if (intent === 'listing_create') {
+              keyboard.push([{ text: '📦 E\'lon Yaratish', web_app: { url: `${miniAppUrl}/create` } }])
+            } else {
+              keyboard.push([{ text: '🚀 LocalMarket\'ni Ochish', web_app: { url: appUrl } }])
+            }
+            
+            botInstance.sendMessage(chatId, responseMessage, {
+              reply_markup: {
+                inline_keyboard: keyboard
+              },
+              parse_mode: 'Markdown'
+            }).catch((error) => {
+              console.error('Error sending AI response:', error)
+            })
+          }
+        }
       }
       // Handle /sell command
       else if (text.startsWith('/sell')) {
