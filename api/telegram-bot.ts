@@ -215,8 +215,15 @@ function handleHelpCommand(msg: any) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Debug logging
+  console.log('=== Telegram Bot Webhook Called ===')
+  console.log('Method:', req.method)
+  console.log('Headers:', JSON.stringify(req.headers))
+  console.log('Body keys:', Object.keys(req.body || {}))
+  
   // Only allow POST requests
   if (req.method !== 'POST') {
+    console.log('Rejected: Method not allowed')
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
@@ -227,34 +234,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const update = req.body
+    console.log('Update received:', JSON.stringify(update).substring(0, 200))
 
     // Handle message updates
     if (update.message) {
       const msg = update.message
       const text = msg.text || ''
+      console.log('Message text:', text)
+      console.log('Chat ID:', msg.chat?.id)
+      console.log('User ID:', msg.from?.id)
 
       // Handle /start command
       if (text.startsWith('/start')) {
-        handleStartCommand(msg)
+        console.log('Handling /start command')
+        await handleStartCommand(msg)
       }
       // Handle /sell command
       else if (text.startsWith('/sell')) {
+        console.log('Handling /sell command')
         handleSellCommand(msg)
       }
       // Handle /mysales command
       else if (text.startsWith('/mysales')) {
+        console.log('Handling /mysales command')
         handleMySalesCommand(msg)
       }
       // Handle /help command
       else if (text.startsWith('/help')) {
+        console.log('Handling /help command')
         handleHelpCommand(msg)
+      } else {
+        console.log('Unknown command:', text)
       }
+    } else {
+      console.log('No message in update')
     }
 
     // Always return 200 OK to Telegram
+    console.log('Returning 200 OK')
     return res.status(200).json({ ok: true })
   } catch (error) {
     console.error('Error handling webhook:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
     return res.status(200).json({ ok: true }) // Still return 200 to avoid retries
   }
 }
