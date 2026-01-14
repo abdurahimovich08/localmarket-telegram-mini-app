@@ -41,26 +41,18 @@ Tap the button below to open the Mini App:
     if (payload.startsWith('store_')) {
       const storeId = payload.replace('store_', '');
       appUrl = `${miniAppUrl}/?ctx=store:${storeId}`;
-      welcomeMessage = `
-🏪 Store Link
-
-Tap the button below to view this store:
-      `;
+      welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`;
     } else if (payload.startsWith('service_')) {
       const serviceId = payload.replace('service_', '');
       appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`;
-      welcomeMessage = `
-🛠 Service Link
-
-Tap the button below to view this service:
-      `;
+      welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`;
     }
   }
   
   bot.sendMessage(chatId, welcomeMessage, {
     reply_markup: {
       inline_keyboard: [[
-        { text: '🚀 Open LocalMarket', web_app: { url: appUrl } }
+        { text: '🚀 Do\'konni Ochish', web_app: { url: appUrl } }
       ]]
     }
   });

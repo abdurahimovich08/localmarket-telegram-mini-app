@@ -76,7 +76,7 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
   }
 
   const generateStoreText = (store: Store) => {
-    return `🛍 ${store.name} do'koni: buyurtma berish uchun bosing 👇`
+    return `🛍 ${store.name} do'koni\n\nBuyurtma berish uchun linkni bosing va bot'da tugmani bosing 👇`
   }
 
   const generateServiceText = () => {
@@ -105,6 +105,9 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
               </div>
               <p className="text-xs text-gray-600 mb-2">
                 Kanalga ulashing — mijozlar faqat shu do'konni ko'radi
+              </p>
+              <p className="text-xs text-amber-600 mt-1 italic">
+                ⚠️ Linkni bosganda bot'ga o'tadi, u yerda tugmani bosing
               </p>
               <div className="text-xs text-gray-500 font-mono bg-white px-2 py-1 rounded border border-gray-200 break-all">
                 {generateStoreLink(stores[0].store_id)}
@@ -169,6 +172,9 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
               </div>
               <p className="text-xs text-gray-600 mb-2">
                 Portfolio kabi: xizmatlar ro'yxati + contact
+              </p>
+              <p className="text-xs text-amber-600 mt-1 italic">
+                ⚠️ Linkni bosganda bot'ga o'tadi, u yerda tugmani bosing
               </p>
               <div className="text-xs text-gray-500 font-mono bg-white px-2 py-1 rounded border border-gray-200 break-all">
                 {generateServiceLink(services[0].service_id)}
@@ -250,7 +256,7 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
             </div>
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary font-semibold flex items-center justify-center text-xs">3</span>
-              <p>Mijoz linkni bossa → bot ichida faqat sizning sahifangiz ochiladi ✅</p>
+              <p>Mijoz linkni bossa → bot'ga o'tadi, u yerda "Do'konni Ochish" tugmasini bosing → Mini App ochiladi ✅</p>
             </div>
           </div>
         )}
