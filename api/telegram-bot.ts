@@ -6,7 +6,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // Initialize bot with token from environment
 const token = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN
 const miniAppUrl = process.env.MINI_APP_URL || process.env.VITE_MINI_APP_URL || 
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app-url.com')
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://localmarket-telegram-mini-app-q1vp.vercel.app')
 
 // Lazy load TelegramBot to avoid issues in serverless environment
 let TelegramBot: any = null

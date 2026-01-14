@@ -7,7 +7,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN
   const webhookUrl = process.env.VERCEL_URL 
     ? `https://${process.env.VERCEL_URL}/api/telegram-bot`
-    : req.query.url as string || 'https://your-app.vercel.app/api/telegram-bot'
+    : req.query.url as string || 'https://localmarket-telegram-mini-app-q1vp.vercel.app/api/telegram-bot'
 
   if (!token) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN not found' })
