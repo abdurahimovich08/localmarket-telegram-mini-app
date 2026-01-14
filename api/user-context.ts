@@ -23,7 +23,16 @@ export default async function handler(
   }
 
   if (!supabase) {
-    return res.status(500).json({ error: 'Database not configured' })
+    console.error('Supabase not configured. Missing:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+      url: supabaseUrl ? 'present' : 'missing',
+      key: supabaseKey ? 'present' : 'missing'
+    })
+    return res.status(500).json({ 
+      error: 'Database not configured',
+      details: 'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables'
+    })
   }
 
   try {

@@ -36,8 +36,14 @@ export default async function handler(
   const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
 
   if (!API_KEY) {
-    console.error('GEMINI_API_KEY is not set')
-    return res.status(500).json({ error: 'API key not configured' })
+    console.error('GEMINI_API_KEY is not set. Checked:', {
+      VITE_GEMINI_API_KEY: !!process.env.VITE_GEMINI_API_KEY,
+      GEMINI_API_KEY: !!process.env.GEMINI_API_KEY
+    })
+    return res.status(500).json({ 
+      error: 'API key not configured',
+      details: 'Missing VITE_GEMINI_API_KEY or GEMINI_API_KEY environment variable'
+    })
   }
 
   try {

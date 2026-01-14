@@ -44,7 +44,8 @@ async function getUserContext(telegramUserId: number): Promise<any> {
     })
     
     if (!response.ok) {
-      console.error('Failed to get user context:', response.statusText)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error('Failed to get user context:', response.status, response.statusText, errorText)
       return null
     }
     
@@ -69,7 +70,8 @@ async function callGeminiAI(message: string, chatHistory: any[] = [], userContex
     })
     
     if (!response.ok) {
-      console.error('Failed to call Gemini AI:', response.statusText)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error('Failed to call Gemini AI:', response.status, response.statusText, errorText)
       return null
     }
     
