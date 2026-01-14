@@ -1,20 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { useAppMode } from '../contexts/AppModeContext'
-import { supabase, getListings, getStores } from '../lib/supabase'
-import { sortListings, getPersonalizedListings, getDealsOfDay } from '../lib/sorting'
-import { getEnhancedPersonalizedListings } from '../lib/recommendations'
+import { getStores } from '../lib/supabase'
+import { useUnifiedItems } from '../hooks/useUnifiedItems'
+import { useNavigateWithCtx } from '../lib/preserveCtx'
 import { trackListingView, trackUserSearch } from '../lib/tracking'
-import type { Listing, Store } from '../types'
-import { CATEGORIES } from '../types'
-import ListingCard from '../components/ListingCard'
-import ListingCardEbay from '../components/ListingCardEbay'
-import StoreProductCard from '../components/StoreProductCard'
+import type { Store } from '../types'
+import UniversalCard from '../components/UniversalCard'
 import Pagination from '../components/Pagination'
 import CategoryCarousel from '../components/CategoryCarousel'
 import CartIcon from '../components/CartIcon'
-import BottomNav from '../components/BottomNav'
 import { MagnifyingGlassIcon, PlusCircleIcon, QrCodeIcon } from '@heroicons/react/24/outline'
 
 type TabType = 'personalized' | 'deals'
@@ -23,202 +19,179 @@ export default function Home() {
   const { user } = useUser()
   const { mode } = useAppMode()
   const navigate = useNavigate()
-  const [listings, setListings] = useState<Listing[]>([])
-  const [personalizedListings, setPersonalizedListings] = useState<Listing[]>([])
-  const [dealsListings, setDealsListings] = useState<Listing[]>([])
+  const navigateWithCtx = useNavigateWithCtx()
   const [stores, setStores] = useState<Store[]>([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('personalized')
   const [searchQuery, setSearchQuery] = useState('')
-  // CRITICAL: Pagination state is only in React state, NEVER in localStorage
-  // This ensures fresh data every time user loads the page
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
+
+  // ✅ Filters: mode'ga qarab minimal shartlar
+  // ✅ useMemo bilan stable object (har renderda yangi object emas)
+  const filters = useMemo(() => {
+    if (mode.kind === 'store') {
+      // Store mode: faqat store mahsulotlar
+      return {
+        itemType: 'store_product' as const,
+        storeId: mode.storeId,
+        limit: 100,
+      }
+    } else if (mode.kind === 'service') {
+      // Service mode: faqat service
+      return {
+        itemType: 'service' as const,
+        // Note: serviceId filter VIEW'da bo'lmasligi mumkin, lekin entity_type='service' yetarli
+        limit: 100,
+      }
+    } else {
+      // Marketplace mode: hamma itemlar (listing + service)
+      return {
+        // itemType undefined = hammasi
+        limit: 100,
+      }
+    }
+  }, [mode.kind, mode.storeId])
+
+  // ✅ Query design: stable key with object params
+  const queryKey = useMemo(() => [
+    'unifiedItems',
+    {
+      modeKind: mode.kind,
+      storeId: mode.kind === 'store' ? mode.storeId : undefined,
+      serviceId: mode.kind === 'service' ? mode.serviceId : undefined,
+      sort: 'created_at',
+      page: currentPage,
+    }
+  ], [mode.kind, mode.storeId, mode.serviceId, currentPage])
+
+  // ✅ useUnifiedItems hook
+  const { 
+    data: unifiedItems = [], 
+    isLoading, 
+    isError,
+    error,
+    refetch 
+  } = useUnifiedItems(filters)
+
+  // Load stores (only in marketplace mode)
   useEffect(() => {
-    let isMounted = true
-    let refreshInterval: NodeJS.Timeout | null = null
-
-    const loadListings = async (forceRefresh = false) => {
-      // Don't show loading spinner on refresh to avoid flickering
-      if (!forceRefresh) {
-        setLoading(true)
-      }
-      try {
-        // Determine scope based on app mode
-        const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
-        
-        let allListings: Listing[] = []
-        
-        if (isBrandedMode) {
-          // Use scoped getListings for branded mode
-          if (mode.kind === 'store') {
-            allListings = await getListings({
-              scope: 'store',
-              storeId: mode.storeId,
-              limit: 100
-            })
-          } else if (mode.kind === 'service') {
-            allListings = await getListings({
-              scope: 'service',
-              serviceId: mode.serviceId,
-              limit: 100
-            })
-          }
-        } else {
-          // Marketplace mode: get all listings
-          const { data, error } = await supabase
-            .from('listings')
-            .select(`
-              *,
-              seller:users!seller_telegram_id(telegram_user_id, first_name, username, profile_photo_url)
-            `)
-            .eq('status', 'active') // Faqat faol e'lonlar
-            .order('is_boosted', { ascending: false }) // Targ'ib qilinganlar birinchi
-            .order('created_at', { ascending: false }) // Eng yangisi tepada
-            .limit(100) // Performance uchun limit
-
-          if (error) {
-            console.error('Error fetching listings:', error)
-            return
-          }
-
-          allListings = data || []
-        }
-
-        if (!isMounted) return
-
-        console.log(`${isBrandedMode ? 'Scoped' : 'All'} listings loaded:`, allListings.length, "ta")
-
-        // Sort with advanced algorithm
-        const sorted = await sortListings(
-          allListings,
-          user?.telegram_user_id,
-          100 // Max radius
-        )
-
-        // In branded mode, show all listings (no personalization/deals tabs)
-        if (isBrandedMode) {
-          if (isMounted) {
-            setListings(sorted)
-            setPersonalizedListings(sorted) // Use same list for display
-            setDealsListings([]) // No deals in branded mode
-          }
-        } else {
-          // Marketplace mode: use personalization
-          // Get enhanced personalized listings (search + view history) - limit to 30
-          const personalized = user?.telegram_user_id
-            ? await getEnhancedPersonalizedListings(sorted, user.telegram_user_id, 30)
-            : await getPersonalizedListings(sorted, user?.telegram_user_id, 100, 30)
-
-          // Get deals of the day - limit to 20
-          const deals = getDealsOfDay(sorted, 20)
-
-          if (isMounted) {
-            setListings(sorted)
-            setPersonalizedListings(personalized)
-            setDealsListings(deals)
-          }
-
-          // Load random stores (only in marketplace mode)
-          const randomStores = await getStores(3, user?.telegram_user_id)
-          if (isMounted) {
-            setStores(randomStores)
-          }
-        }
-      } catch (error) {
-        console.error('Error loading listings:', error)
-      } finally {
-        if (isMounted && !forceRefresh) {
-          setLoading(false)
-        }
-      }
+    if (!isBrandedMode) {
+      getStores(3, user?.telegram_user_id).then(setStores).catch(console.error)
     }
+  }, [isBrandedMode, user?.telegram_user_id])
 
-    // Initial load
-    loadListings()
+  // Filter items by category (for branded mode)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const storeCategories = isBrandedMode && unifiedItems.length > 0
+    ? Array.from(new Set(unifiedItems.map(item => item.category))).filter(Boolean)
+    : []
 
-    // Refresh listings every 30 seconds when page is visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isMounted) {
-        loadListings(true) // Force refresh without loading spinner
-      }
+  const filteredItems = useMemo(() => {
+    if (isBrandedMode && selectedCategory) {
+      return unifiedItems.filter(item => item.category === selectedCategory)
     }
+    return unifiedItems
+  }, [unifiedItems, isBrandedMode, selectedCategory])
 
-    // Refresh when page becomes visible (user switches back to tab)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+  // Pagination
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedItems = filteredItems.slice(startIndex, endIndex)
 
-    // Refresh every 30 seconds if page is visible
-    refreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && isMounted) {
-        loadListings(true) // Silent refresh
-      }
-    }, 30000) // 30 seconds
-
-    // Refresh on window focus (user switches back to app)
-    const handleFocus = () => {
-      if (isMounted) {
-        loadListings(true) // Silent refresh
-      }
-    }
-    window.addEventListener('focus', handleFocus)
-
-    return () => {
-      isMounted = false
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
-    }
-  }, [user?.telegram_user_id, mode]) // Reload when mode changes
+  // Reset to page 1 when tab or category changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, selectedCategory])
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      // Track search
       if (user?.telegram_user_id) {
         trackUserSearch(user.telegram_user_id, searchQuery.trim())
       }
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      navigateWithCtx(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
     } else {
-      navigate('/search')
+      navigateWithCtx('/search')
     }
   }
 
-  const handleListingClick = (listing: Listing) => {
-    // Track view with subcategory_id for granular recommendations
+  const handleCardClick = (item: typeof unifiedItems[0]) => {
+    // Track view
     if (user?.telegram_user_id) {
-      trackListingView(user.telegram_user_id, listing.listing_id, listing.subcategory_id)
+      trackListingView(user.telegram_user_id, item.id, undefined)
     }
-    // Navigate to listing detail
-    navigate(`/listing/${listing.listing_id}`)
+    // ✅ Routing: entity_type bo'yicha + useNavigateWithCtx
+    if (item.type === 'service') {
+      navigateWithCtx(`/service/${item.id}`)
+    } else {
+      navigateWithCtx(`/listing/${item.id}`)
+    }
   }
 
-  const displayedListings = activeTab === 'personalized' ? personalizedListings : dealsListings
-  
-  // Pagination logic - IMPORTANT: Use client-side pagination only for UI
-  // The actual data is already sorted by created_at DESC from database
-  // This ensures new listings appear first even when paginated
-  const totalPages = Math.ceil(displayedListings.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedListings = displayedListings.slice(startIndex, endIndex)
-  
-  // Reset to page 1 when tab changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab])
+  // ✅ UI States: Skeleton/Empty/Error
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen pb-20 ${isBrandedMode ? 'gradient-purple-blue' : 'bg-gray-50'}`}>
+        {/* Header */}
+        {!isBrandedMode && (
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+            <div className="px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
+                <div className="flex items-center gap-2">
+                  <CartIcon />
+                  <Link to="/create" className="p-2 text-primary hover:text-primary/80 transition-colors">
+                    <PlusCircleIcon className="w-6 h-6" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </header>
+        )}
 
-  const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
-  
-  // Get unique categories from listings for branded mode
-  const storeCategories = isBrandedMode 
-    ? Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
-    : []
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const filteredListings = isBrandedMode && selectedCategory
-    ? listings.filter(l => l.category === selectedCategory)
-    : listings
+        {/* Skeleton Grid */}
+        <div className="p-4">
+          <div className="grid grid-cols-2 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className={`aspect-square rounded-lg ${isBrandedMode ? 'bg-white/20' : 'bg-gray-200'}`} />
+                <div className={`mt-2 h-4 rounded ${isBrandedMode ? 'bg-white/20' : 'bg-gray-200'}`} />
+                <div className={`mt-1 h-3 rounded w-2/3 ${isBrandedMode ? 'bg-white/20' : 'bg-gray-200'}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className={`min-h-screen pb-20 flex items-center justify-center ${isBrandedMode ? 'gradient-purple-blue' : 'bg-gray-50'}`}>
+        <div className="text-center px-4">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className={`text-xl font-semibold mb-2 ${isBrandedMode ? 'text-white' : 'text-gray-900'}`}>
+            Xatolik yuz berdi
+          </h2>
+          <p className={`mb-6 ${isBrandedMode ? 'text-white/80' : 'text-gray-600'}`}>
+            {error?.message || 'Ma\'lumotlarni yuklashda xatolik yuz berdi'}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              isBrandedMode 
+                ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30' 
+                : 'bg-primary text-white hover:bg-primary/90'
+            }`}
+          >
+            Qayta urinib ko'ring
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`min-h-screen pb-20 ${isBrandedMode ? 'gradient-purple-blue' : 'bg-gray-50'}`}>
@@ -226,7 +199,6 @@ export default function Home() {
       {!isBrandedMode && (
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
           <div className="px-4 py-3 space-y-3">
-            {/* Top Row: Logo + Actions */}
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-bold text-gray-900">LocalMarket</h1>
               <div className="flex items-center gap-2 relative z-50">
@@ -241,7 +213,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Search Bar */}
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                 <MagnifyingGlassIcon className="w-5 h-5" />
@@ -282,7 +253,7 @@ export default function Home() {
               {stores.map((store) => (
                 <div
                   key={store.store_id}
-                  onClick={() => navigate(`/store/${store.store_id}`)}
+                  onClick={() => navigateWithCtx(`/store/${store.store_id}`)}
                   className="flex-shrink-0 w-64 bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 >
                   {store.banner_url ? (
@@ -373,7 +344,7 @@ export default function Home() {
               <span className="text-white font-medium">All</span>
             </button>
             {storeCategories.map((cat) => {
-              const category = CATEGORIES.find(c => c.value === cat)
+              const categoryEmoji = unifiedItems.find(item => item.category === cat)?.categoryEmoji || '📦'
               return (
                 <button
                   key={cat}
@@ -382,8 +353,8 @@ export default function Home() {
                     selectedCategory === cat ? 'neumorphic-category-active' : ''
                   }`}
                 >
-                  <span className="text-white text-lg">{category?.emoji || '📦'}</span>
-                  <span className="text-white text-sm">{category?.label || cat}</span>
+                  <span className="text-white text-lg">{categoryEmoji}</span>
+                  <span className="text-white text-sm">{cat}</span>
                 </button>
               )
             })}
@@ -391,91 +362,68 @@ export default function Home() {
         </div>
       )}
 
-      {/* Featured Product - Only in branded mode */}
-      {isBrandedMode && filteredListings.length > 0 && (
-        <div className="px-4 pt-2 pb-4">
-          <div className="neumorphic-card p-4">
-            <div className="relative aspect-[16/9] bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl overflow-hidden mb-3">
-              {filteredListings[0].photos && filteredListings[0].photos.length > 0 ? (
-                <img 
-                  src={filteredListings[0].photos[0]} 
-                  alt={filteredListings[0].title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-4xl">
-                  🛍️
-                </div>
-              )}
-            </div>
-            <h2 className="text-white text-xl font-bold mb-1">{filteredListings[0].title}</h2>
-            <p className="text-white/80 text-sm">{filteredListings[0].price ? `$${filteredListings[0].price.toLocaleString()}` : 'Bepul'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Listings Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${isBrandedMode ? 'border-white' : 'border-primary'} mx-auto`}></div>
-            <p className={`mt-4 ${isBrandedMode ? 'text-white' : 'text-gray-600'}`}>E'lonlar yuklanmoqda...</p>
-          </div>
-        </div>
-      ) : (isBrandedMode ? filteredListings : displayedListings).length === 0 ? (
+      {/* Empty State */}
+      {filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="text-6xl mb-4">
-            {activeTab === 'personalized' ? '🎯' : '💰'}
+            {isBrandedMode ? '🛍️' : activeTab === 'personalized' ? '🎯' : '💰'}
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {activeTab === 'personalized' 
-              ? 'Hali tavsiyalar yo\'q' 
-              : 'Hozircha aksiyalar yo\'q'}
+          <h2 className={`text-xl font-semibold mb-2 ${isBrandedMode ? 'text-white' : 'text-gray-900'}`}>
+            {isBrandedMode 
+              ? 'Do\'konda hozircha mahsulot yo\'q'
+              : activeTab === 'personalized'
+                ? 'Hali tavsiyalar yo\'q'
+                : 'Hozircha aksiyalar yo\'q'}
           </h2>
-          <p className="text-gray-600 text-center mb-6">
-            {activeTab === 'personalized'
-              ? 'Bir nechta e\'lon ko\'rib, qidiruv qiling. Biz sizga mos tavsiyalar beramiz!'
-              : 'Tez orada aksiya va bepul e\'lonlar paydo bo\'ladi.'}
+          <p className={`text-center mb-6 ${isBrandedMode ? 'text-white/80' : 'text-gray-600'}`}>
+            {isBrandedMode
+              ? 'Tez orada yangi mahsulotlar paydo bo\'ladi'
+              : activeTab === 'personalized'
+                ? 'Bir nechta e\'lon ko\'rib, qidiruv qiling. Biz sizga mos tavsiyalar beramiz!'
+                : 'Tez orada aksiya va bepul e\'lonlar paydo bo\'ladi.'}
           </p>
-          <Link
-            to="/create"
-            className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
-          >
-            E'lon Yaratish
-          </Link>
+          {!isBrandedMode && (
+            <Link
+              to="/create"
+              className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            >
+              E'lon Yaratish
+            </Link>
+          )}
         </div>
       ) : (
         <div className="p-4">
+          {/* Items Grid */}
           {isBrandedMode ? (
             /* Branded Mode - Neumorphic Grid */
             <div className="grid grid-cols-2 gap-4">
-              {filteredListings.map((listing) => (
-                <StoreProductCard key={listing.listing_id} listing={listing} />
+              {paginatedItems.map((item) => (
+                <div key={item.stableId || item.id} onClick={() => handleCardClick(item)}>
+                  <UniversalCard
+                    data={item}
+                    variant="store"
+                    layout="grid"
+                  />
+                </div>
               ))}
             </div>
           ) : (
-            /* Marketplace Mode - eBay-style List */
+            /* Marketplace Mode - Grid */
             <>
-              {/* Results count */}
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                  {displayedListings.length} {displayedListings.length === 1 ? 'natija' : 'natija'} ko'rsatilmoqda
+                  {filteredItems.length} {filteredItems.length === 1 ? 'natija' : 'natija'} ko'rsatilmoqda
                 </p>
-                {activeTab === 'personalized' && personalizedListings.length > 0 && (
-                  <span className="text-xs text-primary bg-blue-50 px-2 py-1 rounded-full">
-                    Sizga mos
-                  </span>
-                )}
               </div>
 
-              {/* List (eBay-style) */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                {paginatedListings.map((listing) => (
-                  <div
-                    key={listing.listing_id}
-                    onClick={() => handleListingClick(listing)}
-                  >
-                    <ListingCardEbay listing={listing} />
+              <div className="grid grid-cols-2 gap-4">
+                {paginatedItems.map((item) => (
+                  <div key={item.stableId || item.id} onClick={() => handleCardClick(item)}>
+                    <UniversalCard
+                      data={item}
+                      variant="marketplace"
+                      layout="grid"
+                    />
                   </div>
                 ))}
               </div>
@@ -487,27 +435,13 @@ export default function Home() {
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={displayedListings.length}
+              totalItems={filteredItems.length}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
             />
           )}
-
-          {/* Show all listings if personalized/deals are less */}
-          {activeTab === 'personalized' && displayedListings.length < listings.length && (
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => setActiveTab('personalized')}
-                className="text-primary hover:underline text-sm font-medium"
-              >
-                Barcha e'lonlarni ko'rish ({listings.length})
-              </button>
-            </div>
-          )}
         </div>
       )}
-
-      {/* BottomNav is handled by layout components */}
     </div>
   )
 }

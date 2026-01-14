@@ -239,13 +239,13 @@ export default function UniversalCard({
             )}
           </div>
         </div>
-      </Link>
+      </div>
     )
   }
 
   // Default grid layout
   return (
-    <Link to={data.detailUrl} className={getCardClasses()}>
+    <div onClick={handleCardClick} className={cn(getCardClasses(), 'cursor-pointer')}>
       <div className={getImageContainerClasses()}>
         {data.imageUrl ? (
           <img

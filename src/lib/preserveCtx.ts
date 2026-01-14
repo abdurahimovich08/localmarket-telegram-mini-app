@@ -18,10 +18,10 @@ export function useNavigateWithCtx() {
 
   return (to: string, options?: { replace?: boolean; state?: any }) => {
     // If in branded mode, preserve context in URL
-    if (mode.kind === 'store') {
+    if (mode.kind === 'store' && mode.storeId) {
       const separator = to.includes('?') ? '&' : '?'
       navigate(`${to}${separator}ctx=store:${mode.storeId}`, options)
-    } else if (mode.kind === 'service') {
+    } else if (mode.kind === 'service' && mode.serviceId) {
       const separator = to.includes('?') ? '&' : '?'
       navigate(`${to}${separator}ctx=service:${mode.serviceId}`, options)
     } else {
