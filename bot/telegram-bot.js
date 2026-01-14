@@ -23,43 +23,64 @@ bot.setMyCommands([
 
 // /start command - supports deep links for stores and services
 bot.onText(/\/start(.*)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const miniAppUrl = process.env.MINI_APP_URL || 'https://your-app-url.com';
-  
-  // Get payload - match[1] could be undefined or empty string
-  let payload = '';
-  if (match && match[1]) {
-    payload = match[1].trim();
-  }
-  
-  let appUrl = miniAppUrl;
-  let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`;
-  let buttonText = '🚀 Open LocalMarket';
-  
-  // Parse deep link payloads: store_<ID> or service_<ID>
-  if (payload) {
-    if (payload.startsWith('store_')) {
-      const storeId = payload.replace('store_', '');
-      appUrl = `${miniAppUrl}/?ctx=store:${storeId}`;
-      welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`;
-      buttonText = '🚀 Do\'konni Ochish';
-    } else if (payload.startsWith('service_')) {
-      const serviceId = payload.replace('service_', '');
-      appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`;
-      welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`;
-      buttonText = '🚀 Xizmatni Ochish';
+  try {
+    const chatId = msg.chat.id;
+    const miniAppUrl = process.env.MINI_APP_URL || 'https://your-app-url.com';
+    
+    console.log('Received /start command');
+    console.log('Match:', match);
+    console.log('Message text:', msg.text);
+    
+    // Get payload - match[1] could be undefined or empty string
+    let payload = '';
+    if (match && match[1]) {
+      payload = match[1].trim();
+      console.log('Payload:', payload);
     }
-  }
-  
-  bot.sendMessage(chatId, welcomeMessage, {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: buttonText, web_app: { url: appUrl } }
-      ]]
+    
+    let appUrl = miniAppUrl;
+    let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`;
+    let buttonText = '🚀 Open LocalMarket';
+    
+    // Parse deep link payloads: store_<ID> or service_<ID>
+    if (payload) {
+      if (payload.startsWith('store_')) {
+        const storeId = payload.replace('store_', '');
+        appUrl = `${miniAppUrl}/?ctx=store:${storeId}`;
+        welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`;
+        buttonText = '🛍 Do\'konni Ochish';
+        console.log('Store link detected, storeId:', storeId);
+      } else if (payload.startsWith('service_')) {
+        const serviceId = payload.replace('service_', '');
+        appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`;
+        welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`;
+        buttonText = '🚀 Xizmatni Ochish';
+        console.log('Service link detected, serviceId:', serviceId);
+      }
     }
-  }).catch((error) => {
-    console.error('Error sending message:', error);
-  });
+    
+    console.log('Sending message to chatId:', chatId);
+    console.log('App URL:', appUrl);
+    console.log('Button text:', buttonText);
+    
+    bot.sendMessage(chatId, welcomeMessage, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: buttonText, web_app: { url: appUrl } }
+        ]]
+      }
+    }).then(() => {
+      console.log('Message sent successfully');
+    }).catch((error) => {
+      console.error('Error sending message:', error);
+      // Try sending without button as fallback
+      bot.sendMessage(chatId, welcomeMessage + '\n\n' + appUrl).catch(err => {
+        console.error('Fallback message also failed:', err);
+      });
+    });
+  } catch (error) {
+    console.error('Error in /start handler:', error);
+  }
 });
 
 // /sell command
