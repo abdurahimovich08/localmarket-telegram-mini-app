@@ -8,8 +8,22 @@ import BackButton from '../components/BackButton'
 import BottomNav from '../components/BottomNav'
 import ListingCard from '../components/ListingCard'
 import PersonalLinks from '../components/PersonalLinks'
-import { StarIcon, PlusIcon, BuildingStorefrontIcon, EyeIcon } from '@heroicons/react/24/solid'
-import { ChartBarIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { 
+  StarIcon, 
+  PlusIcon, 
+  BuildingStorefrontIcon, 
+  EyeIcon,
+  ChartBarIcon,
+  PencilIcon,
+  SparklesIcon,
+  ShoppingBagIcon,
+  HeartIcon
+} from '@heroicons/react/24/solid'
+import { 
+  StarIcon as StarIconOutline,
+  WrenchScrewdriverIcon,
+  CubeIcon
+} from '@heroicons/react/24/outline'
 
 export default function Profile() {
   const { id } = useParams<{ id?: string }>()
@@ -74,12 +88,15 @@ export default function Profile() {
     }
 
     loadProfile()
-  }, [id, currentUser, navigate])
+  }, [id, currentUser, navigate, isOwnProfile])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-gray-300 border-t-primary mx-auto mb-4"></div>
+          <p className="text-sm text-gray-500">Yuklanmoqda...</p>
+        </div>
       </div>
     )
   }
@@ -90,183 +107,146 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      {/* Minimal Header */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-50">
         <div className="flex items-center px-4 py-3">
           <BackButton />
-          <h1 className="flex-1 text-center font-semibold text-gray-900">Profile</h1>
+          <h1 className="flex-1 text-center text-base font-semibold text-gray-900">Profil</h1>
           <div className="w-10"></div>
         </div>
       </header>
 
-      {/* Profile Header */}
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div className="flex items-center gap-4 mb-4">
-          {user.profile_photo_url ? (
-            <img
-              src={user.profile_photo_url}
-              alt={user.first_name}
-              className="w-20 h-20 rounded-full"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-3xl text-primary font-semibold">
-                {user.first_name[0]}
-              </span>
-            </div>
-          )}
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900">
-              {user.first_name} {user.last_name}
-            </h2>
-            {user.username && (
-              <p className="text-gray-600">@{user.username}</p>
-            )}
-            {user.rating_average > 0 && (
-              <div className="flex items-center gap-1 mt-1">
-                <StarIcon className="w-4 h-4 text-yellow-400" />
-                <span className="font-semibold">{user.rating_average.toFixed(1)}</span>
-                <span className="text-sm text-gray-600">
-                  ({user.total_reviews} {user.total_reviews === 1 ? 'sharh' : 'sharh'})
+      {/* Profile Header - Apple Style */}
+      <div className="bg-white">
+        {/* User Info Card */}
+        <div className="px-4 pt-6 pb-4">
+          <div className="flex items-start gap-4 mb-6">
+            {/* Avatar */}
+            {user.profile_photo_url ? (
+              <img
+                src={user.profile_photo_url}
+                alt={user.first_name}
+                className="w-20 h-20 rounded-full border-2 border-gray-100"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center border-2 border-gray-100">
+                <span className="text-2xl text-white font-semibold">
+                  {user.first_name[0].toUpperCase()}
                 </span>
               </div>
             )}
-          </div>
-        </div>
-
-        {user.bio && (
-          <p className="text-gray-700 mb-4">{user.bio}</p>
-        )}
-
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{listings.length}</p>
-            <p className="text-sm text-gray-600">E'lonlar</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{user.items_sold_count}</p>
-            <p className="text-sm text-gray-600">Sotilgan</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">
-              {user.rating_average > 0 ? user.rating_average.toFixed(1) : '—'}
-            </p>
-            <p className="text-sm text-gray-600">Reyting</p>
-          </div>
-        </div>
-
-        {user.neighborhood && (
-          <p className="text-sm text-gray-600 mt-4">📍 {user.neighborhood}</p>
-        )}
-
-        {/* Personal Links Section (Own Profile Only) - Show even if no store/service yet */}
-        {isOwnProfile && (
-          <PersonalLinks 
-            stores={stores}
-            services={services}
-            hasListings={listings.length > 0}
-            botUsername={getBotUsername()}
-          />
-        )}
-
-        {/* Create Store / View Store Button (Own Profile Only) */}
-        {isOwnProfile && (
-          userStore ? (
-            <button
-              onClick={() => navigate(`/store/${userStore.store_id}`)}
-              className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
-            >
-              <EyeIcon className="w-5 h-5" />
-              Do'konni Ko'rish
-            </button>
-          ) : (
-            <button
-              onClick={() => navigate('/create-store')}
-              className="mt-4 w-full py-3 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Do'kon Yaratish
-            </button>
-          )
-        )}
-
-        {/* Dashboard Button (Own Profile Only + Has Listings/Stores/Services) */}
-        {isOwnProfile && (listings.length > 0 || stores.length > 0 || services.length > 0) && (
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="mt-4 w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center gap-2"
-          >
-            <ChartBarIcon className="w-5 h-5" />
-            Dashboard
-          </button>
-        )}
-
-        {/* SOQQANI Tahrirlash Button (Own Profile Only) - Yellow, below dashboard button */}
-        {isOwnProfile && (
-          services.length > 0 ? (
-            <button
-              onClick={() => navigate(`/service/${services[0].service_id}/edit`)}
-              className="mt-3 w-full py-3 px-4 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
-            >
-              <EyeIcon className="w-5 h-5" />
-              SOQQANI Tahrirlash
-            </button>
-          ) : (
-            <button
-              onClick={() => navigate('/create-service')}
-              className="mt-3 w-full py-3 px-4 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
-            >
-              <PlusIcon className="w-5 h-5" />
-              SOQQANI Tahrirlash
-            </button>
-          )
-        )}
-
-        {/* User Stores (Own Profile Only) */}
-        {isOwnProfile && stores.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <BuildingStorefrontIcon className="w-5 h-5 text-primary" />
-                Mening do'konlarim ({stores.length})
-              </h3>
-            </div>
-            <div className="space-y-2">
-              {stores.slice(0, 3).map((store) => (
-                <div
-                  key={store.store_id}
-                  onClick={() => navigate(`/store/${store.store_id}`)}
-                  className="bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-3">
-                    {store.logo_url ? (
-                      <img
-                        src={store.logo_url}
-                        alt={store.name}
-                        className="w-12 h-12 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-lg text-primary font-semibold">
-                          {store.name[0].toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 truncate">{store.name}</h4>
-                      <p className="text-xs text-gray-500">
-                        {store.subscriber_count} obunachi
-                      </p>
-                    </div>
-                  </div>
+            
+            {/* User Details */}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 mb-0.5">
+                {user.first_name} {user.last_name}
+              </h2>
+              {user.username && (
+                <p className="text-sm text-gray-500 mb-2">@{user.username}</p>
+              )}
+              
+              {/* Rating */}
+              {user.rating_average > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <StarIcon className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-semibold text-gray-900">
+                    {user.rating_average.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ({user.total_reviews} {user.total_reviews === 1 ? 'sharh' : 'sharh'})
+                  </span>
                 </div>
-              ))}
-              {stores.length > 3 && (
+              )}
+            </div>
+          </div>
+
+          {/* Bio */}
+          {user.bio && (
+            <p className="text-sm text-gray-700 mb-4 leading-relaxed">{user.bio}</p>
+          )}
+
+          {/* Location */}
+          {user.neighborhood && (
+            <p className="text-xs text-gray-500 mb-4">📍 {user.neighborhood}</p>
+          )}
+
+          {/* Stats - Minimal Grid */}
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{listings.length}</p>
+              <p className="text-xs text-gray-500 mt-0.5">E'lonlar</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{user.items_sold_count}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Sotilgan</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">
+                {user.rating_average > 0 ? user.rating_average.toFixed(1) : '—'}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Reyting</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions - Own Profile Only */}
+        {isOwnProfile && (
+          <div className="px-4 pb-4 space-y-2">
+            {/* Personal Links - Already minimal */}
+            <PersonalLinks 
+              stores={stores}
+              services={services}
+              hasListings={listings.length > 0}
+              botUsername={getBotUsername()}
+            />
+
+            {/* Action Buttons - Minimal */}
+            <div className="space-y-2 pt-2">
+              {userStore ? (
                 <button
-                  onClick={() => setActiveTab('stores')}
-                  className="text-sm text-primary hover:underline w-full text-center py-2"
+                  onClick={() => navigate(`/store/${userStore.store_id}`)}
+                  className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  Barcha do'konlarni ko'rish ({stores.length})
+                  <BuildingStorefrontIcon className="w-5 h-5" />
+                  <span>Do'konni Ko'rish</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/create-store')}
+                  className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  <span>Do'kon Yaratish</span>
+                </button>
+              )}
+
+              {/* Dashboard */}
+              {(listings.length > 0 || stores.length > 0 || services.length > 0) && (
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 transition-all active:scale-[0.98] shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                >
+                  <ChartBarIcon className="w-5 h-5" />
+                  <span>Dashboard</span>
+                </button>
+              )}
+
+              {/* Service Edit/Create */}
+              {services.length > 0 ? (
+                <button
+                  onClick={() => navigate(`/service/${services[0].service_id}/edit`)}
+                  className="w-full py-3 px-4 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <WrenchScrewdriverIcon className="w-5 h-5" />
+                  <span>Xizmatni Tahrirlash</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/create-service')}
+                  className="w-full py-3 px-4 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  <span>Xizmat Yaratish</span>
                 </button>
               )}
             </div>
@@ -274,77 +254,100 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="flex overflow-x-auto">
+      {/* Minimal Tabs */}
+      <div className="bg-white border-b border-gray-100 sticky top-[57px] z-40">
+        <div className="flex overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('listings')}
-            className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+            className={`flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               activeTab === 'listings'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'text-gray-900 border-gray-900'
+                : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
-            E'lonlar ({listings.length})
+            E'lonlar
+            {listings.length > 0 && (
+              <span className={`ml-1.5 ${activeTab === 'listings' ? 'text-gray-900' : 'text-gray-400'}`}>
+                ({listings.length})
+              </span>
+            )}
           </button>
           {isOwnProfile && (
             <>
               <button
                 onClick={() => setActiveTab('stores')}
-                className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+                className={`flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
                   activeTab === 'stores'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'text-gray-900 border-gray-900'
+                    : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
-                Do'konlar ({stores.length})
+                Do'konlar
+                {stores.length > 0 && (
+                  <span className={`ml-1.5 ${activeTab === 'stores' ? 'text-gray-900' : 'text-gray-400'}`}>
+                    ({stores.length})
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('services')}
-                className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+                className={`flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
                   activeTab === 'services'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'text-gray-900 border-gray-900'
+                    : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
-                Xizmatlar ({services.length})
+                Xizmatlar
+                {services.length > 0 && (
+                  <span className={`ml-1.5 ${activeTab === 'services' ? 'text-gray-900' : 'text-gray-400'}`}>
+                    ({services.length})
+                  </span>
+                )}
               </button>
             </>
           )}
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 py-3 text-center font-medium transition-colors whitespace-nowrap ${
+            className={`flex-shrink-0 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               activeTab === 'reviews'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'text-gray-900 border-gray-900'
+                : 'text-gray-500 border-transparent hover:text-gray-700'
             }`}
           >
-            Sharhlar ({reviews.length})
+            Sharhlar
+            {reviews.length > 0 && (
+              <span className={`ml-1.5 ${activeTab === 'reviews' ? 'text-gray-900' : 'text-gray-400'}`}>
+                ({reviews.length})
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-4">
+      {/* Content - Apple Style Cards */}
+      <div className="p-4 space-y-4">
         {activeTab === 'stores' && isOwnProfile ? (
           stores.length === 0 ? (
-            <div className="text-center py-12">
-              <BuildingStorefrontIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">Hali do'konlaringiz yo'q</p>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <BuildingStorefrontIcon className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">Hali do'konlaringiz yo'q</p>
+              <p className="text-sm text-gray-500 mb-6">Birinchi do'koningizni yarating va mijozlaringizga ulashing</p>
               <button
                 onClick={() => navigate('/create-store')}
-                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+                className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors active:scale-[0.98]"
               >
-                Birinchi do'koningizni yarating
+                Do'kon Yaratish
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {stores.map((store) => (
                 <div
                   key={store.store_id}
                   onClick={() => navigate(`/store/${store.store_id}`)}
-                  className="bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all active:scale-[0.98]"
                 >
                   {store.banner_url && (
                     <div className="relative w-full h-32 overflow-hidden">
@@ -355,31 +358,29 @@ export default function Profile() {
                       />
                     </div>
                   )}
-                  <div className="p-4 relative">
-                    <div className="flex items-start gap-4">
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
                       {store.logo_url ? (
                         <img
                           src={store.logo_url}
                           alt={store.name}
-                          className={`w-16 h-16 rounded-full border-4 border-white ${store.banner_url ? '-mt-12 bg-white' : ''}`}
+                          className={`w-14 h-14 rounded-xl border-2 border-white ${store.banner_url ? '-mt-10 bg-white shadow-md' : ''}`}
                         />
                       ) : (
-                        <div className={`w-16 h-16 rounded-full border-4 border-white bg-primary/20 flex items-center justify-center ${store.banner_url ? '-mt-12 bg-white' : ''}`}>
-                          <span className="text-xl text-primary font-semibold">
+                        <div className={`w-14 h-14 rounded-xl border-2 border-white bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center ${store.banner_url ? '-mt-10 bg-white shadow-md' : ''}`}>
+                          <span className="text-lg text-white font-bold">
                             {store.name[0].toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-bold text-gray-900 truncate">{store.name}</h3>
+                        <h3 className="font-bold text-gray-900 truncate mb-1">{store.name}</h3>
                         {store.description && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{store.description}</p>
+                          <p className="text-sm text-gray-600 line-clamp-2 mb-2">{store.description}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className="text-sm text-gray-500">
-                            {store.subscriber_count} obunachi
-                          </span>
-                        </div>
+                        <p className="text-xs text-gray-500">
+                          {store.subscriber_count} obunachi
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -389,22 +390,26 @@ export default function Profile() {
           )
         ) : activeTab === 'services' && isOwnProfile ? (
           services.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">Hali xizmatlaringiz yo'q</p>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <WrenchScrewdriverIcon className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">Hali xizmatlaringiz yo'q</p>
+              <p className="text-sm text-gray-500 mb-6">Xizmatlaringizni yarating va mijozlarga taklif qiling</p>
               <button
                 onClick={() => navigate('/create-service')}
-                className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+                className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors active:scale-[0.98]"
               >
-                Birinchi xizmatingizni yarating
+                Xizmat Yaratish
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {services.map((service) => (
                 <div
                   key={service.service_id}
                   onClick={() => navigate(`/service/${service.service_id}`)}
-                  className="bg-white rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all active:scale-[0.98]"
                 >
                   <div className="p-4 flex items-start gap-4">
                     {service.image_url ? (
@@ -419,11 +424,11 @@ export default function Profile() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 truncate">{service.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{service.description}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className="text-sm font-semibold text-primary">{service.price || 'Kelishiladi'}</span>
-                        <span className="text-xs text-gray-500">{service.category}</span>
+                      <h3 className="font-bold text-gray-900 truncate mb-1">{service.title}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">{service.description}</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-gray-900">{service.price || 'Kelishiladi'}</span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{service.category}</span>
                       </div>
                     </div>
                     <button
@@ -431,7 +436,7 @@ export default function Profile() {
                         e.stopPropagation()
                         navigate(`/service/${service.service_id}/edit`)
                       }}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
                     >
                       <PencilIcon className="w-5 h-5" />
                     </button>
@@ -442,81 +447,94 @@ export default function Profile() {
           )
         ) : activeTab === 'listings' ? (
           listings.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Hali e'lonlar yo'q</p>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <CubeIcon className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-2 font-medium">Hali e'lonlar yo'q</p>
               {isOwnProfile && (
-                <Link
-                  to="/create"
-                  className="inline-block mt-4 text-primary hover:underline"
-                >
-                  Birinchi e'loningizni yarating
-                </Link>
+                <>
+                  <p className="text-sm text-gray-500 mb-6">Birinchi e'loningizni yarating va sotishni boshlang</p>
+                  <Link
+                    to="/create"
+                    className="inline-block bg-gray-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                  >
+                    E'lon Yaratish
+                  </Link>
+                </>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {listings.map((listing) => (
                 <ListingCard key={listing.listing_id} listing={listing} />
               ))}
             </div>
           )
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {reviews.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">Hali sharhlar yo'q</p>
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                  <StarIconOutline className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-600 mb-2 font-medium">Hali sharhlar yo'q</p>
+                <p className="text-sm text-gray-500">Foydalanuvchilar sharh qo'shganda bu yerda ko'rinadi</p>
               </div>
             ) : (
               reviews.map((review) => (
-                <div key={review.review_id} className="bg-white rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center gap-3 mb-2">
+                <div key={review.review_id} className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-3 mb-3">
                     {review.reviewer?.profile_photo_url ? (
                       <img
                         src={review.reviewer.profile_photo_url}
                         alt={review.reviewer.first_name}
-                        className="w-10 h-10 rounded-full"
+                        className="w-10 h-10 rounded-full border border-gray-100"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-primary font-semibold">
-                          {review.reviewer?.first_name[0] || '?'}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center border border-gray-100">
+                        <span className="text-sm text-white font-semibold">
+                          {review.reviewer?.first_name[0]?.toUpperCase() || '?'}
                         </span>
                       </div>
                     )}
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm mb-1">
                         {review.reviewer?.first_name} {review.reviewer?.last_name}
                       </p>
                       <div className="flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
                           <StarIcon
                             key={i}
-                            className={`w-4 h-4 ${
-                              i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                            className={`w-3.5 h-3.5 ${
+                              i < review.rating ? 'text-yellow-400' : 'text-gray-200'
                             }`}
                           />
                         ))}
                       </div>
                     </div>
+                    <span className="text-xs text-gray-400">
+                      {new Date(review.created_at).toLocaleDateString('uz-UZ', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </span>
                   </div>
                   {review.review_text && (
-                    <p className="text-gray-700 mb-2">{review.review_text}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.review_text}</p>
                   )}
                   {review.tags && review.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
                       {review.tags.map((tag, i) => (
                         <span
                           key={i}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                          className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    {new Date(review.created_at).toLocaleDateString()}
-                  </p>
                 </div>
               ))
             )}
