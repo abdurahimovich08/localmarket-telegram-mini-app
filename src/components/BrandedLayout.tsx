@@ -5,6 +5,7 @@ import { getStore, getService } from '../lib/supabase'
 import type { Store, Service } from '../types'
 import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
 import BottomNav from './BottomNav'
+import LocationDisplay from './LocationDisplay'
 
 interface BrandedLayoutProps {
   children: ReactNode
@@ -100,29 +101,40 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
 
   return (
     <div className="min-h-screen gradient-purple-blue">
-      {/* Header - Neumorphic */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/20 border-b border-white/10">
-        <div className="flex items-center px-4 py-3">
+      {/* Sticky Header - Do'kon nomi va Share tugmasi */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/90 border-b border-white/10 shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={resetAppMode}
-            className="p-2 -ml-2 text-white hover:text-white/80 transition-colors"
+            className="p-2 -ml-2 text-white hover:text-white/80 transition-colors flex-shrink-0"
             title="Bozorga qaytish"
           >
             <ArrowLeftIcon className="w-6 h-6" />
           </button>
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-bold text-white truncate">
-              {mode.kind === 'store' ? (store as Store).name : (service as Service).title}
-            </h1>
-          </div>
+          <h1 className="flex-1 text-center font-bold text-white text-lg truncate px-2">
+            {mode.kind === 'store' ? (store as Store).name : (service as Service).title}
+          </h1>
           <button
             onClick={handleShare}
-            className="p-2 -mr-2 text-white hover:text-white/80 transition-colors"
+            className="p-2 -mr-2 text-white hover:text-white/80 transition-colors flex-shrink-0"
             title="Ulashish"
           >
             <ShareIcon className="w-6 h-6" />
           </button>
         </div>
+        
+        {/* Location Display - Sticky header ostida (faqat store uchun) */}
+        {mode.kind === 'store' && (
+          <div className="px-4 pb-3">
+            <LocationDisplay 
+              onLocationChange={(location) => {
+                // Location o'zgarganda kerakli amallar
+                console.log('Location updated:', location)
+              }}
+              className="bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm"
+            />
+          </div>
+        )}
       </header>
 
       {/* YOUTUBE STYLE STORE HEADER */}
