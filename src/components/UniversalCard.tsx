@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { ShoppingBagIcon } from '@heroicons/react/24/outline'
@@ -32,6 +32,26 @@ export default function UniversalCard({
   showDistance = true,
   showCategory = true,
 }: UniversalCardProps) {
+  const navigate = useNavigate()
+
+  // ✅ Fix pattern: onCardClick ichida switch(item.entity_type) qat'iy bo'lsin
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Qat'iy entity_type bo'yicha routing
+    switch (data.type) {
+      case 'service':
+        navigate(`/service/${data.id}`)
+        break
+      case 'product':
+      case 'store_product':
+        navigate(`/listing/${data.id}`)
+        break
+      default:
+        // Fallback to detailUrl
+        navigate(data.detailUrl)
+    }
+  }
   // Variant-based styling with cn utility
   const getCardClasses = () => {
     return cn(
@@ -186,7 +206,7 @@ export default function UniversalCard({
   // Layout-specific rendering
   if (layout === 'list') {
     return (
-      <Link to={data.detailUrl} className={getCardClasses()}>
+      <div onClick={handleCardClick} className={cn(getCardClasses(), 'cursor-pointer')}>
         <div className="flex gap-3 p-3">
           <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
             {data.imageUrl ? (
@@ -293,6 +313,6 @@ export default function UniversalCard({
         
         {renderActions()}
       </div>
-    </Link>
+    </div>
   )
 }

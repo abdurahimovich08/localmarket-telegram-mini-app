@@ -16,6 +16,7 @@
 CREATE OR REPLACE VIEW unified_items AS
 SELECT 
   listing_id as item_id,
+  CONCAT('product:', listing_id::text) as stable_id,
   'product' as item_type,
   title,
   description,
@@ -44,6 +45,7 @@ UNION ALL
 
 SELECT 
   listing_id as item_id,
+  CONCAT('store_product:', listing_id::text) as stable_id,
   'store_product' as item_type,
   title,
   description,
@@ -72,6 +74,7 @@ UNION ALL
 
 SELECT 
   service_id as item_id,
+  CONCAT('service:', service_id::text) as stable_id,
   'service' as item_type,
   title,
   description,
@@ -145,6 +148,7 @@ BEGIN
   RETURN QUERY
   SELECT 
     ui.item_id,
+    ui.stable_id,
     ui.item_type,
     ui.title,
     ui.description,

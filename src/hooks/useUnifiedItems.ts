@@ -41,6 +41,8 @@ async function fetchUnifiedItems(options: UseUnifiedItemsOptions = {}): Promise<
   } = options
 
   // Use search_unified_items function if available
+  // ⚠️ MUHIM: Fallback faqat VIEW ishlamasa yoki error bo'lsa
+  // Fallback va view natijalari hech qachon merge qilinmasin (dublikat riski)
   try {
     const { data, error } = await supabase.rpc('search_unified_items', {
       search_query: searchQuery || null,
@@ -54,17 +56,20 @@ async function fetchUnifiedItems(options: UseUnifiedItemsOptions = {}): Promise<
     })
 
     if (error) {
-      console.error('Error fetching unified items:', error)
-      // Fallback to direct table queries
+      console.error('Error fetching unified items from VIEW:', error)
+      // Fallback to direct table queries (ONLY if VIEW fails)
       return fetchUnifiedItemsFallback(options)
     }
 
+    // VIEW success → only return VIEW results (no merge with fallback)
     // Convert VIEW results to UnifiedProduct format
-    // Note: VIEW returns different structure, need to map
     return (data || []).map((item: any) => {
-      // Map VIEW columns to UnifiedProduct
+      // Use stable_id if available, otherwise construct it
+      const stableId = item.stable_id || `${item.item_type}:${item.item_id}`
+      
       return {
         id: item.item_id,
+        stableId, // Add stable ID for cache and routing
         type: item.item_type as 'product' | 'store_product' | 'service',
         title: item.title,
         description: item.description || '',
@@ -85,7 +90,8 @@ async function fetchUnifiedItems(options: UseUnifiedItemsOptions = {}): Promise<
       } as UnifiedProduct
     })
   } catch (error) {
-    console.error('Error in search_unified_items:', error)
+    console.error('Error in search_unified_items (exception):', error)
+    // Fallback to direct table queries (ONLY if exception occurs)
     return fetchUnifiedItemsFallback(options)
   }
 }
