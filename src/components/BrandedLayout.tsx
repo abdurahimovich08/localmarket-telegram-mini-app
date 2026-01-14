@@ -12,7 +12,7 @@ import {
 } from '../lib/supabase'
 import type { Store, Service, Listing } from '../types'
 import { CATEGORIES } from '../types'
-import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon, FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon, FunnelIcon, XMarkIcon, UsersIcon, StarIcon } from '@heroicons/react/24/outline'
 import { BellIcon as BellIconSolid } from '@heroicons/react/24/solid'
 import BottomNav from './BottomNav'
 import LocationDisplay from './LocationDisplay'
@@ -270,26 +270,26 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen gradient-purple-blue">
-      {/* Sticky Header - Do'kon nomi va Share tugmasi */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-purple-600/90 border-b border-white/10 shadow-lg">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-24">
+      {/* ✅ Premium Sticky Header (StoreDetail style) */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={resetAppMode}
-            className="p-2 -ml-2 text-white hover:text-white/80 transition-colors flex-shrink-0"
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
             title="Bozorga qaytish"
           >
-            <ArrowLeftIcon className="w-6 h-6" />
+            <ArrowLeftIcon className="w-6 h-6 text-gray-700" />
           </button>
-          <h1 className="flex-1 text-center font-bold text-white text-lg truncate px-2">
+          <h1 className="flex-1 text-center font-bold text-gray-900 text-lg truncate px-2">
             {mode.kind === 'store' ? (store as Store).name : (service as Service).title}
           </h1>
           <button
             onClick={handleShare}
-            className="p-2 -mr-2 text-white hover:text-white/80 transition-colors flex-shrink-0"
+            className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
             title="Ulashish"
           >
-            <ShareIcon className="w-6 h-6" />
+            <ShareIcon className="w-6 h-6 text-gray-700" />
           </button>
         </div>
         
@@ -298,20 +298,19 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
           <div className="px-4 pb-3">
             <LocationDisplay 
               onLocationChange={(location) => {
-                // Location o'zgarganda kerakli amallar
                 console.log('Location updated:', location)
               }}
-              className="bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm"
+              className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-200"
             />
           </div>
         )}
       </header>
 
-      {/* YOUTUBE STYLE STORE HEADER */}
+      {/* ✅ Premium Hero Section (StoreDetail style) */}
       {mode.kind === 'store' && store && (
         <div className="relative">
-          {/* Background Photo (YouTube Style) */}
-          <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 overflow-hidden">
+          {/* Banner with Parallax Effect */}
+          <div className="relative w-full h-64 md:h-80 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 overflow-hidden">
             {store.banner_url ? (
               <img
                 src={store.banner_url}
@@ -320,91 +319,109 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <span className="text-6xl text-white/30">🏪</span>
+                <span className="text-7xl text-white/20">🏪</span>
               </div>
             )}
-            {/* Gradient overlay for better text readability */}
+            {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
           </div>
 
-          {/* Store Identity Block (YouTube Style) */}
-          <div className="px-4 pb-4 relative -mt-16 z-10">
-            <div className="flex flex-row items-end gap-4">
-              {/* Logo - Circular avatar (overlaps banner) */}
-              {store.logo_url ? (
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white">
-                  <img
-                    src={store.logo_url}
-                    alt={store.name}
-                    className="w-full h-full object-cover"
-                  />
+          {/* ✅ Premium White Card (StoreDetail style) */}
+          <div className="px-4 pb-6 relative -mt-20 z-10">
+            <div className="bg-white rounded-3xl shadow-2xl p-6 border border-gray-100">
+              <div className="flex items-start gap-4 mb-4">
+                {/* ✅ Premium Logo (StoreDetail style) */}
+                {store.logo_url ? (
+                  <div className="w-28 h-28 rounded-2xl border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white ring-4 ring-indigo-100">
+                    <img
+                      src={store.logo_url}
+                      alt={store.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-28 h-28 rounded-2xl border-4 border-white shadow-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 ring-4 ring-indigo-100">
+                    <span className="text-4xl text-white font-bold">
+                      {store.name[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Store Info */}
+                <div className="flex-1 min-w-0 pt-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-2xl font-bold text-gray-900 leading-tight truncate">
+                      {store.name}
+                    </h2>
+                    {store.is_verified && (
+                      <CheckBadgeIcon className="w-6 h-6 text-blue-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  
+                  {/* Username */}
+                  {store.owner?.username && (
+                    <p className="text-gray-600 text-sm mb-2">
+                      @{store.owner.username}
+                    </p>
+                  )}
+
+                  {/* Social Proof Stats */}
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    {store.subscriber_count > 0 && (
+                      <div className="flex items-center gap-1">
+                        <UsersIcon className="w-4 h-4" />
+                        <span>{store.subscriber_count} obunachi</span>
+                      </div>
+                    )}
+                    {store.owner?.rating_average && store.owner.rating_average > 0 && (
+                      <div className="flex items-center gap-1">
+                        <StarIcon className="w-4 h-4 text-yellow-400" />
+                        <span>{store.owner.rating_average.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-3xl md:text-4xl text-white font-bold">
-                    {store.name[0].toUpperCase()}
-                  </span>
+              </div>
+
+              {/* Description */}
+              {store.description && (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-700 whitespace-pre-line line-clamp-3">
+                    {store.description}
+                  </p>
                 </div>
               )}
 
-              {/* Store Info - Logo yonida */}
-              <div className="flex-1 min-w-0 pb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-xl md:text-2xl font-bold text-white leading-tight truncate">
-                    {store.name}
-                  </h2>
-                  {store.is_verified && (
-                    <CheckBadgeIcon className="w-6 h-6 text-blue-400 flex-shrink-0" />
+              {/* ✅ Subscribe Button - Premium CTA */}
+              {user && user.telegram_user_id !== store.owner_telegram_id && (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={subscribing}
+                  className={`w-full py-3.5 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg ${
+                    store.is_subscribed
+                      ? 'bg-gray-600 hover:bg-gray-700'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                  }`}
+                >
+                  {subscribing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Kuting...
+                    </span>
+                  ) : store.is_subscribed ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <BellIconSolid className="w-5 h-5" />
+                      Obuna bo'lingan
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="text-lg">🔔</span>
+                      Obuna bo'lish
+                    </span>
                   )}
-                </div>
-                
-                {/* Username - Store nomi ostida */}
-                {store.owner?.username && (
-                  <p className="text-white/80 text-sm md:text-base">
-                    @{store.owner.username}
-                  </p>
-                )}
-              </div>
+                </button>
+              )}
             </div>
-
-            {/* DESCRIPTION BLOCK */}
-            {store.description && (
-              <div className="mt-3">
-                <p className="text-sm text-white/90 whitespace-pre-line line-clamp-3">
-                  {store.description}
-                </p>
-              </div>
-            )}
-            
-            {/* ✅ Subscribe Button - Premium CTA */}
-            {user && user.telegram_user_id !== store.owner_telegram_id && (
-              <button
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className={`mt-4 w-full py-3.5 rounded-xl font-bold text-white transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg ${
-                  store.is_subscribed
-                    ? 'bg-gray-600 hover:bg-gray-700'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
-                }`}
-              >
-                {subscribing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Kuting...
-                  </span>
-                ) : store.is_subscribed ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <BellIconSolid className="w-5 h-5" />
-                    Obuna bo'lingan
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="text-lg">🔔</span>
-                    Obuna bo'lish
-                  </span>
-                )}
-              </button>
-            )}
           </div>
         </div>
       )}
