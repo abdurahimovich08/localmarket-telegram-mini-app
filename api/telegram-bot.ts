@@ -193,73 +193,107 @@ async function handleStartCommand(msg: any) {
   }
   
   // Get user context
-  const userContext = await getUserContext(telegramUserId)
-  
-  // Start AI conversation
-  const initialMessage = "Salom! LocalMarket'ga xush kelibsiz! Siz nima qilmoqchisiz?"
-  const aiResponse = await callGeminiAI(initialMessage, [], userContext)
-  
-  if (!aiResponse) {
-    // Fallback to default message
-    const defaultMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
-      `Siz nima qilmoqchisiz?\n\n` +
-      `🛍️ Mahsulot sotib olish\n` +
-      `💰 Mahsulot sotish\n` +
-      `🏪 Do'kon yaratish\n` +
-      `🛠 Xizmat ko'rsatish\n\n` +
-      `👇 Ilovani ochish uchun quyidagi tugmani bosing:`
-    
-    botInstance.sendMessage(chatId, defaultMessage, {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '🚀 LocalMarket\'ni Ochish', web_app: { url: miniAppUrl } }
-        ]]
-      }
-    }).catch((error) => {
-      console.error('Error sending message:', error)
+  try {
+    console.log('Getting user context for /start command, user:', telegramUserId)
+    const userContext = await getUserContext(telegramUserId)
+    console.log('User context retrieved:', { 
+      hasStore: userContext?.hasStore, 
+      hasServices: userContext?.hasServices,
+      hasListings: userContext?.hasListings 
     })
-    return
+    
+    // Start AI conversation
+    const initialMessage = "Salom! LocalMarket'ga xush kelibsiz! Siz nima qilmoqchisiz?"
+    console.log('Calling Gemini AI for /start command')
+    const aiResponse = await callGeminiAI(initialMessage, [], userContext)
+    console.log('AI response received:', { hasResponse: !!aiResponse, hasMessage: !!aiResponse?.message, intent: aiResponse?.intent })
+    
+    if (!aiResponse || !aiResponse.message) {
+      // Fallback to default message
+      console.warn('AI response is empty, using fallback message')
+      const defaultMessage = `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
+        `Siz nima qilmoqchisiz?\n\n` +
+        `🛍️ Mahsulot sotib olishni xohlayman\n` +
+        `💰 Mahsulot sotishni xohlayman\n` +
+        `🏪 Do'kon yaratmoqchiman\n` +
+        `🛠 Xizmat ko'rsatmoqchiman\n\n` +
+        `👇 Ilovani ochish uchun quyidagi tugmani bosing:`
+      
+      await botInstance.sendMessage(chatId, defaultMessage, {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🚀 LocalMarket\'ni Ochish', web_app: { url: miniAppUrl } }
+          ]]
+        }
+      })
+      console.log('Fallback message sent for /start')
+      return
+    }
+    
+    // Send AI response
+    const responseMessage = aiResponse.message
+    const intent = aiResponse.intent || 'unknown'
+    const route = aiResponse.route || '/'
+    
+    // Build app URL based on intent
+    let appUrl = miniAppUrl
+    if (route && route !== '/') {
+      appUrl = `${miniAppUrl}${route}`
+    }
+    
+    // Create keyboard with options based on intent
+    const keyboard: any[] = []
+    
+    if (intent === 'buyer') {
+      keyboard.push([{ text: '🛍️ Bozorni Ko\'rish', web_app: { url: `${miniAppUrl}/` } }])
+    } else if (intent === 'store_create') {
+      keyboard.push([{ text: '🏪 Do\'kon Yaratish', web_app: { url: `${miniAppUrl}/create-store` } }])
+    } else if (intent === 'store_view' && userContext?.storeId) {
+      keyboard.push([{ text: '🏪 Do\'konni Ko\'rish', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}` } }])
+    } else if (intent === 'store_edit' && userContext?.storeId) {
+      keyboard.push([{ text: '✏️ Do\'konni Tahrirlash', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}/edit` } }])
+    } else if (intent === 'service_create') {
+      keyboard.push([{ text: '🛠 Xizmat Yaratish', web_app: { url: `${miniAppUrl}/create-service` } }])
+    } else if (intent === 'listing_create') {
+      keyboard.push([{ text: '📦 E\'lon Yaratish', web_app: { url: `${miniAppUrl}/create` } }])
+    } else {
+      // Default: show main app
+      keyboard.push([{ text: '🚀 LocalMarket\'ni Ochish', web_app: { url: appUrl } }])
+    }
+    
+    console.log('Sending AI response for /start:', { messageLength: responseMessage.length, intent, hasKeyboard: keyboard.length > 0 })
+    await botInstance.sendMessage(chatId, responseMessage, {
+      reply_markup: {
+        inline_keyboard: keyboard
+      },
+      parse_mode: 'Markdown'
+    })
+    console.log('AI response sent successfully for /start')
+  } catch (error) {
+    console.error('Error in /start AI conversation:', error)
+    // Fallback message on error
+    try {
+      await botInstance.sendMessage(chatId, 
+        `🏪 LocalMarket - Mahalliy Bozor Ilovasi!\n\n` +
+        `Siz nima qilmoqchisiz?\n\n` +
+        `🛍️ Mahsulot sotib olish\n` +
+        `💰 Mahsulot sotish\n` +
+        `🏪 Do'kon yaratish\n` +
+        `🛠 Xizmat ko'rsatish\n\n` +
+        `👇 Ilovani ochish uchun quyidagi tugmani bosing:`,
+        {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🚀 LocalMarket\'ni Ochish', web_app: { url: miniAppUrl } }
+            ]]
+          }
+        }
+      )
+      console.log('Error fallback message sent')
+    } catch (sendError) {
+      console.error('Error sending fallback message:', sendError)
+    }
   }
-  
-  // Send AI response
-  const responseMessage = aiResponse.message || initialMessage
-  const intent = aiResponse.intent || 'unknown'
-  const route = aiResponse.route || '/'
-  
-  // Build app URL based on intent
-  let appUrl = miniAppUrl
-  if (route && route !== '/') {
-    appUrl = `${miniAppUrl}${route}`
-  }
-  
-  // Create keyboard with options based on intent
-  const keyboard: any[] = []
-  
-  if (intent === 'buyer') {
-    keyboard.push([{ text: '🛍️ Bozorni Ko\'rish', web_app: { url: `${miniAppUrl}/` } }])
-  } else if (intent === 'store_create') {
-    keyboard.push([{ text: '🏪 Do\'kon Yaratish', web_app: { url: `${miniAppUrl}/create-store` } }])
-  } else if (intent === 'store_view' && userContext?.storeId) {
-    keyboard.push([{ text: '🏪 Do\'konni Ko\'rish', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}` } }])
-  } else if (intent === 'store_edit' && userContext?.storeId) {
-    keyboard.push([{ text: '✏️ Do\'konni Tahrirlash', web_app: { url: `${miniAppUrl}/store/${userContext.storeId}/edit` } }])
-  } else if (intent === 'service_create') {
-    keyboard.push([{ text: '🛠 Xizmat Yaratish', web_app: { url: `${miniAppUrl}/create-service` } }])
-  } else if (intent === 'listing_create') {
-    keyboard.push([{ text: '📦 E\'lon Yaratish', web_app: { url: `${miniAppUrl}/create` } }])
-  } else {
-    // Default: show main app
-    keyboard.push([{ text: '🚀 LocalMarket\'ni Ochish', web_app: { url: appUrl } }])
-  }
-  
-  botInstance.sendMessage(chatId, responseMessage, {
-    reply_markup: {
-      inline_keyboard: keyboard
-    },
-    parse_mode: 'Markdown'
-  }).catch((error) => {
-    console.error('Error sending AI message:', error)
-  })
 }
 
 // Handle /sell command
