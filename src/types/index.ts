@@ -72,6 +72,12 @@ export interface Listing {
   seller?: User // Populated seller info
   store_id?: string // Optional: associated store
   store?: Store // Populated store info
+  // Store management fields
+  store_category_id?: string // Reference to store category
+  old_price?: number // Previous price for promotions
+  stock_qty?: number // Available stock quantity (NULL = unlimited)
+  order_index?: number // Display order within category
+  location?: string // Location text for store products
   // "Yangi" badge frontend'da aniqlanadi (so'nggi 24-72 soatda yaratilgan)
   // Hech qanday WHERE created_at > last_seen_at qilmaymiz - xavfli!
 }
@@ -159,6 +165,20 @@ export interface StorePost {
   content: string
   images: string[]
   view_count: number
+  created_at: string
+  updated_at: string
+  order_index?: number // Display order (lower = first)
+  is_pinned?: boolean // Pinned posts appear first
+  store?: Store
+}
+
+export interface StoreCategory {
+  category_id: string
+  store_id: string
+  title: string
+  emoji?: string
+  order_index: number
+  is_active: boolean
   created_at: string
   updated_at: string
   store?: Store

@@ -14,6 +14,7 @@ import Cart from './pages/Cart'
 import CreateStore from './pages/CreateStore'
 import EditStore from './pages/EditStore'
 import StoreDetail from './pages/StoreDetail'
+import StoreManagement from './pages/StoreManagement'
 import AIChatCreationPage from './pages/AIChatCreationPage'
 import ServiceDetailsPage from './pages/ServiceDetailsPage'
 import ServiceEdit from './pages/ServiceEdit'
@@ -199,6 +200,7 @@ function AppRoutes() {
       <Route path="/cart" element={<LayoutWrapper><Cart /></LayoutWrapper>} />
       <Route path="/create-store" element={<MarketplaceLayout><CreateStore /></MarketplaceLayout>} />
       <Route path="/store/:id/edit" element={<MarketplaceLayout><EditStore /></MarketplaceLayout>} />
+      <Route path="/store/:id/manage" element={<MarketplaceLayout><StoreManagement /></MarketplaceLayout>} />
       <Route path="/store/:id" element={<MarketplaceLayout><StoreDetail /></MarketplaceLayout>} />
       <Route path="/create-service" element={<MarketplaceLayout><AIChatCreationPage /></MarketplaceLayout>} />
       <Route path="/service/:id" element={<MarketplaceLayout><ServiceDetailsPage /></MarketplaceLayout>} />

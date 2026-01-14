@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User, Listing, Favorite, Review, CartItem, Store, StoreSubscription, StorePost, StorePromotion, Service } from '../types'
+import type { User, Listing, Favorite, Review, CartItem, Store, StoreSubscription, StorePost, StorePromotion, Service, StoreCategory } from '../types'
 import { buildSearchVariations, scoreListingRelevance } from './searchAlgorithms'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -811,6 +811,8 @@ export const getStorePosts = async (storeId: string): Promise<StorePost[]> => {
     .from('store_posts')
     .select('*, store:stores(*)')
     .eq('store_id', storeId)
+    .order('is_pinned', { ascending: false })
+    .order('order_index', { ascending: true })
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -1032,4 +1034,177 @@ export const updateService = async (serviceId: string, updates: Partial<Service>
   }
 
   return data as Service
+}
+
+// ============================================
+// STORE MANAGEMENT FUNCTIONS
+// ============================================
+
+// Store Categories
+export const getStoreCategories = async (storeId: string): Promise<StoreCategory[]> => {
+  const { data, error } = await supabase
+    .from('store_categories')
+    .select('*, store:stores(*)')
+    .eq('store_id', storeId)
+    .eq('is_active', true)
+    .order('order_index', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching store categories:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export const createStoreCategory = async (category: Omit<StoreCategory, 'category_id' | 'created_at' | 'updated_at'>): Promise<StoreCategory | null> => {
+  // Get max order_index
+  const { data: maxData } = await supabase
+    .rpc('get_max_category_order', { store_uuid: category.store_id })
+
+  const orderIndex = (maxData || 0) + 1
+
+  const { data, error } = await supabase
+    .from('store_categories')
+    .insert({ ...category, order_index: orderIndex })
+    .select('*, store:stores(*)')
+    .single()
+
+  if (error) {
+    console.error('Error creating store category:', error)
+    return null
+  }
+
+  return data
+}
+
+export const updateStoreCategory = async (categoryId: string, updates: Partial<StoreCategory>): Promise<StoreCategory | null> => {
+  const { data, error } = await supabase
+    .from('store_categories')
+    .update(updates)
+    .eq('category_id', categoryId)
+    .select('*, store:stores(*)')
+    .single()
+
+  if (error) {
+    console.error('Error updating store category:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteStoreCategory = async (categoryId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('store_categories')
+    .delete()
+    .eq('category_id', categoryId)
+
+  if (error) {
+    console.error('Error deleting store category:', error)
+    return false
+  }
+
+  return true
+}
+
+export const reorderStoreCategories = async (storeId: string, categoryOrders: { [categoryId: string]: number }): Promise<boolean> => {
+  const { error } = await supabase
+    .rpc('reorder_store_categories', {
+      store_uuid: storeId,
+      category_orders: categoryOrders
+    })
+
+  if (error) {
+    console.error('Error reordering store categories:', error)
+    return false
+  }
+
+  return true
+}
+
+// Store Products (Listings with store management)
+export const getStoreProducts = async (storeId: string, categoryId?: string): Promise<Listing[]> => {
+  let query = supabase
+    .from('listings')
+    .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url), store:stores(*), store_category:store_categories(*)')
+    .eq('store_id', storeId)
+    .eq('status', 'active')
+
+  if (categoryId) {
+    query = query.eq('store_category_id', categoryId)
+  }
+
+  const { data, error } = await query
+    .order('order_index', { ascending: true })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching store products:', error)
+    return []
+  }
+
+  return data || []
+}
+
+export const updateStoreProduct = async (listingId: string, updates: Partial<Listing>): Promise<Listing | null> => {
+  const { data, error } = await supabase
+    .from('listings')
+    .update(updates)
+    .eq('listing_id', listingId)
+    .select('*, seller:users(telegram_user_id, username, first_name, profile_photo_url), store:stores(*), store_category:store_categories(*)')
+    .single()
+
+  if (error) {
+    console.error('Error updating store product:', error)
+    return null
+  }
+
+  return data
+}
+
+export const reorderStoreProducts = async (categoryId: string, listingOrders: { [listingId: string]: number }): Promise<boolean> => {
+  const { error } = await supabase
+    .rpc('reorder_store_listings', {
+      category_uuid: categoryId,
+      listing_orders: listingOrders
+    })
+
+  if (error) {
+    console.error('Error reordering store products:', error)
+    return false
+  }
+
+  return true
+}
+
+// Store Posts Management
+export const updateStorePost = async (postId: string, updates: Partial<StorePost>): Promise<StorePost | null> => {
+  const { data, error } = await supabase
+    .from('store_posts')
+    .update(updates)
+    .eq('post_id', postId)
+    .select('*, store:stores(*)')
+    .single()
+
+  if (error) {
+    console.error('Error updating store post:', error)
+    return null
+  }
+
+  return data
+}
+
+export const deleteStorePost = async (postId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('store_posts')
+    .delete()
+    .eq('post_id', postId)
+
+  if (error) {
+    console.error('Error deleting store post:', error)
+    return false
+  }
+
+  return true
 }

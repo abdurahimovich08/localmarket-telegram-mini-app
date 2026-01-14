@@ -203,13 +203,22 @@ export default function Profile() {
             {/* Action Buttons - Minimal */}
             <div className="space-y-2 pt-2">
               {userStore ? (
-                <button
-                  onClick={() => navigate(`/store/${userStore.store_id}`)}
-                  className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <BuildingStorefrontIcon className="w-5 h-5" />
-                  <span>Do'konni Ko'rish</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => navigate(`/store/${userStore.store_id}/manage`)}
+                    className="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <BuildingStorefrontIcon className="w-5 h-5" />
+                    <span>Do'konni Boshqarish</span>
+                  </button>
+                  <button
+                    onClick={() => navigate(`/store/${userStore.store_id}`)}
+                    className="w-full py-3 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl font-medium hover:bg-gray-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <EyeIcon className="w-5 h-5" />
+                    <span>Do'konni Ko'rish</span>
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={() => navigate('/create-store')}
