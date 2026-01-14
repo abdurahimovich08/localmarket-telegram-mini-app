@@ -2,33 +2,29 @@
 // This handles webhook requests from Telegram
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import TelegramBot from 'node-telegram-bot-api'
 
 // Initialize bot with token from environment
 const token = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN
 const miniAppUrl = process.env.MINI_APP_URL || process.env.VITE_MINI_APP_URL || 
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://localmarket-telegram-mini-app-q1vp.vercel.app')
 
-// Lazy load TelegramBot to avoid issues in serverless environment
-let TelegramBot: any = null
-let bot: any = null
+// Create bot instance (webhook mode, not polling)
+let bot: TelegramBot | null = null
 
-function getBot() {
+function getBot(): TelegramBot | null {
   if (!token) {
     console.error('TELEGRAM_BOT_TOKEN not found in environment variables')
     return null
   }
   
-  if (!TelegramBot) {
+  if (!bot) {
     try {
-      TelegramBot = require('node-telegram-bot-api')
+      bot = new TelegramBot(token, { polling: false }) // Webhook mode
     } catch (e) {
-      console.error('Failed to load node-telegram-bot-api:', e)
+      console.error('Failed to create TelegramBot instance:', e)
       return null
     }
-  }
-  
-  if (!bot && TelegramBot) {
-    bot = new TelegramBot(token, { polling: false }) // Webhook mode
   }
   
   return bot
