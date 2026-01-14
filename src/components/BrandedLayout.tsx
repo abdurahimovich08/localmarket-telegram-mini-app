@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppMode } from '../contexts/AppModeContext'
 import { getStore, getService } from '../lib/supabase'
 import type { Store, Service } from '../types'
-import { ArrowLeftIcon, ShareIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ShareIcon, CheckBadgeIcon } from '@heroicons/react/24/outline'
 import BottomNav from './BottomNav'
 
 interface BrandedLayoutProps {
@@ -125,13 +125,32 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
         </div>
       </header>
 
-      {/* Store/Service Identity Block - Neumorphic */}
+      {/* YOUTUBE STYLE STORE HEADER */}
       {mode.kind === 'store' && store && (
-        <div className="px-4 pt-4 pb-2">
-          <div className="neumorphic-card p-4">
-            <div className="flex items-start gap-3">
+        <div className="relative">
+          {/* Background Photo (YouTube Style) */}
+          <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 overflow-hidden">
+            {store.banner_url ? (
+              <img
+                src={store.banner_url}
+                alt={store.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="text-6xl text-white/30">🏪</span>
+              </div>
+            )}
+            {/* Gradient overlay for better text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+          </div>
+
+          {/* Store Identity Block (YouTube Style) */}
+          <div className="px-4 pb-4 relative -mt-16 z-10">
+            <div className="flex flex-row items-end gap-4">
+              {/* Logo - Circular avatar (overlaps banner) */}
               {store.logo_url ? (
-                <div className="w-16 h-16 rounded-full border-2 border-white/30 overflow-hidden flex-shrink-0">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white">
                   <img
                     src={store.logo_url}
                     alt={store.name}
@@ -139,25 +158,41 @@ export default function BrandedLayout({ children }: BrandedLayoutProps) {
                   />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full border-2 border-white/30 bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl text-white font-bold">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-3xl md:text-4xl text-white font-bold">
                     {store.name[0].toUpperCase()}
                   </span>
                 </div>
               )}
 
-              <div className="flex-1 min-w-0">
+              {/* Store Info - Logo yonida */}
+              <div className="flex-1 min-w-0 pb-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-xl font-bold text-white leading-tight">{store.name}</h2>
+                  <h2 className="text-xl md:text-2xl font-bold text-white leading-tight truncate">
+                    {store.name}
+                  </h2>
                   {store.is_verified && (
-                    <span className="text-blue-300">✓</span>
+                    <CheckBadgeIcon className="w-6 h-6 text-blue-400 flex-shrink-0" />
                   )}
                 </div>
-                {store.description && (
-                  <p className="text-sm text-white/80 line-clamp-2">{store.description}</p>
+                
+                {/* Username - Store nomi ostida */}
+                {store.owner?.username && (
+                  <p className="text-white/80 text-sm md:text-base">
+                    @{store.owner.username}
+                  </p>
                 )}
               </div>
             </div>
+
+            {/* DESCRIPTION BLOCK */}
+            {store.description && (
+              <div className="mt-3">
+                <p className="text-sm text-white/90 whitespace-pre-line line-clamp-3">
+                  {store.description}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

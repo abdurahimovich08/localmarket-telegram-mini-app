@@ -249,29 +249,6 @@ export default function StoreDetail() {
         </div>
       </header>
 
-      {/* Featured Product - Neumorphic Card */}
-      {sortedListings.length > 0 && (
-        <div className="px-4 pt-4 pb-2">
-          <div className="neumorphic-card p-4">
-            <div className="relative aspect-[16/9] bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl overflow-hidden mb-3">
-              {sortedListings[0].photos && sortedListings[0].photos.length > 0 ? (
-                <img 
-                  src={sortedListings[0].photos[0]} 
-                  alt={sortedListings[0].title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-4xl">
-                  🛍️
-                </div>
-              )}
-            </div>
-            <h2 className="text-white text-xl font-bold mb-1">{sortedListings[0].title}</h2>
-            <p className="text-white/80 text-sm">{sortedListings[0].price ? `$${sortedListings[0].price.toLocaleString()}` : 'Bepul'}</p>
-          </div>
-        </div>
-      )}
-
       {/* Category Filters - Neumorphic */}
       {storeCategories.length > 0 && (
         <div className="px-4 py-3">
@@ -303,49 +280,86 @@ export default function StoreDetail() {
         </div>
       )}
 
-      {/* STORE IDENTITY BLOCK - Simplified for Neumorphic */}
-      <div className="px-4 pb-4 relative z-10">
-        <div className="flex flex-row items-start">
-          {/* Logo - Circular avatar (overlaps banner) */}
-          {store.logo_url ? (
-            <div className="-mt-12 w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white overflow-hidden shadow-lg flex-shrink-0 bg-white">
-              <img
-                src={store.logo_url}
-                alt={store.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
+      {/* YOUTUBE STYLE STORE HEADER */}
+      <div className="relative">
+        {/* Background Photo (YouTube Style) */}
+        <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 overflow-hidden">
+          {store.banner_url ? (
+            <img
+              src={store.banner_url}
+              alt={store.name}
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <div className="-mt-12 w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white shadow-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl md:text-3xl text-primary font-bold">
-                {store.name[0].toUpperCase()}
-              </span>
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-6xl text-white/30">🏪</span>
             </div>
           )}
-
-          {/* Store Info */}
-          <div className="ml-3 mt-2 flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-white leading-tight">{store.name}</h2>
-              {store.is_verified && (
-                <CheckBadgeIcon className="w-5 h-5 text-blue-300 flex-shrink-0" />
-              )}
-            </div>
-            
-            <p className="text-white/70 text-sm mt-1">
-              {listings.length} mahsulot{store.subscriber_count > 0 && ` • ${store.subscriber_count} obunachi`}
-            </p>
-          </div>
+          {/* Gradient overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
         </div>
 
-        {/* DESCRIPTION BLOCK - Simplified */}
-        {store.description && (
-          <div className="mt-3">
-            <p className="text-sm text-white/80 whitespace-pre-line line-clamp-2">
-              {store.description}
-            </p>
+        {/* Store Identity Block (YouTube Style) */}
+        <div className="px-4 pb-4 relative -mt-16 z-10">
+          <div className="flex flex-row items-end gap-4">
+            {/* Logo - Circular avatar (overlaps banner) */}
+            {store.logo_url ? (
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white overflow-hidden shadow-xl flex-shrink-0 bg-white">
+                <img
+                  src={store.logo_url}
+                  alt={store.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-3xl md:text-4xl text-white font-bold">
+                  {store.name[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+
+            {/* Store Info - Logo yonida */}
+            <div className="flex-1 min-w-0 pb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-xl md:text-2xl font-bold text-white leading-tight truncate">
+                  {store.name}
+                </h2>
+                {store.is_verified && (
+                  <CheckBadgeIcon className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                )}
+              </div>
+              
+              {/* Username - Store nomi ostida */}
+              {store.owner?.username && (
+                <p className="text-white/80 text-sm md:text-base">
+                  @{store.owner.username}
+                </p>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Store Stats */}
+          <div className="mt-3 flex items-center gap-4 text-white/90">
+            <span className="text-sm">
+              {listings.length} mahsulot
+            </span>
+            {store.subscriber_count > 0 && (
+              <span className="text-sm">
+                {store.subscriber_count} obunachi
+              </span>
+            )}
+          </div>
+
+          {/* DESCRIPTION BLOCK */}
+          {store.description && (
+            <div className="mt-3">
+              <p className="text-sm text-white/90 whitespace-pre-line line-clamp-3">
+                {store.description}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
 
