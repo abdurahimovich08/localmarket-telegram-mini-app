@@ -31,13 +31,20 @@ import {
   UsersIcon,
   ShoppingBagIcon,
   FunnelIcon,
-  EyeIcon
+  EyeIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { 
   BellIcon as BellIconSolid,
   HeartIcon as HeartIconSolid
 } from '@heroicons/react/24/solid'
 import LocationDisplay from '../components/LocationDisplay'
+import StickyFloatingCart from '../components/StickyFloatingCart'
+import StoreTrustScore from '../components/StoreTrustScore'
+import CrossSellSection from '../components/CrossSellSection'
+import SkeletonLoading from '../components/SkeletonLoading'
+import { addToCart } from '../lib/supabase'
+import { initTelegram } from '../lib/telegram'
 
 type TabType = 'listings' | 'promotions' | 'posts'
 type SortType = 'newest' | 'cheapest' | 'popular'
@@ -59,6 +66,7 @@ export default function StoreDetail() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Reset description state when store changes
   useEffect(() => {
@@ -224,11 +232,7 @@ export default function StoreDetail() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
+    return <SkeletonLoading type="store" count={6} />
   }
 
   if (!store) {
@@ -242,9 +246,41 @@ export default function StoreDetail() {
   
   // Get unique categories from listings
   const storeCategories = Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
-  const filteredListings = selectedCategory 
-    ? sortedListings.filter(l => l.category === selectedCategory)
-    : sortedListings
+  
+  // Filter listings by category and search query
+  const filteredListings = sortedListings.filter(l => {
+    const matchesCategory = !selectedCategory || l.category === selectedCategory
+    const matchesSearch = !searchQuery || 
+      l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
+
+  // Handle add to cart with haptic feedback
+  const handleAddToCart = async (listingId: string) => {
+    if (!user) {
+      alert('Iltimos, avval tizimga kiring')
+      return
+    }
+
+    // Haptic feedback
+    const webApp = initTelegram()
+    if (webApp?.HapticFeedback) {
+      webApp.HapticFeedback.impactOccurred('medium')
+      webApp.HapticFeedback.notificationOccurred('success')
+    }
+
+    try {
+      await addToCart(user.telegram_user_id, listingId, 1)
+      // Success feedback
+      if (webApp?.HapticFeedback) {
+        webApp.HapticFeedback.notificationOccurred('success')
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      alert('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+    }
+  }
 
   const handleShare = () => {
     const webApp = (window as any).Telegram?.WebApp
@@ -293,6 +329,28 @@ export default function StoreDetail() {
             }}
             className="bg-gray-50 rounded-xl px-3 py-2 border border-gray-200"
           />
+        </div>
+
+        {/* ✅ Search within Store */}
+        <div className="px-4 pb-3">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Do'kon ichidan qidirish..."
+              className="w-full px-4 py-2.5 pl-10 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+            />
+            <FunnelIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -430,25 +488,24 @@ export default function StoreDetail() {
         </div>
       </div>
 
-      {/* Premium Category Filters */}
+      {/* ✅ Store Trust Score */}
+      <div className="px-4 mb-4">
+        <StoreTrustScore store={store} averageResponseTime={5} />
+      </div>
+
+      {/* ✅ Premium Category Filters - Pills Style (Gorizontal Scroll) */}
       {storeCategories.length > 0 && (
         <div className="px-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-bold text-gray-900">Kategoriyalar</h3>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <FunnelIcon className="w-5 h-5 text-gray-600" />
-            </button>
           </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
             <button
               onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all flex-shrink-0 ${
                 selectedCategory === null
                   ? 'bg-indigo-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
               }`}
             >
               Barchasi
@@ -459,10 +516,10 @@ export default function StoreDetail() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-all flex items-center gap-2 flex-shrink-0 ${
                     selectedCategory === cat
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
                   }`}
                 >
                   <span className="text-lg">{category?.emoji || '📦'}</span>
@@ -509,16 +566,27 @@ export default function StoreDetail() {
                 <PremiumProductCard 
                   key={listing.listing_id} 
                   listing={listing}
-                  onAddToCart={() => {
-                    // Add to cart logic
-                    console.log('Add to cart:', listing.listing_id)
-                  }}
+                  onAddToCart={() => handleAddToCart(listing.listing_id)}
                 />
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* ✅ Cross-Sell Section */}
+      {activeTab === 'listings' && filteredListings.length > 0 && (
+        <div className="px-4 pb-4">
+          <CrossSellSection 
+            listings={listings} 
+            title="Bu do'konda ko'p sotiladiganlar"
+            maxItems={4}
+          />
+        </div>
+      )}
+
+      {/* ✅ Sticky Floating Cart */}
+      <StickyFloatingCart storeId={id} />
 
       {/* Bottom Navigation - Premium Design */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 z-50 safe-area-bottom shadow-lg">

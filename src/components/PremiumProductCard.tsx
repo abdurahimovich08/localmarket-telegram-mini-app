@@ -32,6 +32,27 @@ export default function PremiumProductCard({
   const isPopular = listing.favorite_count > 10 || listing.view_count > 50
   const isNew = new Date(listing.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 // 7 days
 
+  // ✅ SMART BADGE PRIORITY SYSTEM (Apple style - minimal badges)
+  // Priority: Low Stock > Discount > New > Popular
+  const getPrimaryBadge = () => {
+    if (isLowStock && !isOutOfStock) return { type: 'lowStock', text: `⚠️ ${listing.stock_qty} dona`, bgClass: 'bg-amber-500' }
+    if (hasDiscount && discountPercent >= 30) return { type: 'discount', text: `-${discountPercent}%`, bgClass: 'bg-red-500' }
+    if (isNew) return { type: 'new', text: '✨ Yangi', bgClass: 'bg-emerald-500' }
+    if (isPopular) return { type: 'trend', text: '🔥 Trend', bgClass: 'bg-orange-500' }
+    if (hasDiscount) return { type: 'discount', text: `-${discountPercent}%`, bgClass: 'bg-red-500' }
+    return null
+  }
+
+  const primaryBadge = getPrimaryBadge()
+
+  // Haptic feedback for mobile
+  const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'medium') => {
+    const webApp = (window as any).Telegram?.WebApp
+    if (webApp?.HapticFeedback) {
+      webApp.HapticFeedback.impactOccurred(style)
+    }
+  }
+
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
       <Link to={`/listing/${listing.listing_id}`} className="block">
@@ -52,22 +73,14 @@ export default function PremiumProductCard({
           {/* Gradient Overlay on Hover */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
-          {/* Top Badges - Left Side */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-            {isNew && (
-              <span className="bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg animate-pulse">
-                ✨ Yangi
-              </span>
-            )}
-            {hasDiscount && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                -{discountPercent}%
-              </span>
-            )}
-            {isPopular && (
-              <span className="bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-                <FireIcon className="w-3 h-3" />
-                Trend
+          {/* Top Badges - Left Side (Smart Priority - Only Primary Badge) */}
+          <div className="absolute top-3 left-3 z-10">
+            {primaryBadge && (
+              <span className={`${primaryBadge.bgClass} text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg ${
+                primaryBadge.type === 'new' ? 'animate-pulse' : ''
+              } flex items-center gap-1`}>
+                {primaryBadge.type === 'trend' && <FireIcon className="w-3 h-3" />}
+                {primaryBadge.text}
               </span>
             )}
           </div>
@@ -92,31 +105,27 @@ export default function PremiumProductCard({
             )}
           </div>
           
-          {/* Stock Indicator - Bottom */}
-          {isLowStock && !isOutOfStock && (
-            <div className="absolute bottom-3 left-3 right-3 bg-amber-500/95 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg text-center">
-              ⚠️ Faqat {listing.stock_qty} dona qoldi!
-            </div>
-          )}
+          {/* Stock Indicator - Bottom (Only if not shown as primary badge) */}
           {isOutOfStock && (
-            <div className="absolute bottom-3 left-3 right-3 bg-red-500/95 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg text-center">
+            <div className="absolute bottom-3 left-3 right-3 bg-red-500/95 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg text-center z-10">
               ❌ Tugagan
             </div>
           )}
           
-          {/* Quick Add to Cart - Appears on Hover */}
+          {/* ✅ MOBILE-FIRST: Always Visible Add to Cart Button (Not Hover) */}
           {onAddToCart && !isOutOfStock && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+            <div className="absolute bottom-3 right-3 z-20">
               <button
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
+                  triggerHaptic('medium')
                   onAddToCart()
                 }}
-                className="bg-white text-gray-900 font-bold px-6 py-3 rounded-full shadow-2xl transform hover:scale-105 transition-transform flex items-center gap-2"
+                className="p-3 bg-white/95 backdrop-blur-sm rounded-full shadow-xl hover:bg-white transition-all active:scale-95 flex items-center justify-center"
+                title="Savatga qo'shish"
               >
-                <ShoppingCartIcon className="w-5 h-5" />
-                <span>Savatga</span>
+                <ShoppingCartIcon className="w-5 h-5 text-indigo-600" />
               </button>
             </div>
           )}
