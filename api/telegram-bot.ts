@@ -353,22 +353,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       else if (msg.text && !msg.text.startsWith('/')) {
         console.log('Handling regular message for AI conversation')
         const botInstance = getBot()
-        if (!botInstance) return
+        if (!botInstance) {
+          console.error('Bot instance not available')
+          return
+        }
         
         // Store conversation state in memory (simple implementation)
         // In production, use Redis or database for conversation state
         const chatId = msg.chat.id
         const telegramUserId = msg.from?.id
         
-        if (telegramUserId) {
+        if (!telegramUserId) {
+          console.error('No telegram user ID found')
+          return
+        }
+
+        try {
           // Get user context
+          console.log('Getting user context for user:', telegramUserId)
           const userContext = await getUserContext(telegramUserId)
+          console.log('User context retrieved:', { 
+            hasStore: userContext?.hasStore, 
+            hasServices: userContext?.hasServices,
+            hasListings: userContext?.hasListings 
+          })
           
           // Call AI with user message
+          console.log('Calling Gemini AI with message:', msg.text.substring(0, 50))
           const aiResponse = await callGeminiAI(msg.text, [], userContext)
+          console.log('AI response received:', { 
+            hasResponse: !!aiResponse, 
+            hasMessage: !!aiResponse?.message,
+            intent: aiResponse?.intent 
+          })
           
-          if (aiResponse) {
-            const responseMessage = aiResponse.message || 'Kechirasiz, javob olishda xatolik yuz berdi.'
+          if (aiResponse && aiResponse.message) {
+            const responseMessage = aiResponse.message
             const intent = aiResponse.intent || 'unknown'
             const route = aiResponse.route || '/'
             
@@ -396,14 +416,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               keyboard.push([{ text: '🚀 LocalMarket\'ni Ochish', web_app: { url: appUrl } }])
             }
             
-            botInstance.sendMessage(chatId, responseMessage, {
+            console.log('Sending AI response to user:', { messageLength: responseMessage.length, intent, hasKeyboard: keyboard.length > 0 })
+            await botInstance.sendMessage(chatId, responseMessage, {
               reply_markup: {
                 inline_keyboard: keyboard
               },
               parse_mode: 'Markdown'
-            }).catch((error) => {
-              console.error('Error sending AI response:', error)
             })
+            console.log('AI response sent successfully')
+          } else {
+            // Fallback message if AI response is empty
+            console.warn('AI response is empty or invalid, sending fallback message')
+            const fallbackMessage = `🤖 Salom! LocalMarket botiga xush kelibsiz!\n\n` +
+              `Men sizga yordam bera olaman:\n\n` +
+              `🛍️ **Sotib olish** - mahsulot va xizmatlarni topish\n` +
+              `💰 **Sotish** - e'lon, do'kon yoki xizmat yaratish\n\n` +
+              `Nima qilmoqchisiz?`
+            
+            await botInstance.sendMessage(chatId, fallbackMessage, {
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: '🛍️ Bozorni Ko\'rish', web_app: { url: `${miniAppUrl}/` } },
+                  { text: '💰 Sotish', web_app: { url: `${miniAppUrl}/create` } }
+                ]]
+              },
+              parse_mode: 'Markdown'
+            })
+            console.log('Fallback message sent')
+          }
+        } catch (error) {
+          console.error('Error in AI conversation handler:', error)
+          // Send error message to user
+          try {
+            await botInstance.sendMessage(chatId, 
+              '😔 Kechirasiz, xatolik yuz berdi. Iltimos, qayta urinib ko\'ring yoki /start buyrug\'ini yuboring.',
+              {
+                reply_markup: {
+                  inline_keyboard: [[
+                    { text: '🔄 Qayta Boshlash', web_app: { url: miniAppUrl } }
+                  ]]
+                }
+              }
+            )
+          } catch (sendError) {
+            console.error('Error sending error message:', sendError)
           }
         }
       }
