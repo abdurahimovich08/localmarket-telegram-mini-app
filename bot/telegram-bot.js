@@ -25,16 +25,16 @@ bot.setMyCommands([
 bot.onText(/\/start(.*)/, (msg, match) => {
   const chatId = msg.chat.id;
   const miniAppUrl = process.env.MINI_APP_URL || 'https://your-app-url.com';
-  const payload = match[1]?.trim(); // Get everything after /start
+  
+  // Get payload - match[1] could be undefined or empty string
+  let payload = '';
+  if (match && match[1]) {
+    payload = match[1].trim();
+  }
   
   let appUrl = miniAppUrl;
-  let welcomeMessage = `
-🏪 Welcome to LocalMarket!
-
-Buy and sell items in your neighborhood, all within Telegram!
-
-Tap the button below to open the Mini App:
-  `;
+  let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`;
+  let buttonText = '🚀 Open LocalMarket';
   
   // Parse deep link payloads: store_<ID> or service_<ID>
   if (payload) {
@@ -42,19 +42,23 @@ Tap the button below to open the Mini App:
       const storeId = payload.replace('store_', '');
       appUrl = `${miniAppUrl}/?ctx=store:${storeId}`;
       welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`;
+      buttonText = '🚀 Do\'konni Ochish';
     } else if (payload.startsWith('service_')) {
       const serviceId = payload.replace('service_', '');
       appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`;
       welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`;
+      buttonText = '🚀 Xizmatni Ochish';
     }
   }
   
   bot.sendMessage(chatId, welcomeMessage, {
     reply_markup: {
       inline_keyboard: [[
-        { text: '🚀 Do\'konni Ochish', web_app: { url: appUrl } }
+        { text: buttonText, web_app: { url: appUrl } }
       ]]
     }
+  }).catch((error) => {
+    console.error('Error sending message:', error);
   });
 });
 
