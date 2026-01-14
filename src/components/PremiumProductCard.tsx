@@ -34,8 +34,12 @@ export default function PremiumProductCard({
 
   // ✅ SMART BADGE PRIORITY SYSTEM (Apple style - minimal badges)
   // Priority: Low Stock > Discount > New > Popular
+  // ✅ Fix: Low stock threshold aniq (<= 3) va stock null bo'lsa ko'rsatmaslik
   const getPrimaryBadge = () => {
-    if (isLowStock && !isOutOfStock) return { type: 'lowStock', text: `⚠️ ${listing.stock_qty} dona`, bgClass: 'bg-amber-500' }
+    // Low stock: faqat stock_qty <= 3 va null emas bo'lsa
+    if (listing.stock_qty !== null && listing.stock_qty !== undefined && listing.stock_qty > 0 && listing.stock_qty <= 3) {
+      return { type: 'lowStock', text: `⚠️ ${listing.stock_qty} dona`, bgClass: 'bg-amber-500' }
+    }
     if (hasDiscount && discountPercent >= 30) return { type: 'discount', text: `-${discountPercent}%`, bgClass: 'bg-red-500' }
     if (isNew) return { type: 'new', text: '✨ Yangi', bgClass: 'bg-emerald-500' }
     if (isPopular) return { type: 'trend', text: '🔥 Trend', bgClass: 'bg-orange-500' }
@@ -45,11 +49,16 @@ export default function PremiumProductCard({
 
   const primaryBadge = getPrimaryBadge()
 
-  // Haptic feedback for mobile
+  // ✅ Haptic feedback for mobile with fallback guard
   const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'medium') => {
-    const webApp = (window as any).Telegram?.WebApp
-    if (webApp?.HapticFeedback) {
-      webApp.HapticFeedback.impactOccurred(style)
+    try {
+      const webApp = (window as any).Telegram?.WebApp
+      if (webApp?.HapticFeedback?.impactOccurred) {
+        webApp.HapticFeedback.impactOccurred(style)
+      }
+    } catch (error) {
+      // Silently fail - haptic feedback is non-critical
+      console.debug('Haptic feedback not available:', error)
     }
   }
 
@@ -63,6 +72,7 @@ export default function PremiumProductCard({
               src={listing.photos[0]}
               alt={listing.title}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">

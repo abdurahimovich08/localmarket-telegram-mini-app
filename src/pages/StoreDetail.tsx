@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { 
@@ -45,6 +45,9 @@ import CrossSellSection from '../components/CrossSellSection'
 import SkeletonLoading from '../components/SkeletonLoading'
 import { addToCart } from '../lib/supabase'
 import { initTelegram } from '../lib/telegram'
+import { useDebounce } from '../hooks/useDebounce'
+import { trackStoreEvent } from '../lib/storeAnalytics'
+import StorePolicyRow from '../components/StorePolicyRow'
 
 type TabType = 'listings' | 'promotions' | 'posts'
 type SortType = 'newest' | 'cheapest' | 'popular'
@@ -67,6 +70,9 @@ export default function StoreDetail() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  
+  // ✅ Performance: Debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 200)
 
   // Reset description state when store changes
   useEffect(() => {
@@ -104,7 +110,40 @@ export default function StoreDetail() {
     }
 
     loadStoreData()
+    
+    // ✅ Track store view
+    if (id) {
+      trackStoreEvent({
+        event_type: 'store_view',
+        store_id: id,
+        user_telegram_id: user?.telegram_user_id
+      })
+    }
   }, [id, user])
+  
+  // ✅ Track search
+  useEffect(() => {
+    if (debouncedSearchQuery && id) {
+      trackStoreEvent({
+        event_type: 'search_store',
+        store_id: id,
+        user_telegram_id: user?.telegram_user_id,
+        metadata: { query: debouncedSearchQuery }
+      })
+    }
+  }, [debouncedSearchQuery, id, user])
+  
+  // ✅ Track category select
+  useEffect(() => {
+    if (selectedCategory && id) {
+      trackStoreEvent({
+        event_type: 'category_select',
+        store_id: id,
+        user_telegram_id: user?.telegram_user_id,
+        metadata: { category: selectedCategory }
+      })
+    }
+  }, [selectedCategory, id, user])
 
   const loadStoreData = async () => {
     if (!id) return
@@ -203,18 +242,35 @@ export default function StoreDetail() {
     })
   }
 
-  const getSortedListings = () => {
+  // ✅ Performance: useMemo for sorted listings
+  const sortedListings = useMemo(() => {
     const sorted = [...listings]
     switch (sortType) {
       case 'cheapest':
         return sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
       case 'popular':
-        return sorted.sort((a, b) => b.favorite_count - a.favorite_count)
+        return sorted.sort((a, b) => (b.favorite_count || 0) - (a.favorite_count || 0))
       case 'newest':
       default:
         return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
-  }
+  }, [listings, sortType])
+  
+  // ✅ Performance: useMemo for filtered listings
+  const filteredListings = useMemo(() => {
+    return sortedListings.filter(l => {
+      const matchesCategory = !selectedCategory || l.category === selectedCategory
+      const matchesSearch = !debouncedSearchQuery || 
+        l.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        l.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      return matchesCategory && matchesSearch
+    })
+  }, [sortedListings, selectedCategory, debouncedSearchQuery])
+  
+  // ✅ Performance: useMemo for categories
+  const storeCategories = useMemo(() => {
+    return Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
+  }, [listings])
 
   const formatTimeRemaining = (endDate: string) => {
     const end = new Date(endDate)
@@ -242,21 +298,8 @@ export default function StoreDetail() {
   const isOwner = user && user.telegram_user_id === store.owner_telegram_id
   const storeUsername = store.owner?.username || `store_${store.store_id.slice(0, 8)}`
   const storeRating = store.owner?.rating_average || 0
-  const sortedListings = getSortedListings()
-  
-  // Get unique categories from listings
-  const storeCategories = Array.from(new Set(listings.map(l => l.category))).filter(Boolean)
-  
-  // Filter listings by category and search query
-  const filteredListings = sortedListings.filter(l => {
-    const matchesCategory = !selectedCategory || l.category === selectedCategory
-    const matchesSearch = !searchQuery || 
-      l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch
-  })
 
-  // Handle add to cart with haptic feedback
+  // Handle add to cart with haptic feedback and tracking
   const handleAddToCart = async (listingId: string) => {
     if (!user) {
       alert('Iltimos, avval tizimga kiring')
@@ -267,11 +310,21 @@ export default function StoreDetail() {
     const webApp = initTelegram()
     if (webApp?.HapticFeedback) {
       webApp.HapticFeedback.impactOccurred('medium')
-      webApp.HapticFeedback.notificationOccurred('success')
     }
 
     try {
       await addToCart(user.telegram_user_id, listingId, 1)
+      
+      // ✅ Track add to cart
+      if (id) {
+        trackStoreEvent({
+          event_type: 'add_to_cart',
+          store_id: id,
+          listing_id: listingId,
+          user_telegram_id: user.telegram_user_id
+        })
+      }
+      
       // Success feedback
       if (webApp?.HapticFeedback) {
         webApp.HapticFeedback.notificationOccurred('success')
@@ -353,6 +406,11 @@ export default function StoreDetail() {
           </div>
         </div>
       </header>
+
+      {/* ✅ Store Policy Row */}
+      <div className="px-4 mb-4">
+        <StorePolicyRow />
+      </div>
 
       {/* Premium Hero Section */}
       <div className="relative">
@@ -556,9 +614,43 @@ export default function StoreDetail() {
         <div className="px-4 pb-4">
           {filteredListings.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
-              <div className="text-6xl mb-4">😕</div>
-              <p className="text-gray-900 text-lg font-semibold mb-2">Bu do'konda hozircha mahsulot yo'q</p>
-              <p className="text-gray-500 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
+              {searchQuery || selectedCategory ? (
+                <>
+                  <div className="text-6xl mb-4">🔍</div>
+                  <p className="text-gray-900 text-lg font-semibold mb-2">Hech narsa topilmadi</p>
+                  <p className="text-gray-500 text-sm mb-4">Boshqa qidiruv yoki kategoriya tanlang</p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSelectedCategory(null)
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Filtrlarni tozalash
+                  </button>
+                  {/* ✅ Empty state: Show top 6 recommendations */}
+                  {listings.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">Mana shularni tavsiya qilamiz</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {listings.slice(0, 6).map((listing) => (
+                          <PremiumProductCard 
+                            key={listing.listing_id} 
+                            listing={listing}
+                            onAddToCart={() => handleAddToCart(listing.listing_id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-6xl mb-4">😕</div>
+                  <p className="text-gray-900 text-lg font-semibold mb-2">Bu do'konda hozircha mahsulot yo'q</p>
+                  <p className="text-gray-500 text-sm">Tez orada yangi mahsulotlar qo'shiladi</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
@@ -581,6 +673,9 @@ export default function StoreDetail() {
             listings={listings} 
             title="Bu do'konda ko'p sotiladiganlar"
             maxItems={4}
+            currentCategory={selectedCategory || undefined}
+            storeId={id}
+            userId={user?.telegram_user_id}
           />
         </div>
       )}

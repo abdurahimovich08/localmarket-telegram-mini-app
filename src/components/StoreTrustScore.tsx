@@ -1,6 +1,7 @@
 import { StarIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
 import { StarIcon as StarIconOutline, ClockIcon } from '@heroicons/react/24/outline'
 import type { Store } from '../types'
+import TrustScoreTooltip from './TrustScoreTooltip'
 
 interface StoreTrustScoreProps {
   store: Store
@@ -35,7 +36,12 @@ export default function StoreTrustScore({
   return (
     <div className={`bg-white rounded-xl p-4 border border-gray-200 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-gray-900">Ishonch ko'rsatkichlari</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-gray-900">Ishonch ko'rsatkichlari</h3>
+          <TrustScoreTooltip>
+            <span></span>
+          </TrustScoreTooltip>
+        </div>
         {store.is_verified && (
           <div className="flex items-center gap-1 text-blue-600">
             <CheckCircleIcon className="w-4 h-4" />
