@@ -138,6 +138,7 @@ export interface Store {
   subscriber_count: number
   is_verified: boolean
   is_active: boolean
+  referral_code?: string // Unique referral code for the store
   created_at: string
   updated_at: string
   owner?: User

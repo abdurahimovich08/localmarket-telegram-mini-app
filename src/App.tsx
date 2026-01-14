@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { initTelegram, getTelegramUser } from './lib/telegram'
-import { createOrUpdateUser, getUser } from './lib/supabase'
+import { createOrUpdateUser, getUser, getUserReferralStore } from './lib/supabase'
 import type { User } from './types'
 import Home from './pages/Home'
 import ListingDetail from './pages/ListingDetail'
@@ -99,6 +99,18 @@ function App() {
         }
 
         setUser(dbUser)
+
+        // Check if user came from referral (if no ctx in URL)
+        // This allows auto-detection of store mode from database
+        const urlParams = new URLSearchParams(window.location.search)
+        if (!urlParams.get('ctx') && dbUser) {
+          const referralStore = await getUserReferralStore(telegramUser.id)
+          if (referralStore) {
+            // User came from referral - can auto-set store mode if needed
+            // But we'll let AppModeContext handle URL-based routing first
+            console.log('User came from referral store:', referralStore.store_name)
+          }
+        }
       } catch (error) {
         console.error('Error initializing app:', error)
       } finally {

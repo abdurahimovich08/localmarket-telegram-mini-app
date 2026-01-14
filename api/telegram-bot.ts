@@ -34,34 +34,84 @@ function getBot() {
   return bot
 }
 
+// Track referral in backend
+async function trackReferral(userTelegramId: number, referralCode: string): Promise<{ success: boolean; store_id?: string; store_name?: string }> {
+  const apiUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/track-referral`
+    : `${miniAppUrl}/api/track-referral`
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_telegram_id: userTelegramId,
+        referral_code: referralCode
+      })
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to track referral:', response.statusText)
+      return { success: false }
+    }
+    
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('Error tracking referral:', error)
+    return { success: false }
+  }
+}
+
 // Handle /start command with deep links
-function handleStartCommand(msg: any) {
+async function handleStartCommand(msg: any) {
   const botInstance = getBot()
   if (!botInstance) return
 
   const chatId = msg.chat.id
+  const telegramUserId = msg.from?.id
   const text = msg.text || ''
   
   // Extract payload from /start command
-  // Format: /start store_<ID> or /start service_<ID>
+  // Format: /start store_<ID> or /start service_<ID> or /start <REFERRAL_CODE>
   const payload = text.replace('/start', '').trim()
   
   let appUrl = miniAppUrl
   let welcomeMessage = `🏪 Welcome to LocalMarket!\n\nBuy and sell items in your neighborhood, all within Telegram!\n\nTap the button below to open the Mini App:`
   let buttonText = '🚀 Open LocalMarket'
+  let referralCode: string | null = null
+  let storeId: string | null = null
   
-  // Parse deep link payloads: store_<ID> or service_<ID>
+  // Parse deep link payloads
   if (payload) {
     if (payload.startsWith('store_')) {
-      const storeId = payload.replace('store_', '')
+      // Old format: store_<UUID>
+      storeId = payload.replace('store_', '')
       appUrl = `${miniAppUrl}/?ctx=store:${storeId}`
       welcomeMessage = `🏪 Do'konni ko'rish uchun quyidagi tugmani bosing:`
       buttonText = '🛍 Do\'konni Ochish'
     } else if (payload.startsWith('service_')) {
+      // Service format: service_<UUID>
       const serviceId = payload.replace('service_', '')
       appUrl = `${miniAppUrl}/?ctx=service:${serviceId}`
       welcomeMessage = `🛠 Xizmatni ko'rish uchun quyidagi tugmani bosing:`
       buttonText = '🚀 Xizmatni Ochish'
+    } else {
+      // New format: referral code directly (e.g., a9xK2)
+      referralCode = payload
+      // Backend'ga referral tracking yuborish
+      if (telegramUserId && referralCode) {
+        const trackingResult = await trackReferral(telegramUserId, referralCode)
+        if (trackingResult.success && trackingResult.store_id) {
+          storeId = trackingResult.store_id
+          appUrl = `${miniAppUrl}/?ctx=store:${storeId}`
+          welcomeMessage = `🏪 ${trackingResult.store_name || 'Do\'kon'} do'koniga ulandingiz!\n\nDo'konni ko'rish uchun quyidagi tugmani bosing:`
+          buttonText = '🛍 Do\'konni Ochish'
+        } else {
+          // Invalid referral code - still show welcome but don't track
+          console.warn('Invalid referral code:', referralCode)
+        }
+      }
     }
   }
   

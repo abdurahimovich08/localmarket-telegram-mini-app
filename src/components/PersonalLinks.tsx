@@ -66,8 +66,13 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
     navigate('/?ctx=' + type + ':' + id)
   }
 
-  const generateStoreLink = (storeId: string) => {
-    return `https://t.me/${botUsername}?start=store_${storeId}`
+  const generateStoreLink = (store: Store) => {
+    // Use referral_code if available, otherwise fallback to store_<ID> format
+    if (store.referral_code) {
+      return `https://t.me/${botUsername}?start=${store.referral_code}`
+    }
+    // Fallback to old format for backward compatibility
+    return `https://t.me/${botUsername}?start=store_${store.store_id}`
   }
 
   const generateServiceLink = (serviceId: string) => {
@@ -110,7 +115,7 @@ export default function PersonalLinks({ stores, services, hasListings, botUserna
                 ⚠️ Linkni bosganda bot'ga o'tadi, u yerda tugmani bosing
               </p>
               <div className="text-xs text-gray-500 font-mono bg-white px-2 py-1 rounded border border-gray-200 break-all">
-                {generateStoreLink(stores[0].store_id)}
+                {generateStoreLink(stores[0])}
               </div>
             </div>
             <div className="flex flex-col gap-2 ml-2">

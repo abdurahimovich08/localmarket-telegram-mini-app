@@ -966,6 +966,29 @@ export const getService = async (serviceId: string): Promise<Service | null> => 
   return data as Service
 }
 
+// Get user's store from referral (which store they came from)
+export const getUserReferralStore = async (userTelegramId: number): Promise<{ store_id: string; store_name: string; referral_code: string } | null> => {
+  const { data, error } = await supabase
+    .rpc('get_user_store', {
+      p_user_telegram_id: userTelegramId
+    })
+
+  if (error) {
+    console.error('Error fetching user referral store:', error)
+    return null
+  }
+
+  if (!data || data.length === 0) {
+    return null
+  }
+
+  return {
+    store_id: data[0].store_id,
+    store_name: data[0].store_name,
+    referral_code: data[0].referral_code
+  }
+}
+
 export const getUserServices = async (providerTelegramId: number): Promise<Service[]> => {
   const { data, error } = await supabase
     .from('services')
