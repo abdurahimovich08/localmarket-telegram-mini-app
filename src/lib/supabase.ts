@@ -249,7 +249,7 @@ export const getListing = async (listingId: string): Promise<Listing | null> => 
   return data
 }
 
-export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count' | 'store_id'> & { subcategory_id?: string; store_id?: string }): Promise<Listing | null> => {
+export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count' | 'store_id' | 'store_category_id' | 'old_price' | 'stock_qty' | 'order_index'> & { subcategory_id?: string; store_id?: string; store_category_id?: string; old_price?: number; stock_qty?: number; order_index?: number }): Promise<Listing | null> => {
   console.log('Creating listing with data:', listing)
   
   const { data, error } = await supabase

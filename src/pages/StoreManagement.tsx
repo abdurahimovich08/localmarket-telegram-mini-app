@@ -533,8 +533,9 @@ export default function StoreManagement() {
                         </div>
                       </div>
                       <button
-                        onClick={() => navigate(`/listing/${product.listing_id}/edit`)}
+                        onClick={() => navigate(`/create?edit=${product.listing_id}&store_id=${id}`)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Tahrirlash"
                       >
                         <PencilIcon className="w-4 h-4 text-gray-600" />
                       </button>

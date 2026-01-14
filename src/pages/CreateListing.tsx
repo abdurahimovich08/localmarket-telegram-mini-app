@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
-import { createListing, getSubcategories, getUserStore, type Subcategory } from '../lib/supabase'
+import { createListing, getSubcategories, getUserStore, getStore, getStoreCategories, type Subcategory, type StoreCategory } from '../lib/supabase'
 import { requestLocation, initTelegram } from '../lib/telegram'
 import { CATEGORIES, CONDITIONS, type ListingCategory, type ListingCondition } from '../types'
 import { uploadImages } from '../lib/imageUpload'
@@ -13,6 +13,7 @@ type Step = 'photos' | 'category' | 'subcategory' | 'form'
 
 export default function CreateListing() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useUser()
   const [currentStep, setCurrentStep] = useState<Step>('photos')
   const [loading, setLoading] = useState(false)
@@ -31,12 +32,16 @@ export default function CreateListing() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
+  const [oldPrice, setOldPrice] = useState('')
+  const [stockQty, setStockQty] = useState<string>('')
   const [isFree, setIsFree] = useState(false)
   const [condition, setCondition] = useState<ListingCondition>('good')
   const [neighborhood, setNeighborhood] = useState('')
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [listingType, setListingType] = useState<'personal' | 'store'>('personal')
   const [userStore, setUserStore] = useState<{ store_id: string; name: string } | null>(null)
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([])
+  const [selectedStoreCategory, setSelectedStoreCategory] = useState<string | null>(null)
 
   // Load subcategories when category is selected
   useEffect(() => {
@@ -45,18 +50,39 @@ export default function CreateListing() {
     }
   }, [category, currentStep])
 
-  // Load user store when component mounts
+  // Load user store when component mounts or from URL
   useEffect(() => {
     const loadUserStore = async () => {
       if (user) {
-        const store = await getUserStore(user.telegram_user_id)
-        if (store) {
-          setUserStore({ store_id: store.store_id, name: store.name })
+        // Check URL for store_id parameter
+        const storeIdFromUrl = searchParams.get('store_id')
+        
+        if (storeIdFromUrl) {
+          // Load store from URL
+          const store = await getStore(storeIdFromUrl, user.telegram_user_id)
+          if (store && store.owner_telegram_id === user.telegram_user_id) {
+            setUserStore({ store_id: store.store_id, name: store.name })
+            setListingType('store')
+            
+            // Load store categories
+            const categories = await getStoreCategories(store.store_id)
+            setStoreCategories(categories)
+          }
+        } else {
+          // Load user's own store
+          const store = await getUserStore(user.telegram_user_id)
+          if (store) {
+            setUserStore({ store_id: store.store_id, name: store.name })
+            
+            // Load store categories
+            const categories = await getStoreCategories(store.store_id)
+            setStoreCategories(categories)
+          }
         }
       }
     }
     loadUserStore()
-  }, [user])
+  }, [user, searchParams])
 
   const loadSubcategories = async () => {
     if (!category) return
@@ -153,6 +179,8 @@ export default function CreateListing() {
         title: title.trim(),
         description: description.trim(),
         price: isFree ? undefined : parseFloat(price) || 0,
+        old_price: oldPrice ? parseFloat(oldPrice) : undefined,
+        stock_qty: stockQty ? parseInt(stockQty) : undefined,
         is_free: isFree,
         category,
         condition,
@@ -163,7 +191,8 @@ export default function CreateListing() {
         status: 'active',
         is_boosted: false,
         subcategory_id: selectedSubcategory?.subcategory_id,
-        store_id: listingType === 'store' && userStore ? userStore.store_id : undefined
+        store_id: listingType === 'store' && userStore ? userStore.store_id : undefined,
+        store_category_id: listingType === 'store' && selectedStoreCategory ? selectedStoreCategory : undefined
       })
 
       if (listing) {
@@ -179,7 +208,7 @@ export default function CreateListing() {
     } finally {
       setLoading(false)
     }
-  }, [user, title, description, photos, category, condition, price, isFree, neighborhood, location, selectedSubcategory, listingType, userStore, navigate])
+  }, [user, title, description, photos, category, condition, price, oldPrice, stockQty, isFree, neighborhood, location, selectedSubcategory, listingType, userStore, selectedStoreCategory, navigate])
 
   const handlePhotoUpload = () => {
     const input = document.createElement('input')
@@ -467,7 +496,10 @@ export default function CreateListing() {
                 name="listingType"
                 value="personal"
                 checked={listingType === 'personal'}
-                onChange={() => setListingType('personal')}
+                onChange={() => {
+                  setListingType('personal')
+                  setSelectedStoreCategory(null)
+                }}
                 className="w-5 h-5 text-primary border-gray-300 focus:ring-primary"
               />
               <div className="flex-1">
@@ -498,6 +530,27 @@ export default function CreateListing() {
             )}
           </div>
         </div>
+
+        {/* Store Category Selection (only for store listings) */}
+        {listingType === 'store' && storeCategories.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Do'kon Kategoriyasi (ixtiyoriy)
+            </label>
+            <select
+              value={selectedStoreCategory || ''}
+              onChange={(e) => setSelectedStoreCategory(e.target.value || null)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">Kategoriya tanlanmagan</option>
+              {storeCategories.map((cat) => (
+                <option key={cat.category_id} value={cat.category_id}>
+                  {cat.emoji || '📦'} {cat.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Title */}
         <div>
@@ -548,7 +601,7 @@ export default function CreateListing() {
             </label>
             {!isFree && (
               <div className="flex-1 flex items-center gap-2">
-                <span className="text-gray-600">$</span>
+                <span className="text-gray-600">so'm</span>
                 <input
                   type="number"
                   value={price}
@@ -562,6 +615,52 @@ export default function CreateListing() {
             )}
           </div>
         </div>
+
+        {/* Old Price (for promotions) - only for store listings */}
+        {listingType === 'store' && !isFree && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Eski Narx (aksiya uchun, ixtiyoriy)
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600">so'm</span>
+              <input
+                type="number"
+                value={oldPrice}
+                onChange={(e) => setOldPrice(e.target.value)}
+                min="0"
+                step="0.01"
+                placeholder="Eski narx (masalan: 50000)"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            {oldPrice && parseFloat(oldPrice) > 0 && price && parseFloat(price) > 0 && (
+              <p className="text-xs text-green-600 mt-1">
+                Chegirma: {Math.round((1 - parseFloat(price) / parseFloat(oldPrice)) * 100)}%
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Stock Quantity - only for store listings */}
+        {listingType === 'store' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mavjud Miqdor (ixtiyoriy)
+            </label>
+            <input
+              type="number"
+              value={stockQty}
+              onChange={(e) => setStockQty(e.target.value)}
+              min="0"
+              placeholder="Cheksiz (bo'sh qoldiring)"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Bo'sh qoldirsangiz, cheksiz deb ko'rsatiladi
+            </p>
+          </div>
+        )}
 
         {/* Condition */}
         <div>
