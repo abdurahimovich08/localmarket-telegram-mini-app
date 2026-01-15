@@ -249,12 +249,19 @@ export const getListing = async (listingId: string): Promise<Listing | null> => 
   return data
 }
 
-export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count' | 'store_id' | 'store_category_id' | 'old_price' | 'stock_qty' | 'order_index'> & { subcategory_id?: string; store_id?: string; store_category_id?: string; old_price?: number; stock_qty?: number; order_index?: number }): Promise<Listing | null> => {
+export const createListing = async (listing: Omit<Listing, 'listing_id' | 'created_at' | 'updated_at' | 'view_count' | 'favorite_count' | 'store_id' | 'store_category_id' | 'old_price' | 'stock_qty' | 'order_index'> & { subcategory_id?: string; store_id?: string; store_category_id?: string; old_price?: number; stock_qty?: number; order_index?: number; attributes?: Record<string, any> }): Promise<Listing | null> => {
   console.log('Creating listing with data:', listing)
+  
+  // Prepare data for insert - handle attributes JSONB
+  // Supabase automatically handles JSONB, no need to stringify
+  const insertData: any = {
+    ...listing,
+    attributes: listing.attributes || {},
+  }
   
   const { data, error } = await supabase
     .from('listings')
-    .insert(listing)
+    .insert(insertData)
     .select('*, seller:users(*)')
     .single()
 
@@ -269,14 +276,32 @@ export const createListing = async (listing: Omit<Listing, 'listing_id' | 'creat
     throw new Error(`Database error: ${error.message}`)
   }
   
+  // Supabase returns JSONB as object automatically, no parsing needed
+  // Ensure attributes exists
+  if (!data.attributes) {
+    data.attributes = {}
+  }
+  
   console.log('Listing created successfully:', data)
   return data
 }
 
-export const updateListing = async (listingId: string, updates: Partial<Listing>): Promise<Listing | null> => {
+export const updateListing = async (listingId: string, updates: Partial<Listing> & { attributes?: Record<string, any> }): Promise<Listing | null> => {
+  // Prepare updates - handle attributes JSONB
+  // Supabase automatically handles JSONB, no need to stringify
+  const updateData: any = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  }
+  
+  // Ensure attributes is an object (Supabase handles JSONB automatically)
+  if (updates.attributes !== undefined) {
+    updateData.attributes = updates.attributes
+  }
+  
   const { data, error } = await supabase
     .from('listings')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq('listing_id', listingId)
     .select('*, seller:users(*)')
     .single()
@@ -285,6 +310,13 @@ export const updateListing = async (listingId: string, updates: Partial<Listing>
     console.error('Error updating listing:', error)
     return null
   }
+  
+  // Supabase returns JSONB as object automatically, no parsing needed
+  // Ensure attributes exists
+  if (!data.attributes) {
+    data.attributes = {}
+  }
+  
   return data
 }
 

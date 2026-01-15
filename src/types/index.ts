@@ -78,6 +78,8 @@ export interface Listing {
   stock_qty?: number // Available stock quantity (NULL = unlimited)
   order_index?: number // Display order within category
   location?: string // Location text for store products
+  // Category-specific attributes (JSONB)
+  attributes?: Record<string, any> // Category-specific fields stored as JSONB
   // "Yangi" badge frontend'da aniqlanadi (so'nggi 24-72 soatda yaratilgan)
   // Hech qanday WHERE created_at > last_seen_at qilmaymiz - xavfli!
 }

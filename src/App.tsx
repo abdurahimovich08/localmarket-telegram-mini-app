@@ -18,6 +18,8 @@ import StoreManagement from './pages/StoreManagement'
 import AIChatCreationPage from './pages/AIChatCreationPage'
 import ServiceDetailsPage from './pages/ServiceDetailsPage'
 import ServiceEdit from './pages/ServiceEdit'
+import UnifiedAICreationPage from './pages/UnifiedAICreationPage'
+import ChooseCategoryUnified from './pages/ChooseCategoryUnified'
 import Dashboard from './pages/Dashboard'
 import DashboardRank from './pages/DashboardRank'
 import DashboardRecommendations from './pages/DashboardRecommendations'
@@ -160,6 +162,7 @@ function AppRoutes() {
   // Pages that should always use marketplace layout (admin, creation, etc.)
   const alwaysMarketplacePaths = [
     '/create',
+    '/create-unified',
     '/my-listings',
     '/profile',
     '/favorites',
@@ -167,6 +170,7 @@ function AppRoutes() {
     '/create-store',
     '/store/:id/edit',
     '/create-service',
+    '/create-service-unified',
     '/service/:id/edit',
     '/dashboard'
   ]
@@ -203,6 +207,10 @@ function AppRoutes() {
       <Route path="/store/:id/manage" element={<MarketplaceLayout><StoreManagement /></MarketplaceLayout>} />
       <Route path="/store/:id" element={<MarketplaceLayout><StoreDetail /></MarketplaceLayout>} />
       <Route path="/create-service" element={<MarketplaceLayout><AIChatCreationPage /></MarketplaceLayout>} />
+      {/* Unified AI Creation Routes */}
+      <Route path="/create-unified" element={<MarketplaceLayout><ChooseCategoryUnified /></MarketplaceLayout>} />
+      <Route path="/create-unified/chat" element={<MarketplaceLayout><UnifiedAICreationPage entityType="product" category="" /></MarketplaceLayout>} />
+      <Route path="/create-service-unified" element={<MarketplaceLayout><UnifiedAICreationPage entityType="service" category="service" /></MarketplaceLayout>} />
       <Route path="/service/:id" element={<MarketplaceLayout><ServiceDetailsPage /></MarketplaceLayout>} />
       <Route path="/service/:id/edit" element={<MarketplaceLayout><ServiceEdit /></MarketplaceLayout>} />
       <Route path="/dashboard" element={<MarketplaceLayout><Dashboard /></MarketplaceLayout>} />

@@ -20,12 +20,12 @@ export default function BottomNav() {
     {
       emoji: '📦',
       label: 'Narsa sotaman',
-      onClick: () => navigate('/create'),
+      onClick: () => navigate('/create-unified?entityType=product'),
     },
     {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
-      onClick: () => navigate('/create-service'),
+      onClick: () => navigate('/create-service-unified'),
     },
   ]
 
