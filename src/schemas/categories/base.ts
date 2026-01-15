@@ -60,9 +60,9 @@ export const productCoreFields: FieldSchema[] = [
     type: 'enum',
     required: true,
     label: 'Holati',
-    enumOptions: ['new', 'like_new', 'good', 'fair', 'poor'],
-    aiQuestion: 'Mahsulot holati qanday? (yangi, yaxshi, o\'rtacha, eski)',
-    aiExtraction: 'Map condition from user description'
+    enumOptions: ['yangi', 'yangi_kabi', 'yaxshi', 'o\'rtacha', 'eski'],
+    aiQuestion: 'Mahsulot holati qanday? (yangi, yangi kabi, yaxshi, o\'rtacha, eski)',
+    aiExtraction: 'Map condition from user description (uzbek: yangi, yangi_kabi, yaxshi, o\'rtacha, eski)'
   },
   {
     key: 'neighborhood',

@@ -512,21 +512,12 @@ export async function sendUnifiedMessage(
             return s.split(' ').map(word => capitalize(word)).join(' ')
           }
           
-          // Generate title: "{brand} {leafLabel} {color} {size}" with proper capitalization
+          // Generate title: "{leafLabel} ({brand})" format
           let generatedTitle = capitalizeWords(leafLabel)
           if (brand) {
-            // Brand might already be capitalized (Nike, Adidas), but ensure first letter is uppercase
+            // Brand in parentheses: "Krossovka (Nike)"
             const capitalizedBrand = capitalize(brand)
-            generatedTitle = `${capitalizedBrand} ${generatedTitle}`
-          }
-          if (color) {
-            const capitalizedColor = capitalize(color)
-            generatedTitle = `${generatedTitle} ${capitalizedColor}`
-          }
-          if (size) {
-            // Size might be numeric (42) or text (XL), keep as is but ensure text is capitalized
-            const capitalizedSize = isNaN(Number(size)) ? capitalize(size) : size
-            generatedTitle = `${generatedTitle} ${capitalizedSize}`
+            generatedTitle = `${generatedTitle} (${capitalizedBrand})`
           }
           
           // Ensure title and description exist
@@ -538,7 +529,21 @@ export async function sendUnifiedMessage(
           if (color) descParts.push(`Rang: ${color}`)
           if (size) descParts.push(`O'lcham: ${size}`)
           if (attributes.material) descParts.push(`Material: ${attributes.material}`)
-          if (core.condition) descParts.push(`Holati: ${core.condition === 'new' ? 'Yangi' : core.condition === 'like_new' ? 'Yangi kabi' : core.condition === 'good' ? 'Yaxshi' : core.condition === 'fair' ? 'O\'rtacha' : 'Eski'}`)
+          if (core.condition) {
+            const conditionMap: Record<string, string> = {
+              'new': 'Yangi',
+              'like_new': 'Yangi kabi',
+              'good': 'Yaxshi',
+              'fair': 'O\'rtacha',
+              'poor': 'Eski',
+              'yangi': 'Yangi',
+              'yangi_kabi': 'Yangi kabi',
+              'yaxshi': 'Yaxshi',
+              'o\'rtacha': 'O\'rtacha',
+              'eski': 'Eski'
+            }
+            descParts.push(`Holati: ${conditionMap[core.condition] || core.condition}`)
+          }
           if (core.price) descParts.push(`Narx: ${core.price.toLocaleString()} so'm`)
           
           if (!core.description) {

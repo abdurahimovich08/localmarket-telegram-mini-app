@@ -105,11 +105,11 @@ export default function LocationDisplay({
         onClick={() => setShowEditModal(true)}
         className={`flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity ${className}`}
       >
-        <MapPinIcon className="w-4 h-4 text-white/80 flex-shrink-0" />
-        <span className="text-sm text-white/90 truncate">
+        <MapPinIcon className={`w-4 h-4 flex-shrink-0 ${className.includes('text-gray') ? 'text-gray-600' : 'text-white/80'}`} />
+        <span className={`text-sm truncate ${className.includes('text-gray') ? 'text-gray-900' : 'text-white/90'}`}>
           {address || (location ? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : 'Lokatsiya topilmadi')}
         </span>
-        <PencilIcon className="w-4 h-4 text-white/60 flex-shrink-0" />
+        <PencilIcon className={`w-4 h-4 flex-shrink-0 ${className.includes('text-gray') ? 'text-gray-500' : 'text-white/60'}`} />
       </div>
 
       {showEditModal && (

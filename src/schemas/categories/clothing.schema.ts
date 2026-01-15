@@ -21,6 +21,32 @@ const clothingFields: FieldSchema[] = [
     }
   },
   {
+    key: 'country_of_origin',
+    type: 'string',
+    required: false,
+    label: 'Ishlab chiqarilgan mamlakati',
+    placeholder: 'Masalan: O\'zbekiston, Xitoy, Turkiya',
+    aiQuestion: 'Ishlab chiqarilgan mamlakati qaysi?',
+    aiExtraction: 'Extract country of origin',
+    normalization: {
+      type: 'country',
+      entityTable: 'countries',
+    }
+  },
+  {
+    key: 'year',
+    type: 'number',
+    required: false,
+    label: 'Ishlab chiqarilgan yili',
+    placeholder: 'Masalan: 2023',
+    validation: {
+      min: 1900,
+      max: new Date().getFullYear() + 1
+    },
+    aiQuestion: 'Qaysi yilda ishlab chiqarilgan?',
+    aiExtraction: 'Extract manufacturing year'
+  },
+  {
     key: 'sizes',
     type: 'multi_select',
     required: true,
@@ -48,58 +74,118 @@ const clothingFields: FieldSchema[] = [
     aiExtraction: 'Extract material type'
   },
   {
-    key: 'gender',
-    type: 'enum',
-    required: false,
-    label: 'Jins',
-    enumOptions: ['men', 'women', 'unisex', 'kids'],
-    aiQuestion: 'Kimlar uchun? (erkak, ayol, uniseks, bolalar)',
-    aiExtraction: 'Determine gender target'
-  },
-  {
     key: 'season',
     type: 'enum',
     required: false,
     label: 'Mavsum',
-    enumOptions: ['spring', 'summer', 'autumn', 'winter', 'all_season'],
+    enumOptions: ['bahor', 'yoz', 'kuz', 'qish', 'yil_davomida'],
     aiQuestion: 'Qaysi mavsum uchun? (bahor, yoz, kuz, qish, yil davomida)',
     aiExtraction: 'Determine season'
   },
   {
-    key: 'stock_qty',
+    key: 'delivery_available',
+    type: 'boolean',
+    required: false,
+    label: 'Yetkazib berish mavjudmi?',
+    defaultValue: false,
+    aiQuestion: 'Yetkazib berish bormi? (ha/yo\'q)',
+    aiExtraction: 'Extract boolean for delivery availability'
+  },
+  {
+    key: 'delivery_days',
     type: 'number',
+    required: false,
+    label: 'Yetkazib berish muddati (kun)',
+    placeholder: 'Masalan: 1-3 kun',
+    validation: {
+      min: 0
+    },
+    dependsOn: {
+      field: 'delivery_available',
+      value: true
+    },
+    aiQuestion: 'Qancha vaqtda yetkazib beriladi? (kunlarda)',
+    aiExtraction: 'Extract delivery time in days'
+  },
+  {
+    key: 'delivery_conditions',
+    type: 'string',
+    required: false,
+    label: 'Yetkazib berish shartlari',
+    placeholder: 'Masalan: Faqat shahar ichida, minimal buyurtma 100,000 so\'m',
+    dependsOn: {
+      field: 'delivery_available',
+      value: true
+    },
+    aiQuestion: 'Yetkazib berish shartlari qanday? (ixtiyoriy)',
+    aiExtraction: 'Extract delivery conditions'
+  },
+  {
+    key: 'discount_available',
+    type: 'boolean',
+    required: false,
+    label: 'Aksiya mavjudmi?',
+    defaultValue: false,
+    aiQuestion: 'Aksiya bormi? (ha/yo\'q)',
+    aiExtraction: 'Extract boolean for discount availability'
+  },
+  {
+    key: 'discount_original_price',
+    type: 'number',
+    required: false,
+    label: 'Asl narx (aksiya)',
+    placeholder: '0',
+    validation: {
+      min: 0
+    },
+    dependsOn: {
+      field: 'discount_available',
+      value: true
+    },
+    aiQuestion: 'Agar aksiya bo\'lsa, asl narx qanday?',
+    aiExtraction: 'Extract original price if discount available'
+  },
+  {
+    key: 'discount_days',
+    type: 'number',
+    required: false,
+    label: 'Aksiya muddati (kun)',
+    placeholder: 'Masalan: 7 kun',
+    validation: {
+      min: 0
+    },
+    dependsOn: {
+      field: 'discount_available',
+      value: true
+    },
+    aiQuestion: 'Aksiya qancha vaqt davom etadi? (kunlarda)',
+    aiExtraction: 'Extract discount duration in days'
+  },
+  {
+    key: 'discount_reason',
+    type: 'string',
     required: true,
-    label: 'Mavjud miqdor',
-    placeholder: '0',
-    validation: {
-      min: 0
+    label: 'Aksiya sababi',
+    placeholder: 'Masalan: Mavsumiy aksiya, Yangi kolleksiya',
+    dependsOn: {
+      field: 'discount_available',
+      value: true
     },
-    aiQuestion: 'Nechta dona mavjud?',
-    aiExtraction: 'Extract stock quantity'
+    aiQuestion: 'Aksiya sababi nima? (majburiy)',
+    aiExtraction: 'Extract discount reason'
   },
   {
-    key: 'old_price',
-    type: 'number',
+    key: 'discount_conditions',
+    type: 'string',
     required: false,
-    label: 'Eski narx (aksiya)',
-    placeholder: '0',
-    validation: {
-      min: 0
+    label: 'Aksiya shartlari',
+    placeholder: 'Masalan: Faqat naqd pul, Minimal buyurtma 200,000 so\'m',
+    dependsOn: {
+      field: 'discount_available',
+      value: true
     },
-    aiQuestion: 'Agar aksiya bo\'lsa, eski narx qanday?',
-    aiExtraction: 'Extract old price if discount mentioned'
-  },
-  {
-    key: 'discount_percent',
-    type: 'number',
-    required: false,
-    label: 'Chegirma foizi',
-    placeholder: '0',
-    validation: {
-      min: 0,
-      max: 100
-    },
-    aiExtraction: 'Calculate discount percentage from old_price and price'
+    aiQuestion: 'Aksiya shartlari qanday? (ixtiyoriy)',
+    aiExtraction: 'Extract discount conditions'
   }
 ]
 
@@ -112,7 +198,18 @@ export const clothingSchema: CategorySchema = createCategorySchema(
     description: 'Kiyim, oyoq kiyim, aksessuarlar',
     aiInstructions: {
       greeting: 'Salom! Kiyim-kechak e\'lonini yaratishga yordam beraman. Qanday kiyim sotmoqchisiz?',
-      questionOrder: ['title', 'description', 'brand', 'sizes', 'colors', 'material', 'price', 'stock_qty', 'condition']
+      questionOrder: [
+        'brand', 
+        'country_of_origin', 
+        'year', 
+        'sizes', 
+        'colors', 
+        'material', 
+        'price', 
+        'discount_available',
+        'delivery_available',
+        'condition'
+      ]
     }
   },
   clothingFields

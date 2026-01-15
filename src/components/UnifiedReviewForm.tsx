@@ -5,7 +5,7 @@
  * Works for BOTH products and services
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { uploadImages } from '../lib/imageUpload'
@@ -20,7 +20,8 @@ import { CLOTHING_TAXONOMY } from '../taxonomy/clothing.uz'
 import LogoUploader from './LogoUploader'
 import PortfolioUploader from './PortfolioUploader'
 import BackButton from './BackButton'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import LocationDisplay from './LocationDisplay'
+import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 interface UnifiedReviewFormProps {
   data: UnifiedAIOutput
@@ -54,8 +55,116 @@ export default function UnifiedReviewForm({
   const [logo, setLogo] = useState<string | null>(null) // For services
   const [portfolio, setPortfolio] = useState<string[]>([]) // For services
 
+  // Location state
+  const [location, setLocation] = useState<{ latitude: number; longitude: number; address?: string } | null>(null)
+
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Collapse/expand state for sections
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    title: true,
+    description: true,
+    price: true,
+    free: false,
+    condition: false,
+    location: false,
+    stock: false,
+    additional: false
+  })
+  
+  // Section refs for auto-scroll
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  
+  // Calculate discount percentage automatically
+  const discountPercent = formData.attributes.discount_original_price && formData.core.price
+    ? Math.round((1 - formData.core.price / formData.attributes.discount_original_price) * 100)
+    : 0
+  
+  // Calculate savings amount
+  const savingsAmount = formData.attributes.discount_original_price && formData.core.price
+    ? formData.attributes.discount_original_price - formData.core.price
+    : 0
+  
+  // Format number with thousand separators
+  const formatPrice = (value: number | undefined | null): string => {
+    if (!value && value !== 0) return ''
+    return value.toLocaleString('uz-UZ')
+  }
+  
+  // Parse price input (remove spaces)
+  const parsePriceInput = (value: string): number | undefined => {
+    const cleaned = value.replace(/\s/g, '')
+    const parsed = parseFloat(cleaned)
+    return isNaN(parsed) ? undefined : parsed
+  }
+  
+  // Toggle section
+  const toggleSection = (sectionKey: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }))
+  }
+  
+  // Auto-advance to next section
+  const scrollToSection = (sectionKey: string) => {
+    const section = sectionRefs.current[sectionKey]
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // Expand if collapsed
+      if (!expandedSections[sectionKey]) {
+        setTimeout(() => {
+          setExpandedSections(prev => ({ ...prev, [sectionKey]: true }))
+        }, 300)
+      }
+    }
+  }
+  
+  // Calculate total stock
+  const totalStock = formData.attributes.stock_by_size_color
+    ? Object.values(formData.attributes.stock_by_size_color).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0)
+    : 0
+  
+  // Get top stock variants (for summary)
+  const topStockVariants = formData.attributes.stock_by_size_color
+    ? Object.entries(formData.attributes.stock_by_size_color)
+        .filter(([_, qty]) => Number(qty) > 0)
+        .sort(([_, a], [__, b]) => Number(b) - Number(a))
+        .slice(0, 3)
+        .map(([key, qty]) => {
+          const [size, color] = key.split('_')
+          return { size, color, qty: Number(qty) }
+        })
+    : []
+  
+  // Section definitions for progress
+  const sections = [
+    { key: 'title', label: 'Sarlavha', icon: '📝' },
+    { key: 'description', label: 'Tavsif', icon: '📄' },
+    { key: 'price', label: 'Narx', icon: '💰' },
+    { key: 'free', label: 'Bepul', icon: '🎁' },
+    { key: 'condition', label: 'Holati', icon: '✨' },
+    { key: 'location', label: 'Joylashuv', icon: '📍' },
+    ...(schema.category === 'clothing' ? [{ key: 'stock', label: 'Mavjud Miqdor', icon: '📦' }] : []),
+    { key: 'additional', label: 'Qo\'shimcha', icon: '➕' }
+  ]
+  
+  // Calculate progress
+  const completedSections = sections.filter(section => {
+    if (section.key === 'title') return !!formData.core.title
+    if (section.key === 'description') return !!formData.core.description
+    if (section.key === 'price') return !!formData.core.price || formData.core.is_free
+    if (section.key === 'free') return true // Always available
+    if (section.key === 'condition') return !!formData.core.condition
+    if (section.key === 'location') return !!location || !!formData.core.neighborhood
+    if (section.key === 'stock') return sizes.length > 0 && colors.length > 0
+    if (section.key === 'additional') return true // Always available
+    return false
+  }).length
+  
+  const progressPercent = (completedSections / sections.length) * 100
+  const currentSectionIndex = sections.findIndex(s => !expandedSections[s.key] || (s.key === 'title' && !formData.core.title)) || 0
 
   // Use entity mutations for products, direct call for services (backward compatibility)
   const { create: createListingMutation, isLoading: isCreatingListing } = useEntityMutations('listing', {
@@ -174,9 +283,37 @@ export default function UnifiedReviewForm({
             required={isRequired}
           >
             <option value="">Tanlang...</option>
-            {field.enumOptions.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {field.enumOptions.map(option => {
+              // Map enum values to Uzbek labels
+              const labelMap: Record<string, Record<string, string>> = {
+                condition: {
+                  'yangi': 'Yangi',
+                  'yangi_kabi': 'Yangi kabi',
+                  'yaxshi': 'Yaxshi',
+                  'o\'rtacha': 'O\'rtacha',
+                  'eski': 'Eski',
+                  'new': 'Yangi',
+                  'like_new': 'Yangi kabi',
+                  'good': 'Yaxshi',
+                  'fair': 'O\'rtacha',
+                  'poor': 'Eski'
+                },
+                season: {
+                  'bahor': 'Bahor',
+                  'yoz': 'Yoz',
+                  'kuz': 'Kuz',
+                  'qish': 'Qish',
+                  'yil_davomida': 'Yil davomida',
+                  'spring': 'Bahor',
+                  'summer': 'Yoz',
+                  'autumn': 'Kuz',
+                  'winter': 'Qish',
+                  'all_season': 'Yil davomida'
+                }
+              }
+              const label = labelMap[field.key]?.[option] || option
+              return <option key={option} value={option}>{label}</option>
+            })}
           </select>
         )}
 
@@ -275,6 +412,21 @@ export default function UnifiedReviewForm({
           finalAttributes.taxonomy = data.context.taxonomy
           finalAttributes.clothing_type = data.context.taxonomy.labelUz
           
+          // Auto-fill gender from taxonomy
+          const taxonomyGender = data.context.taxonomy.audience
+          const genderMap: Record<string, string> = {
+            'erkaklar': 'men',
+            'ayollar': 'women',
+            'bolalar': 'kids',
+            'unisex': 'unisex'
+          }
+          if (taxonomyGender) {
+            const mappedGender = genderMap[taxonomyGender.toLowerCase()]
+            if (mappedGender) {
+              finalAttributes.gender = mappedGender
+            }
+          }
+          
           // Rebuild tags with entity IDs from processed attributes
           const { buildTagsFromSelection } = await import('../taxonomy/clothing.utils')
           const enrichedTags = buildTagsFromSelection(
@@ -282,6 +434,11 @@ export default function UnifiedReviewForm({
             finalAttributes // Includes brand_id, country_id, etc.
           )
           finalAttributes.tags = enrichedTags
+        }
+        
+        // Add discount percentage if discount available
+        if (finalAttributes.discount_available && finalAttributes.discount_original_price && formData.core.price) {
+          finalAttributes.discount_percent = Math.round((1 - formData.core.price / finalAttributes.discount_original_price) * 100)
         }
         
         // Ensure attributes is not empty object
@@ -299,11 +456,12 @@ export default function UnifiedReviewForm({
           category: schema.category as any,
           condition: formData.core.condition,
           photos: photoUrls,
-          neighborhood: formData.core.neighborhood,
-          latitude: formData.core.latitude,
-          longitude: formData.core.longitude,
-          old_price: formData.core.old_price,
-          stock_qty: formData.core.stock_qty,
+          neighborhood: location?.address || formData.core.neighborhood,
+          latitude: location?.latitude || formData.core.latitude,
+          longitude: location?.longitude || formData.core.longitude,
+          // old_price and stock_qty moved to attributes
+          old_price: formData.attributes.discount_original_price || formData.core.old_price,
+          stock_qty: formData.attributes.stock_by_size_color ? Object.values(formData.attributes.stock_by_size_color).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0) : formData.core.stock_qty,
           status: 'active',
           is_boosted: false,
           // Store attributes in JSONB (includes taxonomy if available)
@@ -380,13 +538,34 @@ export default function UnifiedReviewForm({
     }
   }
 
-  // Separate core fields from attribute fields
-  // Note: title and description are always editable in review form, even if not in schema.fields
-  const coreFields = schema.fields.filter(f =>
-    ['title', 'description', 'price', 'is_free', 'condition', 'neighborhood', 'old_price', 'stock_qty', 
-     'priceType', 'price', 'tags', 'category'].includes(f.key)
-  )
-  const attributeFields = schema.fields.filter(f => !coreFields.includes(f))
+  // Separate fields for Apple-style redesign
+  // Remove duplicate fields: old_price, stock_qty (moved to discount/stock sections), sizes, colors (moved to stock section)
+  const excludedFields = ['old_price', 'stock_qty', 'sizes', 'colors', 'discount_percent', 'gender']
+  const attributeFields = schema.fields.filter(f => !excludedFields.includes(f.key))
+  
+  // Get sizes and colors for stock section
+  const sizes = formData.attributes.sizes || []
+  const colors = formData.attributes.colors || []
+  
+  // Get taxonomy for gender auto-fill
+  const taxonomyGender = data.context?.taxonomy?.audience
+  const genderMap: Record<string, string> = {
+    'erkaklar': 'men',
+    'ayollar': 'women',
+    'bolalar': 'kids',
+    'unisex': 'unisex'
+  }
+  const autoGender = taxonomyGender ? genderMap[taxonomyGender.toLowerCase()] : null
+  
+  // Auto-fill gender from taxonomy if available
+  useEffect(() => {
+    if (autoGender && !formData.attributes.gender) {
+      setFormData(prev => ({
+        ...prev,
+        attributes: { ...prev.attributes, gender: autoGender }
+      }))
+    }
+  }, [autoGender])
   
   // Ensure title and description fields are always present and editable
   const titleField: FieldSchema = {
@@ -444,6 +623,26 @@ export default function UnifiedReviewForm({
           <div className="w-10"></div>
         </div>
       </header>
+
+      {/* Sticky Progress Bar */}
+      <div className="sticky top-16 z-30 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              {sections[currentSectionIndex]?.icon} {sections[currentSectionIndex]?.label}
+            </span>
+            <span className="text-xs text-gray-500">
+              {completedSections}/{sections.length} to'ldirildi
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {error && (
@@ -529,20 +728,767 @@ export default function UnifiedReviewForm({
             </>
           )}
 
-          {/* Core Fields (including title and description) */}
-          {finalCoreFields.map(field => renderField(field))}
+          {/* Apple-Style Sections - Mantikiy Ketma-Ketlik */}
+          
+          {/* 1. Sarlavha (Title) */}
+          <div 
+            ref={(el) => { sectionRefs.current['title'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('title')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>📝</span> Sarlavha
+                {!expandedSections.title && formData.core.title && (
+                  <span className="text-sm font-normal text-gray-500">
+                    ({formData.core.title.substring(0, 30)}...)
+                  </span>
+                )}
+              </h2>
+              {expandedSections.title ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.title && (
+            <div className="p-5">
+              <input
+                type="text"
+                value={formData.core.title || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, title: e.target.value } }))}
+                placeholder="Masalan: Krossovka (Nike)"
+                maxLength={80}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-2">Taxonomy nomi + (Brend) formatida</p>
+            </div>
+            )}
+          </div>
 
-          {/* Attribute Fields */}
-          {attributeFields.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-4">
-                Qo'shimcha ma'lumotlar ({schema.displayName})
-              </h3>
-              <div className="space-y-4">
-                {attributeFields.map(field => renderField(field))}
+          {/* 2. Tavsif (Description) */}
+          <div 
+            ref={(el) => { sectionRefs.current['description'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('description')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>📄</span> Tavsif
+                {!expandedSections.description && formData.core.description && (
+                  <span className="text-sm font-normal text-gray-500">
+                    ({formData.core.description.substring(0, 30)}...)
+                  </span>
+                )}
+              </h2>
+              {expandedSections.description ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.description && (
+            <div className="p-5">
+              <textarea
+                value={formData.core.description || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, description: e.target.value } }))}
+                placeholder="Mahsulot haqida batafsil ma'lumot..."
+                rows={4}
+                maxLength={500}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-2">3-4 gap yozing — AI keyin uni chiroyli qilib beradi</p>
+            </div>
+            )}
+          </div>
+
+          {/* 3. Narx (Price) - Apple Style Section */}
+          <div 
+            ref={(el) => { sectionRefs.current['price'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('price')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>💰</span> Narx
+                {!expandedSections.price && formData.core.price && (
+                  <span className="text-sm font-normal text-gray-500">
+                    ({formatPrice(formData.core.price)} so'm)
+                  </span>
+                )}
+              </h2>
+              {expandedSections.price ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.price && (
+            <div className="p-5 space-y-4">
+              {/* Asl narx */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Asl narx *</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={formData.core.price ? formatPrice(formData.core.price) : ''}
+                    onChange={(e) => {
+                      const parsed = parsePriceInput(e.target.value)
+                      setFormData(prev => ({ ...prev, core: { ...prev.core, price: parsed } }))
+                    }}
+                    onBlur={(e) => {
+                      const parsed = parsePriceInput(e.target.value)
+                      if (parsed !== undefined) {
+                        e.currentTarget.value = formatPrice(parsed)
+                      }
+                    }}
+                    placeholder="Masalan: 500 000"
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required={!formData.core.is_free}
+                  />
+                  <span className="text-gray-600 font-medium">so'm</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Narxni kiriting (masalan: 500 000 so'm)</p>
               </div>
+
+              {/* Aksiya mavjudmi? */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.attributes.discount_available || false}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        attributes: {
+                          ...prev.attributes,
+                          discount_available: e.target.checked,
+                          discount_reason: e.target.checked ? prev.attributes.discount_reason || '' : '',
+                          discount_conditions: e.target.checked ? prev.attributes.discount_conditions || '' : ''
+                        }
+                      }))
+                    }}
+                    className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <span className="text-base font-medium text-gray-900">⚡ Aksiya mavjudmi?</span>
+                </label>
+              </div>
+
+              {/* Aksiya detallari */}
+              {formData.attributes.discount_available && (
+                <div className="pl-8 space-y-4 bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  {/* Asl narx (aksiya) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Asl narx (aksiya) *</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={formData.attributes.discount_original_price ? formatPrice(formData.attributes.discount_original_price) : ''}
+                        onChange={(e) => {
+                          const parsed = parsePriceInput(e.target.value)
+                          setFormData(prev => ({
+                            ...prev,
+                            attributes: { ...prev.attributes, discount_original_price: parsed }
+                          }))
+                        }}
+                        onBlur={(e) => {
+                          const parsed = parsePriceInput(e.target.value)
+                          if (parsed !== undefined) {
+                            e.currentTarget.value = formatPrice(parsed)
+                          }
+                        }}
+                        placeholder="Masalan: 600 000"
+                        className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                        required
+                      />
+                      <span className="text-gray-600 font-medium">so'm</span>
+                    </div>
+                  </div>
+
+                  {/* Aksiya narxi */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Aksiya narxi</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={formData.core.price || ''}
+                        readOnly
+                        className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-base bg-gray-50"
+                      />
+                      <span className="text-gray-600 font-medium">so'm</span>
+                    </div>
+                    {discountPercent > 0 && (
+                      <p className="text-sm text-green-600 font-medium mt-1">Chegirma: {discountPercent}%</p>
+                    )}
+                  </div>
+
+                  {/* Aksiya muddati */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Aksiya muddati (kun)</label>
+                    <input
+                      type="number"
+                      value={formData.attributes.discount_days || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        attributes: { ...prev.attributes, discount_days: e.target.value ? parseInt(e.target.value) : undefined }
+                      }))}
+                      placeholder="Masalan: 7"
+                      min="0"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Discount Guardrails */}
+                  {formData.attributes.discount_original_price && formData.core.price && (
+                    <div className="space-y-2">
+                      {discountPercent < 0 && (
+                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">Xatolik</p>
+                            <p className="text-xs text-red-700 mt-1">
+                              Aksiya narxi asl narxdan yuqori bo'lishi mumkin emas. Iltimos, to'g'rilang.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {discountPercent >= 80 && discountPercent < 100 && (
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-amber-800">Ogohlantirish</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              80%+ chegirma shubhali ko'rinadi va xaridorlar ishonmaydi. Iltimos, to'g'ri ekanligini tekshiring.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {discountPercent >= 100 && (
+                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">Xatolik</p>
+                            <p className="text-xs text-red-700 mt-1">
+                              Chegirma 100% yoki undan yuqori bo'lishi mumkin emas.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Aksiya sababi (majburiy) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Aksiya sababi <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.attributes.discount_reason || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        attributes: { ...prev.attributes, discount_reason: e.target.value }
+                      }))}
+                      placeholder="Masalan: Mavsumiy aksiya, Yangi kolleksiya"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Aksiyaga sabab yozsangiz, ishonch oshadi</p>
+                  </div>
+
+                  {/* Aksiya shartlari (ixtiyoriy) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Aksiya shartlari (ixtiyoriy)</label>
+                    <input
+                      type="text"
+                      value={formData.attributes.discount_conditions || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        attributes: { ...prev.attributes, discount_conditions: e.target.value }
+                      }))}
+                      placeholder="Masalan: Faqat naqd pul, Minimal buyurtma 200,000 so'm"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            )}
+          </div>
+
+          {/* 4. Bepul (Free) - Apple Style Section */}
+          <div 
+            ref={(el) => { sectionRefs.current['free'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('free')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>🎁</span> Bepul
+              </h2>
+              {expandedSections.free ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.free && (
+            <div className="p-5 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.core.is_free || false}
+                  onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, is_free: e.target.checked } }))}
+                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-base font-medium text-gray-900">Bepul</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.attributes.price_negotiable || false}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    attributes: { ...prev.attributes, price_negotiable: e.target.checked }
+                  }))}
+                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-base font-medium text-gray-900">Narxni savdolashish mumkin</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.attributes.price_fixed || false}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    attributes: { ...prev.attributes, price_fixed: e.target.checked }
+                  }))}
+                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span className="text-base font-medium text-gray-900">O'zgarmas narx</span>
+              </label>
+            </div>
+            )}
+          </div>
+
+          {/* 5. Holati (Condition) - O'zbekcha */}
+          <div 
+            ref={(el) => { sectionRefs.current['condition'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('condition')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>✨</span> Holati
+                {!expandedSections.condition && formData.core.condition && (
+                  <span className="text-sm font-normal text-gray-500">
+                    ({formData.core.condition === 'yangi' ? 'Yangi' : formData.core.condition === 'yangi_kabi' ? 'Yangi kabi' : formData.core.condition === 'yaxshi' ? 'Yaxshi' : formData.core.condition === 'o\'rtacha' ? 'O\'rtacha' : 'Eski'})
+                  </span>
+                )}
+              </h2>
+              {expandedSections.condition ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.condition && (
+            <div className="p-5">
+              <select
+                value={formData.core.condition || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, condition: e.target.value } }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                required
+              >
+                <option value="">Tanlang...</option>
+                <option value="yangi">Yangi</option>
+                <option value="yangi_kabi">Yangi kabi</option>
+                <option value="yaxshi">Yaxshi</option>
+                <option value="o'rtacha">O'rtacha</option>
+                <option value="eski">Eski</option>
+              </select>
+            </div>
+            )}
+          </div>
+
+          {/* 6. Joylashuv (Location) - Google Maps */}
+          <div 
+            ref={(el) => { sectionRefs.current['location'] = el }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => toggleSection('location')}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+            >
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <span>📍</span> Joylashuv
+                {!expandedSections.location && (location?.address || formData.core.neighborhood) && (
+                  <span className="text-sm font-normal text-gray-500 line-clamp-1">
+                    ({location?.address || formData.core.neighborhood})
+                  </span>
+                )}
+              </h2>
+              {expandedSections.location ? (
+                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+            {expandedSections.location && (
+            <div className="p-5">
+              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                <LocationDisplay
+                  onLocationChange={(loc) => {
+                    setLocation(loc)
+                    setFormData(prev => ({
+                      ...prev,
+                      core: {
+                        ...prev.core,
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        neighborhood: loc.address
+                      }
+                    }))
+                  }}
+                  initialAddress={formData.core.neighborhood}
+                  className="text-gray-900"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Avtomatik aniqlanadi, qo'lda o'zgartirish mumkin</p>
+            </div>
+            )}
+          </div>
+
+          {/* 7. Mavjud Miqdor (Stock) - O'lcham/Rang Integratsiya */}
+          {schema.category === 'clothing' && (
+            <div 
+              ref={(el) => { sectionRefs.current['stock'] = el }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => toggleSection('stock')}
+                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+              >
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <span>📦</span> Mavjud Miqdor
+                  {!expandedSections.stock && totalStock > 0 && (
+                    <span className="text-sm font-normal text-gray-500">
+                      ({totalStock} dona)
+                    </span>
+                  )}
+                </h2>
+                {expandedSections.stock ? (
+                  <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+              {expandedSections.stock && (
+              <div className="p-5 space-y-4">
+                {/* O'lchamlar */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">O'lchamlar *</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '40', '41', '42', '43', '44', '45', '46', '47', '48'].map(size => {
+                      const selected = Array.isArray(sizes) && sizes.includes(size)
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => {
+                            const current = Array.isArray(sizes) ? sizes : []
+                            const newSizes = selected
+                              ? current.filter(s => s !== size)
+                              : [...current, size]
+                            setFormData(prev => ({
+                              ...prev,
+                              attributes: { ...prev.attributes, sizes: newSizes }
+                            }))
+                          }}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                            selected
+                              ? 'bg-primary text-white shadow-md'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Ranglar */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ranglar *</label>
+                  <input
+                    type="text"
+                    value={Array.isArray(colors) ? colors.join(', ') : ''}
+                    onChange={(e) => {
+                      const items = e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                      setFormData(prev => ({
+                        ...prev,
+                        attributes: { ...prev.attributes, colors: items }
+                      }))
+                    }}
+                    placeholder="Masalan: oq, qora, qizil"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                {/* Bulk Fill Controls */}
+                {sizes.length > 0 && colors.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <label className="block text-sm font-medium text-blue-900 mb-2">
+                        Tez to'ldirish
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          placeholder="Hammasiga bir xil miqdor"
+                          min="0"
+                          className="flex-1 px-3 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const value = parseInt(e.currentTarget.value)
+                              if (!isNaN(value) && value >= 0) {
+                                const newStock: Record<string, number> = {}
+                                sizes.forEach(size => {
+                                  colors.forEach(color => {
+                                    newStock[`${size}_${color}`] = value
+                                  })
+                                })
+                                setFormData(prev => ({
+                                  ...prev,
+                                  attributes: {
+                                    ...prev.attributes,
+                                    stock_by_size_color: {
+                                      ...prev.attributes.stock_by_size_color,
+                                      ...newStock
+                                    }
+                                  }
+                                }))
+                                e.currentTarget.value = ''
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement
+                            if (input) {
+                              const value = parseInt(input.value)
+                              if (!isNaN(value) && value >= 0) {
+                                const newStock: Record<string, number> = {}
+                                sizes.forEach(size => {
+                                  colors.forEach(color => {
+                                    newStock[`${size}_${color}`] = value
+                                  })
+                                })
+                                setFormData(prev => ({
+                                  ...prev,
+                                  attributes: {
+                                    ...prev.attributes,
+                                    stock_by_size_color: {
+                                      ...prev.attributes.stock_by_size_color,
+                                      ...newStock
+                                    }
+                                  }
+                                }))
+                                input.value = ''
+                              }
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Qo'llash
+                        </button>
+                      </div>
+                      <p className="text-xs text-blue-700 mt-2">
+                        Barcha o'lcham va rang kombinatsiyalariga bir xil miqdorni qo'llash
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* O'lcham/Rang bo'yicha miqdor */}
+                {sizes.length > 0 && colors.length > 0 && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">O'lcham va Rang bo'yicha miqdor</label>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {sizes.map(size => 
+                        colors.map(color => {
+                          const key = `${size}_${color}`
+                          const stockKey = `stock_by_size_color`
+                          const stockData = formData.attributes[stockKey] || {}
+                          return (
+                            <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                              <span className="text-sm font-medium text-gray-700 min-w-[80px]">{size} / {color}</span>
+                              <input
+                                type="number"
+                                value={stockData[key] || ''}
+                                onChange={(e) => {
+                                  const newStock = {
+                                    ...stockData,
+                                    [key]: e.target.value ? parseInt(e.target.value) : undefined
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    attributes: { ...prev.attributes, [stockKey]: newStock }
+                                  }))
+                                }}
+                                placeholder="0"
+                                min="0"
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                              />
+                              <span className="text-xs text-gray-500">dona</span>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              )}
             </div>
           )}
+
+          {/* 8. Qo'shimcha Ma'lumotlar (Additional Fields) */}
+          {attributeFields.length > 0 && (
+            <div 
+              ref={(el) => { sectionRefs.current['additional'] = el }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => toggleSection('additional')}
+                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <span>➕</span> Qo'shimcha ma'lumotlar
+                </h3>
+                {expandedSections.additional ? (
+                  <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+              {expandedSections.additional && (
+              <div className="p-5 space-y-4">
+                {attributeFields.map(field => {
+                  // Skip gender if auto-filled from taxonomy
+                  if (field.key === 'gender' && autoGender) {
+                    return null
+                  }
+                  return renderField(field)
+                })}
+              </div>
+              )}
+            </div>
+          )}
+
+          {/* Auto-fill gender from taxonomy */}
+          {autoGender && (
+            <input
+              type="hidden"
+              value={autoGender}
+              onChange={() => {}}
+            />
+          )}
+
+          {/* Summary Card - Sticky Bottom */}
+          <div className="sticky bottom-0 bg-white border-t-2 border-primary shadow-2xl p-4 z-20 -mx-4">
+            <div className="max-w-2xl mx-auto">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                E'lon ko'rinishi
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-600 block mb-1">Sarlavha:</span>
+                  <span className="font-medium text-gray-900 line-clamp-1">
+                    {formData.core.title || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600 block mb-1">Narx:</span>
+                  <span className="font-medium text-gray-900">
+                    {formData.core.is_free ? (
+                      <span className="text-green-600">Bepul</span>
+                    ) : (
+                      <>
+                        {formatPrice(formData.core.price)} so'm
+                        {discountPercent > 0 && (
+                          <span className="ml-2 text-red-600 font-semibold">-{discountPercent}%</span>
+                        )}
+                      </>
+                    )}
+                  </span>
+                </div>
+                {savingsAmount > 0 && (
+                  <div className="col-span-2">
+                    <span className="text-gray-600 block mb-1">Tejaysiz:</span>
+                    <span className="font-medium text-green-600 text-base">
+                      💰 {formatPrice(savingsAmount)} so'm ({discountPercent}%)
+                    </span>
+                  </div>
+                )}
+                {formData.attributes.delivery_available && (
+                  <div>
+                    <span className="text-gray-600 block mb-1">Yetkazib berish:</span>
+                    <span className="font-medium text-gray-900">
+                      {formData.attributes.delivery_days || '—'} kun
+                    </span>
+                  </div>
+                )}
+                {location?.address && (
+                  <div>
+                    <span className="text-gray-600 block mb-1">Joylashuv:</span>
+                    <span className="font-medium text-gray-900 line-clamp-1">
+                      {location.address}
+                    </span>
+                  </div>
+                )}
+                {totalStock > 0 && (
+                  <div className="col-span-2">
+                    <span className="text-gray-600 block mb-1">Mavjud:</span>
+                    <span className="font-medium text-gray-900">
+                      {totalStock} dona
+                      {topStockVariants.length > 0 && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({topStockVariants.map(v => `${v.size}/${v.color}`).join(', ')})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Submit Button */}
           <div className="pb-4">
