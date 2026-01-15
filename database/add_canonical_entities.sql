@@ -139,7 +139,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Countries
 INSERT INTO countries (id, display_uz, display_ru, display_en, aliases, code, region) VALUES
-('country_001', 'O\'zbekiston', 'Узбекистан', 'Uzbekistan', ARRAY['uzbekistan', 'узбекистан', 'o\'zbekiston', 'uz'], 'UZ', 'asia'),
+('country_001', 'O''zbekiston', 'Узбекистан', 'Uzbekistan', ARRAY['uzbekistan', 'узбекистан', 'ozbekiston', 'uz'], 'UZ', 'asia'),
 ('country_002', 'Rossiya', 'Россия', 'Russia', ARRAY['russia', 'россия', 'rossiya', 'ru'], 'RU', 'europe'),
 ('country_003', 'Xitoy', 'Китай', 'China', ARRAY['china', 'китай', 'xitoy', 'cn'], 'CN', 'asia'),
 ('country_004', 'Turkiya', 'Турция', 'Turkey', ARRAY['turkey', 'турция', 'turkiya', 'tr'], 'TR', 'europe'),
