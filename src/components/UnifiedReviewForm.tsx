@@ -381,11 +381,50 @@ export default function UnifiedReviewForm({
   }
 
   // Separate core fields from attribute fields
-  const coreFields = schema.fields.filter(f => 
+  // Note: title and description are always editable in review form, even if not in schema.fields
+  const coreFields = schema.fields.filter(f =>
     ['title', 'description', 'price', 'is_free', 'condition', 'neighborhood', 'old_price', 'stock_qty', 
      'priceType', 'price', 'tags', 'category'].includes(f.key)
   )
   const attributeFields = schema.fields.filter(f => !coreFields.includes(f))
+  
+  // Ensure title and description fields are always present and editable
+  const titleField: FieldSchema = {
+    key: 'title',
+    type: 'string',
+    required: true,
+    label: 'Sarlavha',
+    placeholder: 'Mahsulot nomi',
+    validation: {
+      minLength: 3,
+      maxLength: 80
+    },
+    aiQuestion: 'Mahsulot nomi nima?',
+    aiExtraction: 'Extract product title from user description'
+  }
+  
+  const descriptionField: FieldSchema = {
+    key: 'description',
+    type: 'string',
+    required: true,
+    label: 'Tavsif',
+    placeholder: 'Batafsil ma\'lumot',
+    validation: {
+      minLength: 10,
+      maxLength: 500
+    },
+    aiQuestion: 'Mahsulot haqida batafsil ma\'lumot bering',
+    aiExtraction: 'Create detailed description with emojis'
+  }
+  
+  // Add title and description to coreFields if not already present
+  const hasTitleField = coreFields.some(f => f.key === 'title')
+  const hasDescriptionField = coreFields.some(f => f.key === 'description')
+  const finalCoreFields = [
+    ...(hasTitleField ? [] : [titleField]),
+    ...(hasDescriptionField ? [] : [descriptionField]),
+    ...coreFields
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -490,8 +529,8 @@ export default function UnifiedReviewForm({
             </>
           )}
 
-          {/* Core Fields */}
-          {coreFields.map(field => renderField(field))}
+          {/* Core Fields (including title and description) */}
+          {finalCoreFields.map(field => renderField(field))}
 
           {/* Attribute Fields */}
           {attributeFields.length > 0 && (

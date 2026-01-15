@@ -25,6 +25,7 @@ interface UnifiedChatSession {
     core: Record<string, any>
     attributes: Record<string, any>
   }
+  context?: Record<string, any> // Store taxonomy context for title generation
 }
 
 // Store sessions in memory (per user session)
@@ -149,18 +150,40 @@ ${schema.fields
 
   // Taxonomy context (clothing)
   let taxonomyContext = ''
+  let titleGenerationHint = ''
+  
   if (context?.taxonomy) {
     const t: any = context.taxonomy
+    const leafLabel = safeText(t.leafUz || t.leaf || t.pathUz || t.path || '')
+    const pathUz = `${safeText(t.audienceUz || t.audience || '')} → ${safeText(t.segmentUz || t.segment || '')} → ${leafLabel}`
 
     taxonomyContext = `
 TAXONOMY TANLANGAN (KATEGORIYA ALLAQACHON TANLANGAN):
 - Auditoriya: ${safeText(t.audienceUz || t.audience || '')}
 - Segment: ${safeText(t.segmentUz || t.segment || '')}
-- Tanlangan tur: ${safeText(t.leafUz || t.leaf || t.pathUz || t.path || '')}
+- Tanlangan tur: ${leafLabel}
+- To'liq yo'l: ${pathUz}
 
-QOIDALAR:
-- Umumiy savol BERMANG ("qanday kiyim sotmoqchisiz?").
-- Shu tanlov asosida aniq savol bering: brend, o'lcham, holat, narx, stock, discount, rang.
+MUHIM QOIDALAR:
+1) TITLE FIELD'NI SO'RAMA - Taxonomy tanlanganda, title avtomatik generate qilinadi.
+   Title field'ni skip qil va darhol brend, o'lcham, holat, narx kabi maydonlardan boshlash.
+   
+2) Umumiy savol BERMANG ("qanday kiyim sotmoqchisiz?" yoki "mahsulot nomi nima?").
+   
+3) Shu tanlov asosida aniq savol bering: brend, o'lcham, holat, narx, stock, discount, rang.
+
+4) TITLE GENERATION:
+   - Barcha maydonlar to'ldirilganda, title'ni avtomatik generate qil:
+   - Format: "{brand} {leafLabel} {color} {size}" (masalan: "Nike Krossovka Oq 42")
+   - Agar brand yo'q bo'lsa: "{leafLabel} {color} {size}" (masalan: "Krossovka Oq 42")
+   - Title'ni so'ramasdan, faqat generate qil va JSON'da qaytar.
+`
+    
+    titleGenerationHint = `
+TITLE GENERATION RULE (TAXONOMY TANLANGAN):
+- Title field'ni so'ramasdan, barcha maydonlar to'ldirilganda avtomatik generate qil.
+- Format: "{brand} {leafLabel} {color} {size}" yoki "{leafLabel} {color} {size}"
+- Misol: "Nike Krossovka Oq 42" yoki "Krossovka Oq 42"
 `
   }
 
@@ -224,9 +247,11 @@ QOIDALAR:
 2) Bitta xabarda faqat BITTA savol ber.
 3) Savollar tartibi:
    ${questionOrder}
+   ${context?.taxonomy ? '\n⚠️ MUHIM: Title va Description field\'larni so\'ramang - ular avtomatik generate qilinadi.' : ''}
 
 4) MAJBURIY MAYDONLAR (to'ldirish shart):
 ${requiredFieldDescriptions}
+${titleGenerationHint}
 
 5) XAVFSIZLIK (MUHIM):
 - Kredit foizlari, ipoteka shartlari yoki moliyaviy/yuridik ma'lumotlarni IXTRO QILMA.
@@ -298,6 +323,7 @@ export async function startUnifiedChatSession(
     schema,
     chatHistory: [{ role: 'user', parts: [{ text: systemPrompt }] }],
     filledData: { core: {}, attributes: {} },
+    context: context || {}, // Store context for title generation
   }
 
   chatSessions.set(sessionId, session)
@@ -435,6 +461,67 @@ export async function sendUnifiedMessage(
           }
         }
 
+        // Generate title and description automatically if taxonomy is selected (clothing)
+        const sessionContext = session.context || {}
+        if (sessionContext.taxonomy && !core.title) {
+          const t: any = sessionContext.taxonomy
+          const leafLabel = t.leafUz || t.leaf || t.pathUz || t.path || ''
+          const brand = attributes.brand_display || attributes.brand_norm || attributes.brand_raw || attributes.brand || ''
+          const color = Array.isArray(attributes.colors) ? attributes.colors[0] : attributes.colors || ''
+          const size = Array.isArray(attributes.sizes) ? attributes.sizes[0] : attributes.sizes || ''
+          
+          // Capitalization helper function
+          const capitalize = (s: string): string => {
+            if (!s || typeof s !== 'string') return ''
+            return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+          }
+          
+          // Capitalize each word in leafLabel (handle multi-word labels)
+          const capitalizeWords = (s: string): string => {
+            if (!s || typeof s !== 'string') return ''
+            return s.split(' ').map(word => capitalize(word)).join(' ')
+          }
+          
+          // Generate title: "{brand} {leafLabel} {color} {size}" with proper capitalization
+          let generatedTitle = capitalizeWords(leafLabel)
+          if (brand) {
+            // Brand might already be capitalized (Nike, Adidas), but ensure first letter is uppercase
+            const capitalizedBrand = capitalize(brand)
+            generatedTitle = `${capitalizedBrand} ${generatedTitle}`
+          }
+          if (color) {
+            const capitalizedColor = capitalize(color)
+            generatedTitle = `${generatedTitle} ${capitalizedColor}`
+          }
+          if (size) {
+            // Size might be numeric (42) or text (XL), keep as is but ensure text is capitalized
+            const capitalizedSize = isNaN(Number(size)) ? capitalize(size) : size
+            generatedTitle = `${generatedTitle} ${capitalizedSize}`
+          }
+          
+          // Ensure title and description exist
+          if (!core.title) core.title = generatedTitle.trim()
+          
+          // Generate description from collected data
+          const descParts: string[] = []
+          if (brand) descParts.push(`Brend: ${brand}`)
+          if (color) descParts.push(`Rang: ${color}`)
+          if (size) descParts.push(`O'lcham: ${size}`)
+          if (attributes.material) descParts.push(`Material: ${attributes.material}`)
+          if (core.condition) descParts.push(`Holati: ${core.condition === 'new' ? 'Yangi' : core.condition === 'like_new' ? 'Yangi kabi' : core.condition === 'good' ? 'Yaxshi' : core.condition === 'fair' ? 'O\'rtacha' : 'Eski'}`)
+          if (core.price) descParts.push(`Narx: ${core.price.toLocaleString()} so'm`)
+          
+          if (!core.description) {
+            core.description = descParts.length > 0 
+              ? `${leafLabel}. ${descParts.join('. ')}.`
+              : `${leafLabel} sotilmoqda.`
+          }
+        }
+        
+        // Ensure title and description exist (fallback)
+        if (!core.title) core.title = 'Mahsulot'
+        if (!core.description) core.description = 'Mahsulot haqida ma\'lumot'
+
         const output: UnifiedAIOutput = {
           isFinished: true,
           entityType: jsonData.entityType,
@@ -457,9 +544,17 @@ export async function sendUnifiedMessage(
           const processed = await processAIOutput(output, session.category)
           
           // Merge processed data back into output
+          // Ensure title and description are strings
+          const mergedCore = {
+            ...output.core,
+            ...processed.core,
+            title: processed.core.title || output.core.title || 'Mahsulot',
+            description: processed.core.description || output.core.description || 'Mahsulot haqida ma\'lumot',
+          }
+          
           const finalOutput: UnifiedAIOutput = {
             ...output,
-            core: processed.core,
+            core: mergedCore as any, // Type assertion needed due to dynamic structure
             attributes: {
               ...output.attributes,
               ...processed.attributes,
