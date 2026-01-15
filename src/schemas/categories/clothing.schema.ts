@@ -14,7 +14,11 @@ const clothingFields: FieldSchema[] = [
     label: 'Brend',
     placeholder: 'Masalan: Nike, Adidas',
     aiQuestion: 'Brend nima?',
-    aiExtraction: 'Extract brand name if mentioned'
+    aiExtraction: 'Extract brand name if mentioned',
+    normalization: {
+      type: 'brand',
+      entityTable: 'brands',
+    }
   },
   {
     key: 'sizes',

@@ -273,8 +273,15 @@ export default function UnifiedReviewForm({
         // Add taxonomy data from context (for clothing category)
         if (data.context?.taxonomy) {
           finalAttributes.taxonomy = data.context.taxonomy
-          finalAttributes.tags = data.context.tags || []
           finalAttributes.clothing_type = data.context.taxonomy.labelUz
+          
+          // Rebuild tags with entity IDs from processed attributes
+          const { buildTagsFromSelection } = await import('../taxonomy/clothing.utils')
+          const enrichedTags = buildTagsFromSelection(
+            data.context.taxonomyNode || {} as any,
+            finalAttributes // Includes brand_id, country_id, etc.
+          )
+          finalAttributes.tags = enrichedTags
         }
         
         // Ensure attributes is not empty object

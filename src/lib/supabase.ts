@@ -149,9 +149,30 @@ export const getListings = async (filters?: {
     const searchTerm = filters.search.trim()
     const escaped = searchTerm.replace(/'/g, "''")
     
-    // Use simple ILIKE for basic search (Supabase compatible)
-    // This will match title or description containing the search term
-    query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
+    // Try to find brand by normalized search term
+    try {
+      const { normalizeBrand } = await import('../services/DataNormalization')
+      const { findBrand } = await import('../services/CanonicalEntities')
+      
+      const normalizedBrand = normalizeBrand(searchTerm)
+      const brand = await findBrand(normalizedBrand)
+      
+      if (brand) {
+        // Search by brand_id in attributes JSONB
+        query = query.or(
+          `title.ilike.%${escaped}%,description.ilike.%${escaped}%,attributes->>brand_id.eq.${brand.id}`
+        )
+      } else {
+        // Fallback: search by brand_norm or brand_raw in attributes
+        query = query.or(
+          `title.ilike.%${escaped}%,description.ilike.%${escaped}%,attributes->>brand_norm.ilike.%${normalizedBrand}%,attributes->>brand_raw.ilike.%${escaped}%`
+        )
+      }
+    } catch (error) {
+      // If normalization fails, use basic search
+      console.error('Error in brand search normalization:', error)
+      query = query.or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%`)
+    }
   }
 
   const { data, error } = await query

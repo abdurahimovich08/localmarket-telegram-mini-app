@@ -39,6 +39,12 @@ export interface FieldSchema {
     field: string
     value: any
   } // Conditional field visibility
+  // Normalization config (for 3-layer architecture)
+  normalization?: {
+    type: 'brand' | 'country' | 'number' | 'text' | 'price' | 'phone' | 'email'
+    entityTable?: 'brands' | 'countries' | 'car_brands' | 'car_models'
+    aliases?: string[] // Common aliases for this field
+  }
 }
 
 export interface CategorySchema {

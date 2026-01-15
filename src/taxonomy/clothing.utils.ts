@@ -192,9 +192,13 @@ export function searchLeaves(
  * Build tags array from selected taxonomy node
  * 
  * @param node - Selected taxonomy node
- * @returns Array of unique tags (max 12)
+ * @param attributes - Optional attributes with brand_id, country_id, etc.
+ * @returns Array of unique tags (max 12) - includes entity IDs for canonical matching
  */
-export function buildTagsFromSelection(node: TaxonNode): string[] {
+export function buildTagsFromSelection(
+  node: TaxonNode,
+  attributes?: Record<string, any>
+): string[] {
   const tags = new Set<string>()
   
   // Always include clothing
@@ -207,6 +211,18 @@ export function buildTagsFromSelection(node: TaxonNode): string[] {
   // Add segment tag
   const segmentSlug = toSlugUz(segmentLabels[node.segment])
   tags.add(segmentSlug)
+  
+  // Add canonical entity IDs (for search/filter)
+  if (attributes) {
+    // Brand ID (if available)
+    if (attributes.brand_id) {
+      tags.add(attributes.brand_id) // e.g., "brand_001"
+    }
+    // Country ID (if available)
+    if (attributes.country_id) {
+      tags.add(attributes.country_id) // e.g., "country_002"
+    }
+  }
   
   // Add path pieces from node.id (skip audience and segment duplicates)
   // Limit to 5 path parts to avoid too many tags

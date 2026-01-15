@@ -175,6 +175,8 @@ export default function UnifiedAICreationPage({
       },
       taxonomyNode: leaf, // Full node for field profiling
       tags,
+      // Store attributes for tag building (will be enriched with entity IDs later)
+      attributes: {},
     })
   }
 
