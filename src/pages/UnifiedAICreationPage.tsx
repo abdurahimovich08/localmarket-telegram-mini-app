@@ -18,7 +18,9 @@ import { getCategorySchema } from '../schemas/categories'
 import type { UnifiedAIOutput } from '../schemas/categories/types'
 import UnifiedReviewForm from '../components/UnifiedReviewForm'
 import TaxonomyPicker, { type TaxonomySelection } from '../components/chat/TaxonomyPicker'
+import SellerMemoryBanner from '../components/chat/SellerMemoryBanner'
 import type { TaxonNode } from '../taxonomy/clothing.uz'
+import { buildTagsFromSelection } from '../taxonomy/clothing.utils'
 import BackButton from '../components/BackButton'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
@@ -107,13 +109,7 @@ export default function UnifiedAICreationPage({
   useEffect(() => {
     // For clothing category, wait for taxonomy selection
     if (isClothingCategory && !taxonomyContext) {
-      // Show initial greeting message (only once)
-      if (messages.length === 0) {
-        setMessages([{
-          role: 'ai',
-          content: 'Salom! Kiyim e\'lonini yaratishga yordam beraman. Quyidan tanlang 👇'
-        }])
-      }
+      // Don't show messages until taxonomy is selected
       return
     }
 
@@ -265,14 +261,33 @@ export default function UnifiedAICreationPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-20 relative">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center px-4 py-3">
           <BackButton />
           <h1 className="flex-1 text-center font-semibold text-gray-900">
             {schema.displayName} {schema.emoji} Yaratish
           </h1>
-          <div className="w-10"></div>
+          {isClothingCategory && isTaxonomyComplete && taxonomyContext && (
+            <button
+              onClick={() => {
+                setTaxonomyContext(null)
+                setTaxonomySelection({ tags: [] })
+                setMessages([])
+                hasStartedRef.current = false
+                if (sessionId) {
+                  clearSession(sessionId)
+                  setSessionId(null)
+                }
+              }}
+              className="text-xs text-primary hover:text-primary-dark font-medium"
+            >
+              🔁 O'zgartirish
+            </button>
+          )}
+          {(!isClothingCategory || !isTaxonomyComplete || !taxonomyContext) && (
+            <div className="w-10"></div>
+          )}
         </div>
       </header>
 
@@ -283,65 +298,90 @@ export default function UnifiedAICreationPage({
       )}
 
       <div className="flex-1 flex flex-col">
-        {/* Taxonomy Picker for Clothing Category */}
-        {isClothingCategory && !isTaxonomyComplete && messages.length > 0 && (
-          <div className="px-4 py-3 bg-white border-b border-gray-200">
+        {/* CHAT AREA - Only show if taxonomy is complete (for clothing) */}
+        {(isTaxonomyComplete || !isClothingCategory) && (
+          <div
+            id="messages-container"
+            className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+          >
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    message.role === 'user'
+                      ? 'bg-primary text-white'
+                      : 'bg-white text-gray-900 border border-gray-200'
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                </div>
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SELLER MEMORY BANNER - Show before overlay if user has history */}
+        {isClothingCategory && !isTaxonomyComplete && user?.id && (
+          <SellerMemoryBanner
+            userId={user.id}
+            onSelect={(leaf) => {
+              // Quick resume: skip overlay, go directly to chat
+              const tags = buildTagsFromSelection(leaf)
+              handleTaxonomyComplete(leaf, tags)
+            }}
+            onDismiss={() => {
+              // User dismissed, show overlay
+            }}
+          />
+        )}
+
+        {/* TAXONOMY OVERLAY - Full screen overlay for clothing category */}
+        {isClothingCategory && !isTaxonomyComplete && (
+          <div className="absolute inset-0 z-20 bg-white flex flex-col">
             <TaxonomyPicker
               value={taxonomySelection}
               onChange={setTaxonomySelection}
               onComplete={handleTaxonomyComplete}
+              onClose={() => navigate('/create-unified')}
+              isOverlay={true}
             />
           </div>
         )}
-        
-        <div
-          id="messages-container"
-          className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
-        >
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                }`}
-              >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              </div>
-            </div>
-          ))}
 
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white border-t border-gray-200 p-4">
+        {/* INPUT AREA */}
+        <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-10">
           <div className="flex gap-2">
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Xabar yozing..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              disabled={isLoading}
+              placeholder={!isTaxonomyComplete && isClothingCategory ? "Kiyim turini tanlang 👆" : "Xabar yozing..."}
+              className={`flex-1 px-4 py-2 border rounded-lg transition-all ${
+                !isTaxonomyComplete && isClothingCategory
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-transparent'
+                  : 'border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent'
+              }`}
+              disabled={isLoading || (!isTaxonomyComplete && isClothingCategory)}
             />
             <button
               onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim() || isLoading || (!isTaxonomyComplete && isClothingCategory)}
               className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Yuborish
