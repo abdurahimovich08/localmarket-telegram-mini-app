@@ -452,7 +452,26 @@ export async function sendUnifiedMessage(
             : {}),
         }
 
-        return { isFinished: true, data: output, message: text }
+        // Post-process AI output: enrich with canonical entities (3-layer architecture)
+        try {
+          const processed = await processAIOutput(output, session.category)
+          
+          // Merge processed data back into output
+          const finalOutput: UnifiedAIOutput = {
+            ...output,
+            core: processed.core,
+            attributes: {
+              ...output.attributes,
+              ...processed.attributes,
+            },
+          }
+          
+          return { isFinished: true, data: finalOutput, message: text }
+        } catch (error) {
+          // If post-processing fails, return original output
+          console.error('Error in post-processing:', error)
+          return { isFinished: true, data: output, message: text }
+        }
       }
     }
   } catch {
