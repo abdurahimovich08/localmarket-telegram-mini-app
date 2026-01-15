@@ -1,6 +1,6 @@
 /**
  * Unified Gemini AI Service
- * 
+ *
  * Refactored to support BOTH products and services
  * with schema-driven questioning and validation
  */
@@ -9,8 +9,6 @@ import { TAG_RULES } from '../lib/tagUtils'
 import { getTagSuggestionsForAI } from '../lib/tagAnalytics'
 import type { CategorySchema, UnifiedAIOutput } from '../schemas/categories/types'
 import { getCategorySchema, getRequiredFields, validateRequiredFields } from '../schemas/categories'
-import { getLeafFieldProfile } from '../taxonomy/clothing.profiles'
-import type { TaxonNode } from '../taxonomy/clothing.uz'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -32,6 +30,19 @@ interface UnifiedChatSession {
 const chatSessions = new Map<string, UnifiedChatSession>()
 
 /**
+ * Safely stringify small context values for prompt (avoid huge / circular)
+ */
+function safeText(v: unknown): string {
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  try {
+    return JSON.stringify(v)
+  } catch {
+    return String(v)
+  }
+}
+
+/**
  * Generate system prompt based on schema
  */
 async function generateSystemPrompt(
@@ -40,12 +51,12 @@ async function generateSystemPrompt(
   schema: CategorySchema,
   context?: Record<string, any>
 ): Promise<string> {
-  // Get tag suggestions for services
+  // Tag suggestions for services
   let tagSuggestions = ''
   if (entityType === 'service') {
     try {
       const suggestions = await getTagSuggestionsForAI()
-      if (suggestions.topTags.length > 0) {
+      if (suggestions?.topTags?.length) {
         tagSuggestions = `
 📊 PLATFORM TAG STATISTICS:
 Top performing tags: ${suggestions.topTags.slice(0, 5).join(', ')}
@@ -54,6 +65,7 @@ Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
 `
       }
     } catch (error) {
+      // non-blocking
       console.warn('Could not fetch tag analytics:', error)
     }
   }
@@ -61,99 +73,143 @@ Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
   const entityName = entityType === 'product' ? 'mahsulot' : 'xizmat'
   const categoryName = schema.displayName
 
-  // Get required fields
-  const requiredFields = getRequiredFields(schema)
+  // Required fields list for prompt
+  getRequiredFields(schema) // (kept for semantic clarity, even if not used directly)
+
   const requiredFieldDescriptions = schema.fields
     .filter(f => f.required)
-    .map(f => `- ${f.label} (${f.key}): ${f.aiQuestion || f.description || 'Required field'}`)
+    .map(f => `- ${f.label} (${f.key}): ${f.aiQuestion || f.description || 'Majburiy maydon'}`)
     .join('\n')
 
-  // Build field extraction instructions
+  // Field extraction instructions
   const fieldExtractionInstructions = schema.fields
-    .map(f => {
-      if (f.aiExtraction) {
-        return `- ${f.key}: ${f.aiExtraction}`
-      }
-      return null
-    })
+    .map(f => (f.aiExtraction ? `- ${f.key}: ${f.aiExtraction}` : null))
     .filter(Boolean)
     .join('\n')
 
-  // Add taxonomy context if provided (for clothing category)
+  // Taxonomy context (clothing)
   let taxonomyContext = ''
   if (context?.taxonomy) {
-    const { taxonomy } = context
+    const t: any = context.taxonomy
+
     taxonomyContext = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ double session start bug fix
+TAXONOMY TANLANGAN (KATEGORIYA ALLAQACHON TANLANGAN):
+- Auditoriya: ${safeText(t.audienceUz || t.audience || '')}
+- Segment: ${safeText(t.segmentUz || t.segment || '')}
+- Tanlangan tur: ${safeText(t.leafUz || t.leaf || t.pathUz || t.path || '')}
+
+QOIDALAR:
+- Umumiy savol BERMANG ("qanday kiyim sotmoqchisiz?").
+- Shu tanlov asosida aniq savol bering: brend, o'lcham, holat, narx, stock, discount, rang.
+`
+  }
+
+  const questionOrder =
+    schema.aiInstructions?.questionOrder?.map((key, i) => `${i + 1}. ${key}`).join('\n   ') ||
+    "Schema bo'yicha"
+
+  const attributesExample = schema.fields
+    .filter(
+      f =>
+        ![
+          'title',
+          'description',
+          'price',
+          'is_free',
+          'condition',
+          'neighborhood',
+          'old_price',
+          'stock_qty',
+          'priceType',
+          'tags',
+          'category',
+        ].includes(f.key)
+    )
+    .map(f => {
+      const val =
+        f.type === 'number'
+          ? '0'
+          : f.type === 'boolean'
+            ? 'false'
+            : f.type === 'array'
+              ? '[]'
+              : '""'
+      return `"${f.key}": ${val}`
+    })
+    .join(',\n    ')
+
+  const productCoreExample = `
+    "price": 0,
+    "is_free": false,
+    "condition": "new" | "like_new" | "good" | "fair" | "poor",
+    "neighborhood": "...",
+    "old_price": 0,
+    "stock_qty": 0`
+
+  const serviceCoreExample = `
+    "priceType": "fixed" | "hourly" | "negotiable",
+    "price": "...",
+    "tags": ["tag1", "tag2", "tag3"]`
 
   const basePrompt = `
 Sen - SOQQA ilovasining professional AI yordamchisiz.
-Vazifang: Foydalanuvchi bilan o'zbek tilida samimiy suhbatlashib, ${entityName} e'lonini yaratishga yordam berish.
+Vazifang: foydalanuvchi bilan o'zbek tilida samimiy suhbatlashib, ${entityName} e'lonini yaratishga yordam berish.
 
 KATEGORIYA: ${categoryName} ${schema.emoji}
 ENTITY TYPE: ${entityType}
 ${taxonomyContext}
 
 QOIDALAR:
-1. Faqat o'zbek tilida gaplash.
-2. Bitta xabarda faqat BITTA savol ber.
-3. Savollar tartibini quyidagicha bo'lishi kerak:
-   ${schema.aiInstructions?.questionOrder?.map((key, i) => `${i + 1}. ${key}`).join('\n   ') || 'Schema bo\'yicha'}
-4. MAJBURIY MAYDONLAR (to'ldirish shart):
+1) Faqat o'zbek tilida gaplash.
+2) Bitta xabarda faqat BITTA savol ber.
+3) Savollar tartibi:
+   ${questionOrder}
+
+4) MAJBURIY MAYDONLAR (to'ldirish shart):
 ${requiredFieldDescriptions}
 
-5. XAVFSIZLIK QOIDALARI (MUHIM):
-   - Kredit foizlarini, ipoteka shartlarini, yoki boshqa moliyaviy ma'lumotlarni IXTRO QILMA
-   - Faqat foydalanuvchi aytgan ma'lumotlarni qaytar
-   - Agar foydalanuvchi "kredit mumkin" deb aytgan bo'lsa, faqat boolean qaytar, foizlarni ixtiro qilma
-   - Hujjatlar holati, yuridik ma'lumotlar - faqat foydalanuvchi aytganini qaytar
+5) XAVFSIZLIK (MUHIM):
+- Kredit foizlari, ipoteka shartlari yoki moliyaviy/yuridik ma'lumotlarni IXTRO QILMA.
+- Faqat foydalanuvchi aytganini qaytar.
+- "kredit mumkin" bo'lsa: faqat mavjud/yo'q (boolean), foiz ixtiro qilma.
+- Hujjatlar holati: faqat foydalanuvchi aytgani.
 
-6. Ma'lumot yetarli bo'lganda (barcha majburiy maydonlar to'ldirilganda), suhbatni to'xtat va FAQAT quyidagi JSON formatda javob qaytar:
+6) Ma'lumot yetarli bo'lganda (barcha majburiy maydonlar to'ldirilganda),
+suhbatni to'xtat va FAQAT quyidagi JSON formatda qaytar:
+
 {
   "isFinished": true,
   "entityType": "${entityType}",
   "category": "${category}",
   "core": {
     "title": "...",
-    "description": "...",
-    ${entityType === 'product' ? `
-    "price": 0,
-    "is_free": false,
-    "condition": "new" | "like_new" | "good" | "fair" | "poor",
-    "neighborhood": "...",
-    "old_price": 0,
-    "stock_qty": 0
-    ` : `
-    "priceType": "fixed" | "hourly" | "negotiable",
-    "price": "...",
-    "tags": ["tag1", "tag2", "tag3"]
-    `}
+    "description": "...",${entityType === 'product' ? productCoreExample : serviceCoreExample}
   },
   "attributes": {
-    ${schema.fields
-      .filter(f => !['title', 'description', 'price', 'is_free', 'condition', 'neighborhood', 'old_price', 'stock_qty', 'priceType', 'tags', 'category'].includes(f.key))
-      .map(f => `"${f.key}": ${f.type === 'number' ? '0' : f.type === 'boolean' ? 'false' : f.type === 'array' ? '[]' : '""'}`)
-      .join(',\n    ')}
+    ${attributesExample}
   }
 }
 
-7. MAYDONLARNI QAYTARISH QOIDALARI:
+7) MAYDONLARNI QAYTARISH QOIDALARI:
 ${fieldExtractionInstructions}
 
-${entityType === 'service' ? `
-8. TEGLAR UCHUN QATTIQ QOIDALAR:
+${
+  entityType === 'service'
+    ? `
+8) TEGLAR QOIDALARI (QATTIQ):
 - Teglar soni: ${TAG_RULES.MIN}-${TAG_RULES.MAX} ta
-- Format: FAQAT lotin alifbosi (a-z, 0-9), kichik harflar, defis (-)
+- Format: lotin (a-z, 0-9), kichik harf, defis (-)
 - Har bir teg: ${TAG_RULES.MIN_LENGTH}-${TAG_RULES.MAX_LENGTH} belgi
-- Intent-based: Aniq, maqsadli teglar
 ${tagSuggestions}
-` : ''}
+`
+    : ''
+}
 
-9. JAVOB FORMATI:
-- Agar hali ma'lumot yetarli emas bo'lsa: Oddiy matn javob qaytar
-- Agar barcha majburiy maydonlar to'ldirilgan bo'lsa: JSON formatda qaytar
+9) JAVOB FORMATI:
+- Agar ma'lumot yetarli bo'lmasa: oddiy matn bilan davom et.
+- Agar yetarli bo'lsa: faqat JSON qaytar.
 
-O'zbek tilida javob bering.
+O'zbek tilida javob ber.
 `
 
   return basePrompt
@@ -168,47 +224,29 @@ export async function startUnifiedChatSession(
   category: string,
   context?: Record<string, any>
 ): Promise<{ sessionId: string; greeting: string }> {
-  // Get schema
   const schema = getCategorySchema(category)
-  if (!schema) {
-    throw new Error(`Category schema not found: ${category}`)
-  }
-
+  if (!schema) throw new Error(`Category schema not found: ${category}`)
   if (schema.entityType !== entityType) {
     throw new Error(`Category ${category} is not for entity type ${entityType}`)
   }
 
-  // Generate system prompt
   const systemPrompt = await generateSystemPrompt(entityType, category, schema, context)
 
-  // Initialize session
   const session: UnifiedChatSession = {
     entityType,
     category,
     schema,
-    chatHistory: [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-    ],
-    filledData: {
-      core: {},
-      attributes: {},
-    },
+    chatHistory: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+    filledData: { core: {}, attributes: {} },
   }
 
   chatSessions.set(sessionId, session)
 
-  // Generate greeting
-  const greeting = schema.aiInstructions?.greeting || 
+  const greeting =
+    schema.aiInstructions?.greeting ||
     `Salom! ${schema.displayName} ${schema.emoji} e'lonini yaratishga yordam beraman.`
 
-  // Add greeting to history
-  session.chatHistory.push({
-    role: 'model',
-    parts: [{ text: greeting }],
-  })
+  session.chatHistory.push({ role: 'model', parts: [{ text: greeting }] })
 
   return { sessionId, greeting }
 }
@@ -221,25 +259,17 @@ export async function sendUnifiedMessage(
   message: string
 ): Promise<{ isFinished: boolean; data?: UnifiedAIOutput; message: string }> {
   const session = chatSessions.get(sessionId)
-  if (!session) {
-    throw new Error('Chat session not found')
-  }
+  if (!session) throw new Error('Chat session not found')
 
-  // Add user message to history
-  session.chatHistory.push({
-    role: 'user',
-    parts: [{ text: message }],
-  })
+  session.chatHistory.push({ role: 'user', parts: [{ text: message }] })
 
-  // Call Gemini API
   const response = await fetch('/api/gemini', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       message,
-      chatHistory: session.chatHistory.slice(0, -1), // Send history without current message
+      // send history without current message (the API merges message separately)
+      chatHistory: session.chatHistory.slice(0, -1),
     }),
   })
 
@@ -249,110 +279,70 @@ export async function sendUnifiedMessage(
   }
 
   const data = await response.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-  // Add model response to history
-  session.chatHistory.push({
-    role: 'model',
-    parts: [{ text }],
-  })
+  session.chatHistory.push({ role: 'model', parts: [{ text }] })
 
-  // Try to parse JSON response
+  // Parse JSON if AI finished
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const jsonData = JSON.parse(jsonMatch[0])
-      if (jsonData.isFinished === true && jsonData.entityType && jsonData.category) {
-        // Quality guard: Check critical fields for clothing category
-        const isClothing = jsonData.category === 'clothing'
+
+      if (jsonData?.isFinished === true && jsonData?.entityType && jsonData?.category) {
         const core = jsonData.core || {}
         const attributes = jsonData.attributes || {}
-        
-        // Critical fields that must exist
-        const criticalFields: string[] = []
+
+        // Clothing extra guard (if needed)
+        const isClothing = jsonData.category === 'clothing'
         if (isClothing) {
-          if (!core.brand && !attributes.brand) criticalFields.push('brand')
-          if (!core.condition) criticalFields.push('condition')
-          if (!core.size && !attributes.size && (session.schema.category === 'clothing')) {
-            criticalFields.push('size')
-          }
-          if (!core.price && !core.is_free && core.price !== 0) {
-            criticalFields.push('price')
-          }
-        } else {
-          // For other categories, use schema validation
-          const validation = validateRequiredFields(session.schema, {
-            core,
-            attributes,
-          })
-          if (!validation.valid) {
+          const missing: string[] = []
+          if (!core.brand && !attributes.brand) missing.push('brend')
+          if (!core.condition) missing.push('holati')
+          if (!core.price && !core.is_free && core.price !== 0) missing.push('narxi')
+
+          if (missing.length) {
             return {
               isFinished: false,
-              message: `Iltimos, quyidagi maydonlarni ham to'ldiring: ${validation.missing.join(', ')}. ${text}`,
+              message: `Iltimos, ${missing.join(', ')}ni ham ayting. ${text}`,
             }
           }
         }
-        
-        // If critical fields missing, continue conversation
-        if (criticalFields.length > 0) {
-          const fieldLabels: Record<string, string> = {
-            brand: 'brend',
-            condition: 'holati',
-            size: 'o\'lchami',
-            price: 'narxi',
-          }
-          const missingLabels = criticalFields.map(f => fieldLabels[f] || f).join(', ')
-          return {
-            isFinished: false,
-            message: `Iltimos, ${missingLabels}ni ham aytib bering. ${text}`,
-          }
-        }
-        
-        // Validate required fields (schema-based)
-        const validation = validateRequiredFields(session.schema, {
-          core,
-          attributes,
-        })
 
+        // Schema-based validation
+        const validation = validateRequiredFields(session.schema, { core, attributes })
         if (!validation.valid) {
-          // Missing required fields, continue conversation
           return {
             isFinished: false,
             message: `Iltimos, quyidagi maydonlarni ham to'ldiring: ${validation.missing.join(', ')}. ${text}`,
           }
         }
 
-        // All required fields filled
         const output: UnifiedAIOutput = {
           isFinished: true,
           entityType: jsonData.entityType,
           category: jsonData.category,
-          core: jsonData.core || {},
-          attributes: jsonData.attributes || {},
-          ...(jsonData.entityType === 'service' ? {
-            serviceFields: {
-              priceType: jsonData.core?.priceType || jsonData.serviceFields?.priceType,
-              price: jsonData.core?.price || jsonData.serviceFields?.price,
-              tags: jsonData.core?.tags || jsonData.serviceFields?.tags || [],
-            },
-          } : {}),
+          core,
+          attributes,
+          ...(jsonData.entityType === 'service'
+            ? {
+                serviceFields: {
+                  priceType: core?.priceType || jsonData?.serviceFields?.priceType,
+                  price: core?.price || jsonData?.serviceFields?.price,
+                  tags: core?.tags || jsonData?.serviceFields?.tags || [],
+                },
+              }
+            : {}),
         }
 
-        return {
-          isFinished: true,
-          data: output,
-          message: text,
-        }
+        return { isFinished: true, data: output, message: text }
       }
     }
-  } catch (e) {
-    // Not a JSON response, continue normally
+  } catch {
+    // ignore JSON parse errors: treat as normal chat
   }
 
-  return {
-    isFinished: false,
-    message: text,
-  }
+  return { isFinished: false, message: text }
 }
 
 /**
