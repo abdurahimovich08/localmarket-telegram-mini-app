@@ -5,7 +5,7 @@
  * Schema-driven questioning and validation
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { 
@@ -17,6 +17,8 @@ import {
 import { getCategorySchema } from '../schemas/categories'
 import type { UnifiedAIOutput } from '../schemas/categories/types'
 import UnifiedReviewForm from '../components/UnifiedReviewForm'
+import TaxonomyPicker, { type TaxonomySelection } from '../components/chat/TaxonomyPicker'
+import type { TaxonNode } from '../taxonomy/clothing.uz'
 import BackButton from '../components/BackButton'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
@@ -48,6 +50,17 @@ export default function UnifiedAICreationPage({
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [aiData, setAiData] = useState<UnifiedAIOutput | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  // Taxonomy selection state (for clothing category)
+  const [taxonomySelection, setTaxonomySelection] = useState<TaxonomySelection>({ tags: [] })
+  const [taxonomyContext, setTaxonomyContext] = useState<{
+    taxonomy: { id: string; pathUz: string; audience: string; segment: string; labelUz: string }
+    tags: string[]
+  } | null>(null)
+  
+  // Check if this is clothing category that requires taxonomy
+  const isClothingCategory = entityType === 'product' && category === 'clothing'
+  const isTaxonomyComplete = isClothingCategory ? !!taxonomySelection.leaf : true
 
   // Get schema
   const schema = category ? getCategorySchema(category) : null
@@ -87,21 +100,59 @@ export default function UnifiedAICreationPage({
     )
   }
 
-  // Initialize chat session
+  // Guard to prevent double session start
+  const hasStartedRef = useRef(false)
+  
+  // Initialize chat session (skip for clothing until taxonomy selected)
   useEffect(() => {
+    // For clothing category, wait for taxonomy selection
+    if (isClothingCategory && !taxonomyContext) {
+      // Show initial greeting message (only once)
+      if (messages.length === 0) {
+        setMessages([{
+          role: 'ai',
+          content: 'Salom! Kiyim e\'lonini yaratishga yordam beraman. Quyidan tanlang 👇'
+        }])
+      }
+      return
+    }
+
+    // Prevent double start
+    if (hasStartedRef.current && sessionId) {
+      return
+    }
+
     const initChat = async () => {
       try {
+        // Mark as started
+        hasStartedRef.current = true
+        
         const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         const { greeting } = await startUnifiedChatSession(
           newSessionId,
           entityType,
-          category
+          category,
+          taxonomyContext || undefined
         )
         setSessionId(newSessionId)
-        setMessages([{ role: 'ai', content: greeting }])
+        setMessages((prev) => {
+          // If clothing, add taxonomy confirmation message
+          if (isClothingCategory && taxonomyContext) {
+            return [
+              ...prev.filter(m => !m.content.includes('Tanlandi:')), // Remove duplicate confirmations
+              {
+                role: 'ai',
+                content: `✅ Tanlandi: ${taxonomyContext.taxonomy.pathUz}`
+              },
+              { role: 'ai', content: greeting }
+            ]
+          }
+          return [{ role: 'ai', content: greeting }]
+        })
       } catch (err) {
         console.error('Error initializing chat:', err)
         setError('Chatni boshlashda xatolik yuz berdi')
+        hasStartedRef.current = false // Reset on error
       }
     }
     initChat()
@@ -110,9 +161,25 @@ export default function UnifiedAICreationPage({
     return () => {
       if (sessionId) {
         clearSession(sessionId)
+        hasStartedRef.current = false
       }
     }
-  }, [entityType, category])
+  }, [entityType, category, taxonomyContext, isClothingCategory])
+  
+  // Handle taxonomy selection complete
+  const handleTaxonomyComplete = (leaf: TaxonNode, tags: string[]) => {
+    setTaxonomyContext({
+      taxonomy: {
+        id: leaf.id,
+        pathUz: leaf.pathUz,
+        audience: leaf.audience,
+        segment: leaf.segment,
+        labelUz: leaf.labelUz,
+      },
+      taxonomyNode: leaf, // Full node for field profiling
+      tags,
+    })
+  }
 
   const scrollToBottom = () => {
     const messagesContainer = document.getElementById('messages-container')
@@ -127,6 +194,11 @@ export default function UnifiedAICreationPage({
 
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading || !sessionId) return
+    
+    // Gate: clothing category requires taxonomy selection
+    if (isClothingCategory && !isTaxonomyComplete) {
+      return
+    }
 
     const userMessage = inputValue.trim()
     setInputValue('')
@@ -163,9 +235,21 @@ export default function UnifiedAICreationPage({
 
   // If AI finished and returned data, show review form
   if (aiData) {
+    // Merge taxonomy context into aiData for review form
+    const aiDataWithContext = taxonomyContext
+      ? {
+          ...aiData,
+          context: {
+            ...aiData.context,
+            taxonomy: taxonomyContext.taxonomy,
+            tags: taxonomyContext.tags,
+          },
+        }
+      : aiData
+    
     return (
       <UnifiedReviewForm
-        data={aiData}
+        data={aiDataWithContext}
         schema={schema}
         onBack={() => {
           setAiData(null)
@@ -199,6 +283,17 @@ export default function UnifiedAICreationPage({
       )}
 
       <div className="flex-1 flex flex-col">
+        {/* Taxonomy Picker for Clothing Category */}
+        {isClothingCategory && !isTaxonomyComplete && messages.length > 0 && (
+          <div className="px-4 py-3 bg-white border-b border-gray-200">
+            <TaxonomyPicker
+              value={taxonomySelection}
+              onChange={setTaxonomySelection}
+              onComplete={handleTaxonomyComplete}
+            />
+          </div>
+        )}
+        
         <div
           id="messages-container"
           className="flex-1 overflow-y-auto px-4 py-6 space-y-4"

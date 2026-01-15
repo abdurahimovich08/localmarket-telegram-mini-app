@@ -1,12 +1,15 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { HomeIcon, MagnifyingGlassIcon, HeartIcon, UserIcon } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeIconSolid, MagnifyingGlassIcon as MagnifyingGlassIconSolid, HeartIcon as HeartIconSolid, UserIcon as UserIconSolid } from '@heroicons/react/24/solid'
 import ActionSheet from './ActionSheet'
+import { useNavigateWithCtx } from '../lib/preserveCtx'
+import { useAppMode } from '../contexts/AppModeContext'
 
 export default function BottomNav() {
   const location = useLocation()
-  const navigate = useNavigate()
+  const navigateWithCtx = useNavigateWithCtx()
+  const { mode } = useAppMode()
   const [showActionSheet, setShowActionSheet] = useState(false)
 
   const isActive = (path: string) => location.pathname === path
@@ -20,12 +23,12 @@ export default function BottomNav() {
     {
       emoji: '📦',
       label: 'Narsa sotaman',
-      onClick: () => navigate('/create-unified?entityType=product'),
+      onClick: () => navigateWithCtx('/create-unified?entityType=product'),
     },
     {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
-      onClick: () => navigate('/create-service-unified'),
+      onClick: () => navigateWithCtx('/create-service-unified'),
     },
   ]
 

@@ -262,6 +262,24 @@ export default function UnifiedReviewForm({
         const compressedFiles = await compressDataUrls(photos, {}, 'listing')
         const photoUrls = await uploadImages(compressedFiles)
 
+        // Merge taxonomy context into attributes if available
+        // Ensure we preserve existing attributes and merge context
+        const finalAttributes = {
+          ...formData.attributes, // Existing attributes from form
+        }
+        
+        // Add taxonomy data from context (for clothing category)
+        if (data.context?.taxonomy) {
+          finalAttributes.taxonomy = data.context.taxonomy
+          finalAttributes.tags = data.context.tags || []
+          finalAttributes.clothing_type = data.context.taxonomy.labelUz
+        }
+        
+        // Ensure attributes is not empty object
+        if (Object.keys(finalAttributes).length === 0) {
+          finalAttributes._empty = true // Placeholder to ensure JSONB is not null
+        }
+
         // Create listing with attributes
         await createListingMutation({
           seller_telegram_id: user.telegram_user_id,
@@ -279,8 +297,8 @@ export default function UnifiedReviewForm({
           stock_qty: formData.core.stock_qty,
           status: 'active',
           is_boosted: false,
-          // Store attributes in JSONB
-          attributes: formData.attributes,
+          // Store attributes in JSONB (includes taxonomy if available)
+          attributes: finalAttributes,
         })
       } else {
         // Service creation

@@ -9,6 +9,8 @@ import { TAG_RULES } from '../lib/tagUtils'
 import { getTagSuggestionsForAI } from '../lib/tagAnalytics'
 import type { CategorySchema, UnifiedAIOutput } from '../schemas/categories/types'
 import { getCategorySchema, getRequiredFields, validateRequiredFields } from '../schemas/categories'
+import { getLeafFieldProfile } from '../taxonomy/clothing.profiles'
+import type { TaxonNode } from '../taxonomy/clothing.uz'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -35,7 +37,8 @@ const chatSessions = new Map<string, UnifiedChatSession>()
 async function generateSystemPrompt(
   entityType: 'product' | 'service',
   category: string,
-  schema: CategorySchema
+  schema: CategorySchema,
+  context?: Record<string, any>
 ): Promise<string> {
   // Get tag suggestions for services
   let tagSuggestions = ''
@@ -76,12 +79,20 @@ Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
     .filter(Boolean)
     .join('\n')
 
+  // Add taxonomy context if provided (for clothing category)
+  let taxonomyContext = ''
+  if (context?.taxonomy) {
+    const { taxonomy } = context
+    taxonomyContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ double session start bug fix
+
   const basePrompt = `
 Sen - SOQQA ilovasining professional AI yordamchisiz.
 Vazifang: Foydalanuvchi bilan o'zbek tilida samimiy suhbatlashib, ${entityName} e'lonini yaratishga yordam berish.
 
 KATEGORIYA: ${categoryName} ${schema.emoji}
 ENTITY TYPE: ${entityType}
+${taxonomyContext}
 
 QOIDALAR:
 1. Faqat o'zbek tilida gaplash.
@@ -154,7 +165,8 @@ O'zbek tilida javob bering.
 export async function startUnifiedChatSession(
   sessionId: string,
   entityType: 'product' | 'service',
-  category: string
+  category: string,
+  context?: Record<string, any>
 ): Promise<{ sessionId: string; greeting: string }> {
   // Get schema
   const schema = getCategorySchema(category)
@@ -167,7 +179,7 @@ export async function startUnifiedChatSession(
   }
 
   // Generate system prompt
-  const systemPrompt = await generateSystemPrompt(entityType, category, schema)
+  const systemPrompt = await generateSystemPrompt(entityType, category, schema, context)
 
   // Initialize session
   const session: UnifiedChatSession = {
@@ -251,10 +263,55 @@ export async function sendUnifiedMessage(
     if (jsonMatch) {
       const jsonData = JSON.parse(jsonMatch[0])
       if (jsonData.isFinished === true && jsonData.entityType && jsonData.category) {
-        // Validate required fields
+        // Quality guard: Check critical fields for clothing category
+        const isClothing = jsonData.category === 'clothing'
+        const core = jsonData.core || {}
+        const attributes = jsonData.attributes || {}
+        
+        // Critical fields that must exist
+        const criticalFields: string[] = []
+        if (isClothing) {
+          if (!core.brand && !attributes.brand) criticalFields.push('brand')
+          if (!core.condition) criticalFields.push('condition')
+          if (!core.size && !attributes.size && (session.schema.category === 'clothing')) {
+            criticalFields.push('size')
+          }
+          if (!core.price && !core.is_free && core.price !== 0) {
+            criticalFields.push('price')
+          }
+        } else {
+          // For other categories, use schema validation
+          const validation = validateRequiredFields(session.schema, {
+            core,
+            attributes,
+          })
+          if (!validation.valid) {
+            return {
+              isFinished: false,
+              message: `Iltimos, quyidagi maydonlarni ham to'ldiring: ${validation.missing.join(', ')}. ${text}`,
+            }
+          }
+        }
+        
+        // If critical fields missing, continue conversation
+        if (criticalFields.length > 0) {
+          const fieldLabels: Record<string, string> = {
+            brand: 'brend',
+            condition: 'holati',
+            size: 'o\'lchami',
+            price: 'narxi',
+          }
+          const missingLabels = criticalFields.map(f => fieldLabels[f] || f).join(', ')
+          return {
+            isFinished: false,
+            message: `Iltimos, ${missingLabels}ni ham aytib bering. ${text}`,
+          }
+        }
+        
+        // Validate required fields (schema-based)
         const validation = validateRequiredFields(session.schema, {
-          core: jsonData.core || {},
-          attributes: jsonData.attributes || {},
+          core,
+          attributes,
         })
 
         if (!validation.valid) {

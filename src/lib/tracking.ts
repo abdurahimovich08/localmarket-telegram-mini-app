@@ -2,6 +2,32 @@
 import { supabase } from './supabase'
 
 /**
+ * Generic event tracking function
+ * Tracks events to analytics/events table or console in development
+ */
+export const trackEvent = async (
+  eventName: string,
+  properties?: Record<string, any>
+): Promise<void> => {
+  try {
+    // In production, you might want to send to analytics service
+    // For now, we'll use console in dev and could extend to Supabase
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Analytics]', eventName, properties)
+    }
+    
+    // Optional: Store in Supabase analytics table if exists
+    // await supabase.from('analytics_events').insert({
+    //   event_name: eventName,
+    //   properties: properties || {},
+    //   created_at: new Date().toISOString(),
+    // })
+  } catch (error) {
+    console.error('Error tracking event:', error)
+  }
+}
+
+/**
  * Track user search query
  */
 export const trackUserSearch = async (
