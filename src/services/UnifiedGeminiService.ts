@@ -78,7 +78,12 @@ Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
   // Required fields list for prompt
   getRequiredFields(schema) // (kept for semantic clarity, even if not used directly)
 
-  const requiredFieldDescriptions = schema.fields
+  // Filter out title and description from required fields if taxonomy is selected
+  const fieldsToShow = context?.taxonomy 
+    ? schema.fields.filter(f => f.key !== 'title' && f.key !== 'description')
+    : schema.fields
+
+  const requiredFieldDescriptions = fieldsToShow
     .filter(f => f.required)
     .map(f => `- ${f.label} (${f.key}): ${f.aiQuestion || f.description || 'Majburiy maydon'}`)
     .join('\n')
@@ -187,9 +192,16 @@ TITLE GENERATION RULE (TAXONOMY TANLANGAN):
 `
   }
 
-  const questionOrder =
-    schema.aiInstructions?.questionOrder?.map((key, i) => `${i + 1}. ${key}`).join('\n   ') ||
-    "Schema bo'yicha"
+  // Adjust question order for taxonomy context (skip title if taxonomy selected)
+  let questionOrderList = schema.aiInstructions?.questionOrder || []
+  if (context?.taxonomy) {
+    // Skip 'title' and 'description' from question order when taxonomy is selected
+    questionOrderList = questionOrderList.filter(key => key !== 'title' && key !== 'description')
+  }
+  
+  const questionOrder = questionOrderList.length > 0
+    ? questionOrderList.map((key, i) => `${i + 1}. ${key}`).join('\n   ')
+    : "Schema bo'yicha"
 
   const attributesExample = schema.fields
     .filter(
@@ -344,18 +356,27 @@ export async function startUnifiedChatSession(
     }
     const pathUz = pathParts.join(' → ')
 
-    // Get first required field from profiling or schema
+    // Get first required field from profiling or schema (skip title and description)
     let firstField = 'brand' // default
     const profile = context.taxonomyNode?.requiredFieldsOverride?.[0]
-    if (profile) {
+    if (profile && profile !== 'title' && profile !== 'description') {
       firstField = profile
-    } else if (schema.aiInstructions?.questionOrder?.[0]) {
-      firstField = schema.aiInstructions.questionOrder[0]
     } else {
-      // Find first required field from schema
-      const firstRequired = schema.fields.find(f => f.required)
-      if (firstRequired) {
-        firstField = firstRequired.key
+      // Get question order, filtering out title and description
+      const questionOrderFiltered = schema.aiInstructions?.questionOrder?.filter(
+        key => key !== 'title' && key !== 'description'
+      ) || []
+      
+      if (questionOrderFiltered.length > 0) {
+        firstField = questionOrderFiltered[0]
+      } else {
+        // Find first required field from schema (excluding title and description)
+        const firstRequired = schema.fields.find(
+          f => f.required && f.key !== 'title' && f.key !== 'description'
+        )
+        if (firstRequired) {
+          firstField = firstRequired.key
+        }
       }
     }
 
@@ -375,13 +396,22 @@ export async function startUnifiedChatSession(
     const fieldLabel = fieldLabels[firstField] || firstField
     const leafLabel = (t.leafUz || t.leaf || t.pathUz || t.path || '').toLowerCase()
 
+    // Special greeting for brand/country
+    let greetingMessage = ''
+    if (firstField === 'brand' || firstField === 'country_of_origin' || firstField === 'country') {
+      greetingMessage = `Iltimos, ushbu ${leafLabel}ning **brendini** yoki **ishlab chiqarilgan mamlakati**ni tanlang.
+Agar brendni bilmasangiz, ishlab chiqarilgan mamlakatni ayting.`
+    } else {
+      greetingMessage = `Iltimos, ushbu ${leafLabel}ning **${fieldLabel}**ni kiriting.
+Agar bilmasangiz, ayting — birga aniqlaymiz 🙂`
+    }
+
     greeting = `✅ Tanlandi: ${pathUz}
 
 Zo'r 👍  
 Endi aniqlashtiramiz.
 
-Iltimos, ushbu ${leafLabel}ning **${fieldLabel}**ni kiriting.
-Agar bilmasangiz, ayting — birga aniqlaymiz 🙂`
+${greetingMessage}`
   } else {
     // Fallback: no taxonomy
     greeting =
