@@ -9,6 +9,7 @@ import { TAG_RULES } from '../lib/tagUtils'
 import { getTagSuggestionsForAI } from '../lib/tagAnalytics'
 import type { CategorySchema, UnifiedAIOutput } from '../schemas/categories/types'
 import { getCategorySchema, getRequiredFields, validateRequiredFields } from '../schemas/categories'
+import { processAIOutput } from './DataPostProcessing'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -81,11 +82,70 @@ Trending tags: ${suggestions.trendingTags.slice(0, 5).join(', ')}
     .map(f => `- ${f.label} (${f.key}): ${f.aiQuestion || f.description || 'Majburiy maydon'}`)
     .join('\n')
 
-  // Field extraction instructions
-  const fieldExtractionInstructions = schema.fields
-    .map(f => (f.aiExtraction ? `- ${f.key}: ${f.aiExtraction}` : null))
-    .filter(Boolean)
-    .join('\n')
+  // Field extraction instructions (3-layer architecture)
+  const fieldExtractionInstructions = `
+MA'LUMOTLARNI 3 QATLAMDA QAYTARING:
+
+1. RAW: User yozgani to'g'ridan-to'g'ri (o'zgartirmasdan)
+2. NORMALIZED: Tozalangan (lowercase, trim, special chars olib tashlangan)
+3. CANONICAL: Platforma bilgan haqiqat (entity ID, agar topilsa)
+
+MISOL - Brand:
+User: "Bu nIIIkE sport kiyimi"
+
+Siz qaytarasiz:
+{
+  "brand_raw": "nIIIkE",
+  "brand_norm": "niike",
+  "brand_id": "brand_001",  // Agar topilsa
+  "brand_display": "Nike",
+  "brand_confidence": 0.85
+}
+
+Agar brand topilmasa:
+{
+  "brand_raw": "nIIIkE",
+  "brand_norm": "niike",
+  "brand_id": null,
+  "brand_confidence": 0.3
+}
+
+MISOL - Country:
+User: "Rossiya"
+
+Siz qaytarasiz:
+{
+  "country_raw": "Rossiya",
+  "country_norm": "russia",
+  "country_id": "country_002",
+  "country_display": "Rossiya",
+  "country_confidence": 0.95
+}
+
+QOIDALAR:
+- Har bir field uchun: raw, norm, _id (agar entity bo'lsa), _display, _confidence
+- Confidence: 0.9-1.0 (yuqori), 0.7-0.9 (o'rtacha), <0.7 (past)
+- Agar entity topilmasa: _id = null, confidence < 0.7
+- Number fields (price, stock): faqat normalized number qaytaring
+
+MAYDONLAR:
+${schema.fields
+  .map(f => {
+    const base = `- ${f.key}: ${f.aiExtraction || f.description || 'Extract from user message'}`
+    // Add normalization hint for specific fields
+    if (f.key === 'brand' || f.key.includes('brand')) {
+      return `${base}\n  → Normalize: brand name (lowercase, no spaces)\n  → Canonical: brand_id from brands table`
+    }
+    if (f.key === 'country' || f.key.includes('country')) {
+      return `${base}\n  → Normalize: country name\n  → Canonical: country_id from countries table`
+    }
+    if (f.type === 'number' || f.key.includes('price') || f.key.includes('qty')) {
+      return `${base}\n  → Normalize: number (remove currency, spaces, convert to number)`
+    }
+    return base
+  })
+  .join('\n')}
+`
 
   // Taxonomy context (clothing)
   let taxonomyContext = ''
