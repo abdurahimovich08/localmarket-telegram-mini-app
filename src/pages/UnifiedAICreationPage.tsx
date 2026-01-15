@@ -20,7 +20,7 @@ import UnifiedReviewForm from '../components/UnifiedReviewForm'
 import TaxonomyPicker, { type TaxonomySelection } from '../components/chat/TaxonomyPicker'
 import SellerMemoryBanner from '../components/chat/SellerMemoryBanner'
 import type { TaxonNode } from '../taxonomy/clothing.uz'
-import { buildTagsFromSelection } from '../taxonomy/clothing.utils'
+import { buildTagsFromSelection, audienceLabels, segmentLabels } from '../taxonomy/clothing.utils'
 import BackButton from '../components/BackButton'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
@@ -56,7 +56,17 @@ export default function UnifiedAICreationPage({
   // Taxonomy selection state (for clothing category)
   const [taxonomySelection, setTaxonomySelection] = useState<TaxonomySelection>({ tags: [] })
   const [taxonomyContext, setTaxonomyContext] = useState<{
-    taxonomy: { id: string; pathUz: string; audience: string; segment: string; labelUz: string }
+    taxonomy: { 
+      id: string
+      pathUz: string
+      audience: string
+      segment: string
+      labelUz: string
+      audienceUz?: string
+      segmentUz?: string
+      leafUz?: string
+    }
+    taxonomyNode?: TaxonNode
     tags: string[]
   } | null>(null)
   
@@ -131,20 +141,8 @@ export default function UnifiedAICreationPage({
           taxonomyContext || undefined
         )
         setSessionId(newSessionId)
-        setMessages((prev) => {
-          // If clothing, add taxonomy confirmation message
-          if (isClothingCategory && taxonomyContext) {
-            return [
-              ...prev.filter(m => !m.content.includes('Tanlandi:')), // Remove duplicate confirmations
-              {
-                role: 'ai',
-                content: `✅ Tanlandi: ${taxonomyContext.taxonomy.pathUz}`
-              },
-              { role: 'ai', content: greeting }
-            ]
-          }
-          return [{ role: 'ai', content: greeting }]
-        })
+        // AI greeting already includes taxonomy confirmation, no need to add UI message
+        setMessages([{ role: 'ai', content: greeting }])
       } catch (err) {
         console.error('Error initializing chat:', err)
         setError('Chatni boshlashda xatolik yuz berdi')
@@ -171,6 +169,9 @@ export default function UnifiedAICreationPage({
         audience: leaf.audience,
         segment: leaf.segment,
         labelUz: leaf.labelUz,
+        audienceUz: audienceLabels[leaf.audience],
+        segmentUz: segmentLabels[leaf.segment],
+        leafUz: leaf.labelUz,
       },
       taxonomyNode: leaf, // Full node for field profiling
       tags,

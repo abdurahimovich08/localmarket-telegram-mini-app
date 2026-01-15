@@ -242,9 +242,66 @@ export async function startUnifiedChatSession(
 
   chatSessions.set(sessionId, session)
 
-  const greeting =
-    schema.aiInstructions?.greeting ||
-    `Salom! ${schema.displayName} ${schema.emoji} e'lonini yaratishga yordam beraman.`
+  // Generate taxonomy-aware greeting
+  let greeting = ''
+  
+  if (context?.taxonomy) {
+    const t: any = context.taxonomy
+    
+    // Build path: Erkaklar → Sport → Fitness kiyim
+    const pathParts: string[] = []
+    if (t.audienceUz || t.audience) pathParts.push(t.audienceUz || t.audience)
+    if (t.segmentUz || t.segment) pathParts.push(t.segmentUz || t.segment)
+    if (t.leafUz || t.leaf || t.pathUz || t.path) {
+      const leaf = t.leafUz || t.leaf || t.pathUz || t.path
+      pathParts.push(leaf)
+    }
+    const pathUz = pathParts.join(' → ')
+
+    // Get first required field from profiling or schema
+    let firstField = 'brand' // default
+    const profile = context.taxonomyNode?.requiredFieldsOverride?.[0]
+    if (profile) {
+      firstField = profile
+    } else if (schema.aiInstructions?.questionOrder?.[0]) {
+      firstField = schema.aiInstructions.questionOrder[0]
+    } else {
+      // Find first required field from schema
+      const firstRequired = schema.fields.find(f => f.required)
+      if (firstRequired) {
+        firstField = firstRequired.key
+      }
+    }
+
+    // Field labels in Uzbek
+    const fieldLabels: Record<string, string> = {
+      brand: 'brendi',
+      country: 'ishlab chiqarilgan mamlakati',
+      condition: 'holati',
+      size: 'o\'lchami',
+      sizes: 'o\'lchamlari',
+      price: 'narxi',
+      colors: 'ranglari',
+      material: 'materiali',
+      stock_qty: 'miqdori',
+    }
+
+    const fieldLabel = fieldLabels[firstField] || firstField
+    const leafLabel = (t.leafUz || t.leaf || t.pathUz || t.path || '').toLowerCase()
+
+    greeting = `✅ Tanlandi: ${pathUz}
+
+Zo'r 👍  
+Endi aniqlashtiramiz.
+
+Iltimos, ushbu ${leafLabel}ning **${fieldLabel}**ni kiriting.
+Agar bilmasangiz, ayting — birga aniqlaymiz 🙂`
+  } else {
+    // Fallback: no taxonomy
+    greeting =
+      schema.aiInstructions?.greeting ||
+      `Salom! ${schema.displayName} ${schema.emoji} e'lonini yaratishga yordam beraman.`
+  }
 
   session.chatHistory.push({ role: 'model', parts: [{ text: greeting }] })
 
