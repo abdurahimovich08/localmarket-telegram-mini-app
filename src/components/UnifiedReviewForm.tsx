@@ -5,7 +5,7 @@
  * Works for BOTH products and services
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { uploadImages } from '../lib/imageUpload'
@@ -222,24 +222,39 @@ export default function UnifiedReviewForm({
     },
   })
 
-  // Validate form data
-  const validation = validateRequiredFields(schema, formData)
-  const hasPhotos = schema.entityType === 'product' ? photos.length > 0 : logo !== null
-  const canSubmit = validation.valid && user && hasPhotos
+  // Validate form data - use useMemo to ensure it updates when photos change
+  const validation = useMemo(() => validateRequiredFields(schema, formData), [schema, formData])
+  const hasPhotos = useMemo(() => {
+    const result = schema.entityType === 'product' ? photos.length > 0 : logo !== null
+    console.log('hasPhotos calculated:', result, 'photos.length:', photos.length, 'schema.entityType:', schema.entityType)
+    return result
+  }, [photos.length, logo, schema.entityType])
+  const canSubmit = useMemo(() => {
+    const result = validation.valid && user && hasPhotos
+    console.log('canSubmit calculated:', result, {
+      validationValid: validation.valid,
+      user: !!user,
+      hasPhotos
+    })
+    return result
+  }, [validation.valid, user, hasPhotos])
   
-  // Debug logging
+  // Debug logging - log whenever photos change
   useEffect(() => {
     if (schema.entityType === 'product') {
       console.log('Form validation:', {
         validationValid: validation.valid,
         validationMissing: validation.missing,
         photosCount: photos.length,
+        photos: photos.map(p => p.substring(0, 30) + '...'), // First 30 chars of each photo
         hasPhotos,
         user: !!user,
-        canSubmit
+        canSubmit,
+        formDataCore: Object.keys(formData.core),
+        formDataAttributes: Object.keys(formData.attributes)
       })
     }
-  }, [validation.valid, photos.length, hasPhotos, user, canSubmit, schema.entityType])
+  }, [validation.valid, validation.missing, photos, hasPhotos, user, canSubmit, schema.entityType, formData])
 
   // Render field input based on field schema
   const renderField = (field: FieldSchema) => {
@@ -1858,10 +1873,20 @@ export default function UnifiedReviewForm({
             </button>
             {!canSubmit && (
               <p className="text-sm text-red-600 mt-2 text-center">
-                {schema.entityType === 'product' 
-                  ? 'Iltimos, kamida bitta rasm yuklang'
-                  : 'Iltimos, logo rasmini yuklang'
-                }
+                {(() => {
+                  const missingPhotos = schema.entityType === 'product' && photos.length === 0
+                  const missingFields = validation.missing || []
+                  
+                  if (missingPhotos) {
+                    return 'Iltimos, kamida bitta rasm yuklang'
+                  } else if (missingFields.length > 0) {
+                    return `Quyidagi maydonlar to'ldirilmagan: ${missingFields.join(', ')}`
+                  } else if (!user) {
+                    return 'Foydalanuvchi ma\'lumotlari yuklanmoqda...'
+                  } else {
+                    return 'Iltimos, barcha majburiy maydonlarni to\'ldiring'
+                  }
+                })()}
               </p>
             )}
           </div>
