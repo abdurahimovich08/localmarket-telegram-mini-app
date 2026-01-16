@@ -800,7 +800,12 @@ export default function UnifiedReviewForm({
                   imageSrc={imageToCrop.dataUrl}
                   aspectRatio={1} // 1:1 for product photos
                   onCrop={(croppedImageDataUrl) => {
-                    setPhotos(prev => [...prev, croppedImageDataUrl])
+                    console.log('Image cropped, adding to photos:', croppedImageDataUrl.substring(0, 50) + '...')
+                    setPhotos(prev => {
+                      const newPhotos = [...prev, croppedImageDataUrl]
+                      console.log('Photos updated:', newPhotos.length, 'photos')
+                      return newPhotos
+                    })
                     setImageToCrop(null)
                   }}
                   onCancel={() => setImageToCrop(null)}
