@@ -195,11 +195,128 @@ export default function ListingDetail() {
           </div>
         </div>
 
+        {/* Tags */}
+        {listing.attributes?.tags && Array.isArray(listing.attributes.tags) && listing.attributes.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {listing.attributes.tags.map((tag: string, index: number) => (
+              <span
+                key={index}
+                className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Discount Badge */}
+        {listing.attributes?.discount_available && listing.attributes?.discount_percent && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-red-600 font-bold text-lg">-{listing.attributes.discount_percent}%</span>
+              {listing.attributes.discount_original_price && listing.price && (
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 line-through">
+                    {listing.attributes.discount_original_price.toLocaleString()} so'm
+                  </p>
+                  <p className="text-sm text-gray-900 font-semibold">
+                    Endi: {listing.price.toLocaleString()} so'm
+                  </p>
+                </div>
+              )}
+            </div>
+            {listing.attributes.discount_reason && (
+              <p className="text-xs text-gray-600 mt-1">{listing.attributes.discount_reason}</p>
+            )}
+          </div>
+        )}
+
         {/* Description */}
         <div>
           <h2 className="font-semibold text-gray-900 mb-2">Tavsif</h2>
           <p className="text-gray-700 whitespace-pre-wrap">{listing.description}</p>
         </div>
+
+        {/* Product Details (for clothing and other categories) */}
+        {listing.attributes && (
+          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-gray-900 mb-3">Maxsulot ma'lumotlari</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {listing.attributes.brand && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Brend</p>
+                  <p className="font-medium text-gray-900">{listing.attributes.brand}</p>
+                </div>
+              )}
+              {listing.attributes.country_of_origin && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Ishlab chiqarilgan mamlakat</p>
+                  <p className="font-medium text-gray-900">{listing.attributes.country_of_origin}</p>
+                </div>
+              )}
+              {listing.attributes.year && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Yili</p>
+                  <p className="font-medium text-gray-900">{listing.attributes.year}</p>
+                </div>
+              )}
+              {listing.attributes.material && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Material</p>
+                  <p className="font-medium text-gray-900">{listing.attributes.material}</p>
+                </div>
+              )}
+              {listing.attributes.purpose && (
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-500 mb-1">Maqsad</p>
+                  <p className="font-medium text-gray-900">{listing.attributes.purpose}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Stock Information */}
+        {listing.attributes?.stock_by_size_color && Object.keys(listing.attributes.stock_by_size_color).length > 0 && (
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">Mavjud miqdor</h3>
+            <div className="space-y-2">
+              {Object.entries(listing.attributes.stock_by_size_color).map(([key, qty]: [string, any]) => {
+                const [size, color] = key.split('/')
+                return (
+                  <div key={key} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">
+                      {size} / {color}
+                    </span>
+                    <span className="font-medium text-gray-900">{qty} dona</span>
+                  </div>
+                )
+              })}
+            </div>
+            {listing.stock_qty && (
+              <p className="text-xs text-gray-600 mt-2">
+                Jami: {listing.stock_qty} dona
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Delivery Information */}
+        {listing.attributes?.delivery_available && (
+          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-green-600 font-semibold">✓ Yetkazib berish mavjud</span>
+            </div>
+            {listing.attributes.delivery_days && (
+              <p className="text-sm text-gray-700">
+                Yetkazib berish muddati: {listing.attributes.delivery_days} kun
+              </p>
+            )}
+            {listing.attributes.delivery_conditions && (
+              <p className="text-xs text-gray-600 mt-1">{listing.attributes.delivery_conditions}</p>
+            )}
+          </div>
+        )}
 
         {/* Details */}
         <div className="grid grid-cols-2 gap-4">

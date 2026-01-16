@@ -204,9 +204,10 @@ export default function UnifiedReviewForm({
   // Use entity mutations for products, direct call for services (backward compatibility)
   const { create: createListingMutation, isLoading: isCreatingListing } = useEntityMutations('listing', {
     onSuccess: (listing) => {
-      if (listing) {
+      if (listing && listing.listing_id) {
         setIsSaving(false)
-        navigate('/')
+        // Navigate to listing detail page after successful creation
+        navigate(`/listing/${listing.listing_id}`)
       }
     },
     onError: (error) => {
