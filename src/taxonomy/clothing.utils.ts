@@ -235,12 +235,14 @@ export function buildTagsFromSelection(
   
   // Add path pieces from node.id (skip audience and segment duplicates)
   // Limit to 5 path parts to avoid too many tags
-  const idParts = node.id.split('.')
-  if (idParts.length > 2) {
-    const leafParts = idParts.slice(2).slice(0, 5) // Max 5 parts
-    for (const part of leafParts) {
-      if (part) {
-        tags.add(part)
+  if (node.id && typeof node.id === 'string') {
+    const idParts = node.id.split('.')
+    if (idParts.length > 2) {
+      const leafParts = idParts.slice(2).slice(0, 5) // Max 5 parts
+      for (const part of leafParts) {
+        if (part) {
+          tags.add(part)
+        }
       }
     }
   }
