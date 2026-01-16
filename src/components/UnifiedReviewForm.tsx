@@ -22,6 +22,7 @@ import PortfolioUploader from './PortfolioUploader'
 import BackButton from './BackButton'
 import LocationDisplay from './LocationDisplay'
 import InlineAIAssistant from './InlineAIAssistant'
+import BannerCropper from './BannerCropper'
 import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 interface UnifiedReviewFormProps {
@@ -70,6 +71,7 @@ export default function UnifiedReviewForm({
   const [photos, setPhotos] = useState<string[]>([]) // For products
   const [logo, setLogo] = useState<string | null>(null) // For services
   const [portfolio, setPortfolio] = useState<string[]>([]) // For services
+  const [imageToCrop, setImageToCrop] = useState<{ dataUrl: string; index: number } | null>(null) // For image cropping
 
   // Location state
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address?: string } | null>(null)
@@ -82,11 +84,10 @@ export default function UnifiedReviewForm({
     title: true,
     description: true,
     price: true,
-    free: false,
+    priceType: false,
     condition: false,
     location: false,
-    stock: false,
-    additional: false
+    stock: false
   })
   
   // Section refs for auto-scroll
@@ -163,11 +164,10 @@ export default function UnifiedReviewForm({
     { key: 'title', label: 'Sarlavha', icon: '📝' },
     { key: 'description', label: 'Tavsif', icon: '📄' },
     { key: 'price', label: 'Narx', icon: '💰' },
-    { key: 'free', label: 'Bepul', icon: '🎁' },
+    { key: 'priceType', label: 'Narx uslubi', icon: '💳' },
     { key: 'condition', label: 'Holati', icon: '✨' },
     { key: 'location', label: 'Joylashuv', icon: '📍' },
-    ...(schema.category === 'clothing' ? [{ key: 'stock', label: 'Mavjud Miqdor', icon: '📦' }] : []),
-    { key: 'additional', label: 'Qo\'shimcha', icon: '➕' }
+    ...(schema.category === 'clothing' ? [{ key: 'stock', label: 'Mavjud Miqdor', icon: '📦' }] : [])
   ]
   
   // Calculate progress
@@ -175,11 +175,10 @@ export default function UnifiedReviewForm({
     if (section.key === 'title') return !!formData.core.title
     if (section.key === 'description') return !!formData.core.description
     if (section.key === 'price') return !!formData.core.price || formData.core.is_free
-    if (section.key === 'free') return true // Always available
+    if (section.key === 'priceType') return true // Always available
     if (section.key === 'condition') return !!formData.core.condition
     if (section.key === 'location') return !!location || !!formData.core.neighborhood
     if (section.key === 'stock') return sizes.length > 0 && colors.length > 0
-    if (section.key === 'additional') return true // Always available
     return false
   }).length
   
@@ -654,7 +653,7 @@ export default function UnifiedReviewForm({
             </button>
           )}
           <h1 className="flex-1 text-center font-semibold text-gray-900">
-            {editMode ? 'Tahrirlash' : 'Ko\'rib Chiqish'}
+            {editMode ? 'Tahrirlash' : 'E\'lon yaratish'}
           </h1>
           <div className="w-10"></div>
         </div>
@@ -722,18 +721,16 @@ export default function UnifiedReviewForm({
                       const input = document.createElement('input')
                       input.type = 'file'
                       input.accept = 'image/*'
-                      input.multiple = true
                       input.onchange = (e) => {
-                        const files = (e.target as HTMLInputElement).files
-                        if (!files) return
-                        Array.from(files).slice(0, 10 - photos.length).forEach((file) => {
-                          const reader = new FileReader()
-                          reader.onload = (e) => {
-                            const result = e.target?.result as string
-                            setPhotos(prev => [...prev, result])
-                          }
-                          reader.readAsDataURL(file)
-                        })
+                        const file = (e.target as HTMLInputElement).files?.[0]
+                        if (!file) return
+                        const reader = new FileReader()
+                        reader.onload = (e) => {
+                          const result = e.target?.result as string
+                          // Open crop modal for each image (1:1 aspect ratio for product photos)
+                          setImageToCrop({ dataUrl: result, index: photos.length })
+                        }
+                        reader.readAsDataURL(file)
                       }
                       input.click()
                     }}
@@ -743,6 +740,19 @@ export default function UnifiedReviewForm({
                     <span className="text-xs">Rasm</span>
                   </button>
                 )}
+              </div>
+              {/* Image Cropper Modal */}
+              {imageToCrop && (
+                <BannerCropper
+                  imageSrc={imageToCrop.dataUrl}
+                  aspectRatio={1} // 1:1 for product photos
+                  onCrop={(croppedImageDataUrl) => {
+                    setPhotos(prev => [...prev, croppedImageDataUrl])
+                    setImageToCrop(null)
+                  }}
+                  onCancel={() => setImageToCrop(null)}
+                />
+              )}
               </div>
             </div>
           ) : (
@@ -1063,43 +1073,38 @@ export default function UnifiedReviewForm({
             )}
           </div>
 
-          {/* 4. Bepul (Free) - Apple Style Section */}
+          {/* 4. Narx uslubini belgilash */}
           <div 
-            ref={(el) => { sectionRefs.current['free'] = el }}
+            ref={(el) => { sectionRefs.current['priceType'] = el }}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
           >
             <button
               type="button"
-              onClick={() => toggleSection('free')}
+              onClick={() => toggleSection('priceType')}
               className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
             >
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <span>🎁</span> Bepul
+                <span>💳</span> Narx uslubini belgilash
               </h2>
-              {expandedSections.free ? (
+              {expandedSections.priceType ? (
                 <ChevronUpIcon className="w-5 h-5 text-gray-400" />
               ) : (
                 <ChevronDownIcon className="w-5 h-5 text-gray-400" />
               )}
             </button>
-            {expandedSections.free && (
+            {expandedSections.priceType && (
             <div className="p-5 space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.core.is_free || false}
-                  onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, is_free: e.target.checked } }))}
-                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                />
-                <span className="text-base font-medium text-gray-900">Bepul</span>
-              </label>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.attributes.price_negotiable || false}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    attributes: { ...prev.attributes, price_negotiable: e.target.checked }
+                    attributes: { 
+                      ...prev.attributes, 
+                      price_negotiable: e.target.checked,
+                      price_fixed: e.target.checked ? false : prev.attributes.price_fixed
+                    }
                   }))}
                   className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
                 />
@@ -1111,7 +1116,11 @@ export default function UnifiedReviewForm({
                   checked={formData.attributes.price_fixed || false}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    attributes: { ...prev.attributes, price_fixed: e.target.checked }
+                    attributes: { 
+                      ...prev.attributes, 
+                      price_fixed: e.target.checked,
+                      price_negotiable: e.target.checked ? false : prev.attributes.price_negotiable
+                    }
                   }))}
                   className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
                 />
@@ -1240,42 +1249,9 @@ export default function UnifiedReviewForm({
               </button>
               {expandedSections.stock && (
               <div className="p-5 space-y-4">
-                {/* O'lchamlar */}
+                {/* Ranglar - Avval ranglar tanlanadi */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">O'lchamlar *</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '40', '41', '42', '43', '44', '45', '46', '47', '48'].map(size => {
-                      const selected = Array.isArray(sizes) && sizes.includes(size)
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => {
-                            const current = Array.isArray(sizes) ? sizes : []
-                            const newSizes = selected
-                              ? current.filter(s => s !== size)
-                              : [...current, size]
-                            setFormData(prev => ({
-                              ...prev,
-                              attributes: { ...prev.attributes, sizes: newSizes }
-                            }))
-                          }}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                            selected
-                              ? 'bg-primary text-white shadow-md'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Ranglar */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ranglar *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ranglar * (yozish orqali)</label>
                   <input
                     type="text"
                     value={Array.isArray(colors) ? colors.join(', ') : ''}
@@ -1290,7 +1266,73 @@ export default function UnifiedReviewForm({
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">Ranglarni vergul bilan ajrating</p>
                 </div>
+
+                {/* O'lchamlar - Ranglar tanlangandan keyin */}
+                {colors.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">O'lchamlar * (raqam yoki harf)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Harflar */}
+                      {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => {
+                        const selected = Array.isArray(sizes) && sizes.includes(size)
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => {
+                              const current = Array.isArray(sizes) ? sizes : []
+                              const newSizes = selected
+                                ? current.filter(s => s !== size)
+                                : [...current, size]
+                              setFormData(prev => ({
+                                ...prev,
+                                attributes: { ...prev.attributes, sizes: newSizes }
+                              }))
+                            }}
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                              selected
+                                ? 'bg-primary text-white shadow-md'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        )
+                      })}
+                      {/* Raqamlar */}
+                      {Array.from({ length: 20 }, (_, i) => i + 35).map(size => {
+                        const sizeStr = size.toString()
+                        const selected = Array.isArray(sizes) && sizes.includes(sizeStr)
+                        return (
+                          <button
+                            key={sizeStr}
+                            type="button"
+                            onClick={() => {
+                              const current = Array.isArray(sizes) ? sizes : []
+                              const newSizes = selected
+                                ? current.filter(s => s !== sizeStr)
+                                : [...current, sizeStr]
+                              setFormData(prev => ({
+                                ...prev,
+                                attributes: { ...prev.attributes, sizes: newSizes }
+                              }))
+                            }}
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                              selected
+                                ? 'bg-primary text-white shadow-md'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {sizeStr}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Tanlangan ranglar uchun o'lchamlarni tanlang</p>
+                  </div>
+                )}
 
                 {/* Bulk Fill Controls */}
                 {sizes.length > 0 && colors.length > 0 && (
@@ -1413,39 +1455,6 @@ export default function UnifiedReviewForm({
             </div>
           )}
 
-          {/* 8. Qo'shimcha Ma'lumotlar (Additional Fields) */}
-          {attributeFields.length > 0 && (
-            <div 
-              ref={(el) => { sectionRefs.current['additional'] = el }}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            >
-              <button
-                type="button"
-                onClick={() => toggleSection('additional')}
-                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <span>➕</span> Qo'shimcha ma'lumotlar
-                </h3>
-                {expandedSections.additional ? (
-                  <ChevronUpIcon className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-              {expandedSections.additional && (
-              <div className="p-5 space-y-4">
-                {attributeFields.map(field => {
-                  // Skip gender if auto-filled from taxonomy
-                  if (field.key === 'gender' && autoGender) {
-                    return null
-                  }
-                  return renderField(field)
-                })}
-              </div>
-              )}
-            </div>
-          )}
 
           {/* Auto-fill gender from taxonomy */}
           {autoGender && (
