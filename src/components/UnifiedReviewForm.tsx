@@ -826,7 +826,7 @@ export default function UnifiedReviewForm({
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
                 required
               />
-              <p className="text-xs text-gray-500 mt-2">Taxonomy nomi + (Brend) formatida</p>
+              <p className="text-xs text-gray-500 mt-2">Maxsulot taxonomiyasi (masalan: Krossovka, Futbolka)</p>
             </div>
             )}
           </div>
