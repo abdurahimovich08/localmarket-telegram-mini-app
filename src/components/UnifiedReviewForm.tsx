@@ -154,6 +154,10 @@ export default function UnifiedReviewForm({
         })
     : []
   
+  // Get sizes and colors for stock section (must be defined before sections.filter)
+  const sizes = formData.attributes.sizes || []
+  const colors = formData.attributes.colors || []
+  
   // Section definitions for progress
   const sections = [
     { key: 'title', label: 'Sarlavha', icon: '📝' },
