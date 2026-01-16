@@ -75,6 +75,20 @@ export default function UnifiedReviewForm({
   
   // Color input state
   const [colorInput, setColorInput] = useState('')
+  
+  // Product details state
+  const [productDetails, setProductDetails] = useState({
+    brand: data?.attributes?.brand || '',
+    country_of_origin: data?.attributes?.country_of_origin || '',
+    year: data?.attributes?.year || '',
+    material: data?.attributes?.material || '',
+    target_audience: data?.attributes?.target_audience || '',
+    purpose: data?.attributes?.purpose || ''
+  })
+  
+  // AI tag generation state
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false)
+  const [generatedTags, setGeneratedTags] = useState<string[]>([])
 
   // Location state
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address?: string } | null>(null)
@@ -164,7 +178,7 @@ export default function UnifiedReviewForm({
   
   // Section definitions for progress
   const sections = [
-    { key: 'title', label: 'Sarlavha', icon: '📝' },
+    { key: 'title', label: 'Maxsulot taxonomiyasi', icon: '📝' },
     { key: 'description', label: 'Tavsif', icon: '📄' },
     { key: 'price', label: 'Narx', icon: '💰' },
     { key: 'priceType', label: 'Narx uslubi', icon: '💳' },
@@ -789,7 +803,7 @@ export default function UnifiedReviewForm({
               className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
             >
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <span>📝</span> Sarlavha
+                <span>📝</span> Maxsulot taxonomiyasi
                 {!expandedSections.title && formData.core.title && (
                   <span className="text-sm font-normal text-gray-500">
                     ({formData.core.title.substring(0, 30)}...)
@@ -843,17 +857,176 @@ export default function UnifiedReviewForm({
               )}
             </button>
             {expandedSections.description && (
-            <div className="p-5">
-              <textarea
-                value={formData.core.description || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, core: { ...prev.core, description: e.target.value } }))}
-                placeholder="Mahsulot haqida batafsil ma'lumot..."
-                rows={4}
-                maxLength={500}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-2">3-4 gap yozing — AI keyin uni chiroyli qilib beradi</p>
+            <div className="p-5 space-y-4">
+              {/* Maxsulot brend nomi */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Maxsulot brend nomi *</label>
+                <input
+                  type="text"
+                  value={productDetails.brand}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, brand: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, brand: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: Nike, Adidas, Samsung"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              {/* Ishlab chiqarilgan mamlakat */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ishlab chiqarilgan mamlakat *</label>
+                <input
+                  type="text"
+                  value={productDetails.country_of_origin}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, country_of_origin: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, country_of_origin: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: O'zbekiston, Xitoy, Turkiya"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              {/* Ishlab chiqarilgan yili */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ishlab chiqarilgan yili</label>
+                <input
+                  type="text"
+                  value={productDetails.year}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, year: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, year: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: 2023, 2024"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              
+              {/* Nimadan ishlab chiqarilgani */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nimadan ishlab chiqarilgani (material) *</label>
+                <input
+                  type="text"
+                  value={productDetails.material}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, material: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, material: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: Charm, Poliester, Paxta, Plastik"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              {/* Kim uchun mo'ljallangan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kim uchun mo'ljallangan *</label>
+                <input
+                  type="text"
+                  value={productDetails.target_audience}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, target_audience: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, target_audience: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: Erkaklar, Ayollar, Bolalar, Sportchilar"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                />
+              </div>
+              
+              {/* Nima uchun mo'ljallangan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nima uchun mo'ljallangan (maqsad) *</label>
+                <textarea
+                  value={productDetails.purpose}
+                  onChange={(e) => {
+                    setProductDetails(prev => ({ ...prev, purpose: e.target.value }))
+                    setFormData(prev => ({
+                      ...prev,
+                      attributes: { ...prev.attributes, purpose: e.target.value }
+                    }))
+                  }}
+                  placeholder="Masalan: Sport uchun, Kundalik ishlatish, Ishlash uchun"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  required
+                />
+              </div>
+              
+              {/* AI Tag Generatsiya */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">AI Tag Generatsiya</label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsGeneratingTags(true)
+                      try {
+                        const { generateTags } = await import('../../api/generate-tags')
+                        const tags = await generateTags({
+                          brand: productDetails.brand,
+                          country_of_origin: productDetails.country_of_origin,
+                          year: productDetails.year,
+                          material: productDetails.material,
+                          target_audience: productDetails.target_audience,
+                          purpose: productDetails.purpose,
+                          taxonomy: taxonomyContext?.leafUz || ''
+                        })
+                        if (tags && Array.isArray(tags)) {
+                          setGeneratedTags(tags)
+                          setFormData(prev => ({
+                            ...prev,
+                            attributes: {
+                              ...prev.attributes,
+                              tags: tags
+                            }
+                          }))
+                        }
+                      } catch (error) {
+                        console.error('Tag generation error:', error)
+                        alert('Tag generatsiya qilishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+                      } finally {
+                        setIsGeneratingTags(false)
+                      }
+                    }}
+                    disabled={isGeneratingTags || !productDetails.brand || !productDetails.country_of_origin || !productDetails.material || !productDetails.target_audience || !productDetails.purpose}
+                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingTags ? 'Generatsiya...' : 'Tag generatsiya qilish'}
+                  </button>
+                </div>
+                
+                {generatedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {generatedTags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             )}
           </div>
