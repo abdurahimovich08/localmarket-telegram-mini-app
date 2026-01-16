@@ -927,6 +927,30 @@ export default function UnifiedReviewForm({
             </button>
             {expandedSections.description && (
             <div className="p-5 space-y-4">
+              {/* Tavsif (Description) textarea */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tavsif *
+                </label>
+                <textarea
+                  value={formData.core.description || ''}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      core: { ...prev.core, description: e.target.value }
+                    }))
+                  }}
+                  placeholder="Mahsulot haqida batafsil ma'lumot..."
+                  rows={6}
+                  maxLength={500}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {(formData.core.description || '').length}/500
+                </p>
+              </div>
+              
               {/* Maxsulot brend nomi */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Maxsulot brend nomi *</label>
