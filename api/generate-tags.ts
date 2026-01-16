@@ -28,7 +28,7 @@ export default async function handler(
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const prompt = `Siz professional e-commerce tag generatsiya mutaxassisisan.
 
