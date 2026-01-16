@@ -7,14 +7,13 @@ export async function generateTags(data: {
   country_of_origin: string
   year?: string
   material: string
-  target_audience: string
   purpose: string
   taxonomy?: string
 }): Promise<string[]> {
   try {
-    const { brand, country_of_origin, year, material, target_audience, purpose, taxonomy } = data
+    const { brand, country_of_origin, year, material, purpose, taxonomy } = data
 
-    if (!brand || !country_of_origin || !material || !target_audience || !purpose) {
+    if (!brand || !country_of_origin || !material || !purpose) {
       throw new Error('Missing required fields')
     }
 
@@ -29,7 +28,6 @@ Maxsulot ma'lumotlari:
 - Ishlab chiqarilgan mamlakat: ${country_of_origin}
 - Yil: ${year || 'Noma\'lum'}
 - Material: ${material}
-- Kim uchun: ${target_audience}
 - Maqsad: ${purpose}
 - Taxonomiya: ${taxonomy || 'Noma\'lum'}
 

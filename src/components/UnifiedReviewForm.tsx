@@ -82,7 +82,6 @@ export default function UnifiedReviewForm({
     country_of_origin: data?.attributes?.country_of_origin || '',
     year: data?.attributes?.year || '',
     material: data?.attributes?.material || '',
-    target_audience: data?.attributes?.target_audience || '',
     purpose: data?.attributes?.purpose || ''
   })
   
@@ -986,7 +985,6 @@ export default function UnifiedReviewForm({
                           country_of_origin: productDetails.country_of_origin,
                           year: productDetails.year,
                           material: productDetails.material,
-                          target_audience: productDetails.target_audience,
                           purpose: productDetails.purpose,
                           taxonomy: taxonomyContext?.leafUz || ''
                         })
