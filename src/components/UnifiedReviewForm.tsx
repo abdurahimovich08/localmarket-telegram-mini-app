@@ -579,10 +579,6 @@ export default function UnifiedReviewForm({
   const excludedFields = ['old_price', 'stock_qty', 'sizes', 'colors', 'discount_percent', 'gender']
   const attributeFields = schema.fields.filter(f => !excludedFields.includes(f.key))
   
-  // Get sizes and colors for stock section
-  const sizes = formData.attributes.sizes || []
-  const colors = formData.attributes.colors || []
-  
   // Get taxonomy for gender auto-fill
   const taxonomyGender = data.context?.taxonomy?.audience
   const genderMap: Record<string, string> = {
