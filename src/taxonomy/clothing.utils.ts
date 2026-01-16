@@ -205,12 +205,16 @@ export function buildTagsFromSelection(
   tags.add('clothing')
   
   // Add audience tag
-  const audienceSlug = toSlugUz(audienceLabels[node.audience])
-  tags.add(audienceSlug)
+  if (node.audience && audienceLabels[node.audience]) {
+    const audienceSlug = toSlugUz(audienceLabels[node.audience])
+    if (audienceSlug) tags.add(audienceSlug)
+  }
   
   // Add segment tag
-  const segmentSlug = toSlugUz(segmentLabels[node.segment])
-  tags.add(segmentSlug)
+  if (node.segment && segmentLabels[node.segment]) {
+    const segmentSlug = toSlugUz(segmentLabels[node.segment])
+    if (segmentSlug) tags.add(segmentSlug)
+  }
   
   // Add canonical entity IDs (for search/filter)
   if (attributes) {
