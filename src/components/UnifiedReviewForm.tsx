@@ -67,8 +67,14 @@ export default function UnifiedReviewForm({
     attributes: { ...data.attributes },
   })
 
-  // Images
-  const [photos, setPhotos] = useState<string[]>([]) // For products
+  // Images - initialize from data if available
+  const [photos, setPhotos] = useState<string[]>(() => {
+    // Load photos from data if available (for edit mode or pre-filled data)
+    if (data?.core?.photos && Array.isArray(data.core.photos)) {
+      return data.core.photos
+    }
+    return []
+  }) // For products
   const [logo, setLogo] = useState<string | null>(null) // For services
   const [portfolio, setPortfolio] = useState<string[]>([]) // For services
   const [imageToCrop, setImageToCrop] = useState<{ dataUrl: string; index: number } | null>(null) // For image cropping
@@ -218,11 +224,22 @@ export default function UnifiedReviewForm({
 
   // Validate form data
   const validation = validateRequiredFields(schema, formData)
-  const canSubmit = validation.valid && user && (
-    schema.entityType === 'product' 
-      ? photos.length > 0 
-      : logo !== null
-  )
+  const hasPhotos = schema.entityType === 'product' ? photos.length > 0 : logo !== null
+  const canSubmit = validation.valid && user && hasPhotos
+  
+  // Debug logging
+  useEffect(() => {
+    if (schema.entityType === 'product') {
+      console.log('Form validation:', {
+        validationValid: validation.valid,
+        validationMissing: validation.missing,
+        photosCount: photos.length,
+        hasPhotos,
+        user: !!user,
+        canSubmit
+      })
+    }
+  }, [validation.valid, photos.length, hasPhotos, user, canSubmit, schema.entityType])
 
   // Render field input based on field schema
   const renderField = (field: FieldSchema) => {
@@ -427,7 +444,26 @@ export default function UnifiedReviewForm({
     }
 
     if (!canSubmit) {
-      setError('Iltimos, barcha majburiy maydonlarni to\'ldiring')
+      // More detailed error message
+      const missingFields = validation.missing || []
+      const missingPhotos = schema.entityType === 'product' && photos.length === 0
+      let errorMsg = 'Iltimos, barcha majburiy maydonlarni to\'ldiring'
+      
+      if (missingPhotos) {
+        errorMsg = 'Iltimos, kamida bitta rasm yuklang'
+      } else if (missingFields.length > 0) {
+        errorMsg = `Quyidagi maydonlar to'ldirilmagan: ${missingFields.join(', ')}`
+      }
+      
+      setError(errorMsg)
+      console.error('Cannot submit:', {
+        validationValid: validation.valid,
+        validationMissing: validation.missing,
+        photosCount: photos.length,
+        hasPhotos,
+        user: !!user,
+        canSubmit
+      })
       return
     }
 
