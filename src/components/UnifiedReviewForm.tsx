@@ -72,6 +72,9 @@ export default function UnifiedReviewForm({
   const [logo, setLogo] = useState<string | null>(null) // For services
   const [portfolio, setPortfolio] = useState<string[]>([]) // For services
   const [imageToCrop, setImageToCrop] = useState<{ dataUrl: string; index: number } | null>(null) // For image cropping
+  
+  // Color input state
+  const [colorInput, setColorInput] = useState('')
 
   // Location state
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address?: string } | null>(null)
@@ -1251,85 +1254,252 @@ export default function UnifiedReviewForm({
                 {/* Ranglar - Avval ranglar tanlanadi */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ranglar * (yozish orqali)</label>
-                  <input
-                    type="text"
-                    value={Array.isArray(colors) ? colors.join(', ') : ''}
-                    onChange={(e) => {
-                      const items = e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                      setFormData(prev => ({
-                        ...prev,
-                        attributes: { ...prev.attributes, colors: items }
-                      }))
-                    }}
-                    placeholder="Masalan: oq, qora, qizil"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Ranglarni vergul bilan ajrating</p>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={colorInput}
+                      onChange={(e) => setColorInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault()
+                          const color = colorInput.trim()
+                          if (color && !colors.includes(color)) {
+                            setFormData(prev => ({
+                              ...prev,
+                              attributes: { 
+                                ...prev.attributes, 
+                                colors: [...(prev.attributes.colors || []), color]
+                              }
+                            }))
+                            setColorInput('')
+                          }
+                        }
+                      }}
+                      placeholder="Rang nomini yozing va Enter bosing"
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const color = colorInput.trim()
+                        if (color && !colors.includes(color)) {
+                          setFormData(prev => ({
+                            ...prev,
+                            attributes: { 
+                              ...prev.attributes, 
+                              colors: [...(prev.attributes.colors || []), color]
+                            }
+                          }))
+                          setColorInput('')
+                        }
+                      }}
+                      className="px-4 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors"
+                    >
+                      Qo'shish
+                    </button>
+                  </div>
+                  
+                  {/* Qo'shilgan ranglar (chip ko'rinishida) */}
+                  {colors.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {colors.map((color, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium"
+                        >
+                          <span>{color}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                attributes: {
+                                  ...prev.attributes,
+                                  colors: prev.attributes.colors?.filter((_, i) => i !== index) || []
+                                }
+                              }))
+                            }}
+                            className="text-primary hover:text-primary-dark font-bold"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-gray-500">Rang nomini yozing va Enter yoki "Qo'shish" tugmasini bosing</p>
                 </div>
 
-                {/* O'lchamlar - Ranglar tanlangandan keyin */}
+                {/* Har bir rang uchun o'lcham va miqdor */}
                 {colors.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">O'lchamlar * (raqam yoki harf)</label>
-                    <div className="flex flex-wrap gap-2">
-                      {/* Harflar */}
-                      {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => {
-                        const selected = Array.isArray(sizes) && sizes.includes(size)
-                        return (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => {
-                              const current = Array.isArray(sizes) ? sizes : []
-                              const newSizes = selected
-                                ? current.filter(s => s !== size)
-                                : [...current, size]
-                              setFormData(prev => ({
-                                ...prev,
-                                attributes: { ...prev.attributes, sizes: newSizes }
-                              }))
-                            }}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                              selected
-                                ? 'bg-primary text-white shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        )
-                      })}
-                      {/* Raqamlar */}
-                      {Array.from({ length: 20 }, (_, i) => i + 35).map(size => {
-                        const sizeStr = size.toString()
-                        const selected = Array.isArray(sizes) && sizes.includes(sizeStr)
-                        return (
-                          <button
-                            key={sizeStr}
-                            type="button"
-                            onClick={() => {
-                              const current = Array.isArray(sizes) ? sizes : []
-                              const newSizes = selected
-                                ? current.filter(s => s !== sizeStr)
-                                : [...current, sizeStr]
-                              setFormData(prev => ({
-                                ...prev,
-                                attributes: { ...prev.attributes, sizes: newSizes }
-                              }))
-                            }}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                              selected
-                                ? 'bg-primary text-white shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {sizeStr}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">Tanlangan ranglar uchun o'lchamlarni tanlang</p>
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Har bir rang uchun o'lcham va miqdor *</label>
+                    {colors.map((color, colorIndex) => {
+                      // Bu rang uchun tanlangan o'lchamlar va miqdorlar
+                      const colorSizes = sizes.filter(size => {
+                        // Check if this size-color combination has stock
+                        const stockData = formData.attributes.stock_by_size_color || {}
+                        return Object.keys(stockData).some(key => {
+                          const [sizeKey, colorKey] = key.split('_')
+                          return sizeKey === size && colorKey === color && stockData[key] > 0
+                        }) || false
+                      })
+                      
+                      return (
+                        <div key={colorIndex} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                              <span className="w-4 h-4 rounded-full" style={{ backgroundColor: color === 'oq' ? '#fff' : color === 'qora' ? '#000' : color === 'qizil' ? '#ef4444' : color === 'ko\'k' ? '#3b82f6' : color === 'yashil' ? '#22c55e' : '#9ca3af', border: '1px solid #e5e7eb' }}></span>
+                              {color}
+                            </h4>
+                          </div>
+                          
+                          {/* O'lchamlar tanlash */}
+                          <div className="mb-3">
+                            <label className="block text-xs font-medium text-gray-600 mb-2">O'lchamlar</label>
+                            <div className="flex flex-wrap gap-2">
+                              {/* Harflar */}
+                              {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => {
+                                const key = `${size}_${color}`
+                                const stockData = formData.attributes.stock_by_size_color || {}
+                                const hasStock = (stockData[key] || 0) > 0
+                                return (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => {
+                                      const stockKey = 'stock_by_size_color'
+                                      const currentStock = formData.attributes[stockKey] || {}
+                                      if (hasStock) {
+                                        // Remove size for this color
+                                        const newStock = { ...currentStock }
+                                        delete newStock[key]
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          attributes: {
+                                            ...prev.attributes,
+                                            [stockKey]: newStock
+                                          }
+                                        }))
+                                      } else {
+                                        // Add size for this color with default qty 0
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          attributes: {
+                                            ...prev.attributes,
+                                            [stockKey]: {
+                                              ...currentStock,
+                                              [key]: 0
+                                            }
+                                          }
+                                        }))
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                      hasStock
+                                        ? 'bg-primary text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:border-primary'
+                                    }`}
+                                  >
+                                    {size}
+                                  </button>
+                                )
+                              })}
+                              {/* Raqamlar */}
+                              {Array.from({ length: 20 }, (_, i) => i + 35).map(size => {
+                                const sizeStr = size.toString()
+                                const key = `${sizeStr}_${color}`
+                                const stockData = formData.attributes.stock_by_size_color || {}
+                                const hasStock = (stockData[key] || 0) > 0
+                                return (
+                                  <button
+                                    key={sizeStr}
+                                    type="button"
+                                    onClick={() => {
+                                      const stockKey = 'stock_by_size_color'
+                                      const currentStock = formData.attributes[stockKey] || {}
+                                      if (hasStock) {
+                                        // Remove size for this color
+                                        const newStock = { ...currentStock }
+                                        delete newStock[key]
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          attributes: {
+                                            ...prev.attributes,
+                                            [stockKey]: newStock
+                                          }
+                                        }))
+                                      } else {
+                                        // Add size for this color with default qty 0
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          attributes: {
+                                            ...prev.attributes,
+                                            [stockKey]: {
+                                              ...currentStock,
+                                              [key]: 0
+                                            }
+                                          }
+                                        }))
+                                      }
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                      hasStock
+                                        ? 'bg-primary text-white shadow-md'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:border-primary'
+                                    }`}
+                                  >
+                                    {sizeStr}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          
+                          {/* Tanlangan o'lchamlar uchun miqdor */}
+                          {Object.keys(formData.attributes.stock_by_size_color || {})
+                            .filter(key => key.endsWith(`_${color}`))
+                            .length > 0 && (
+                            <div className="space-y-2">
+                              <label className="block text-xs font-medium text-gray-600 mb-2">Miqdor</label>
+                              {Object.entries(formData.attributes.stock_by_size_color || {})
+                                .filter(([key]) => key.endsWith(`_${color}`))
+                                .map(([key, qty]) => {
+                                  const size = key.split('_')[0]
+                                  return (
+                                    <div key={key} className="flex items-center gap-2">
+                                      <span className="text-sm text-gray-600 min-w-[40px]">{size}:</span>
+                                      <input
+                                        type="number"
+                                        value={qty || ''}
+                                        onChange={(e) => {
+                                          const stockKey = 'stock_by_size_color'
+                                          const currentStock = formData.attributes[stockKey] || {}
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            attributes: {
+                                              ...prev.attributes,
+                                              [stockKey]: {
+                                                ...currentStock,
+                                                [key]: e.target.value ? parseInt(e.target.value) : 0
+                                              }
+                                            }
+                                          }))
+                                        }}
+                                        placeholder="0"
+                                        min="0"
+                                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                                      />
+                                      <span className="text-xs text-gray-500">dona</span>
+                                    </div>
+                                  )
+                                })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
