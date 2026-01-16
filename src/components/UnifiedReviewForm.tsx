@@ -979,28 +979,38 @@ export default function UnifiedReviewForm({
                     onClick={async () => {
                       setIsGeneratingTags(true)
                       try {
-                        const { generateTags } = await import('../../../api/generate-tags')
-                        const tags = await generateTags({
-                          brand: productDetails.brand,
-                          country_of_origin: productDetails.country_of_origin,
-                          year: productDetails.year,
-                          material: productDetails.material,
-                          purpose: productDetails.purpose,
-                          taxonomy: taxonomyContext?.leafUz || ''
+                        const response = await fetch('/api/generate-tags', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            brand: productDetails.brand,
+                            country_of_origin: productDetails.country_of_origin,
+                            year: productDetails.year,
+                            material: productDetails.material,
+                            purpose: productDetails.purpose,
+                            taxonomy: taxonomyContext?.leafUz || ''
+                          })
                         })
-                        if (tags && Array.isArray(tags)) {
-                          setGeneratedTags(tags)
+                        
+                        if (!response.ok) {
+                          const errorData = await response.json().catch(() => ({}))
+                          throw new Error(errorData.error || 'Tag generatsiya qilishda xatolik')
+                        }
+                        
+                        const data = await response.json()
+                        if (data.tags && Array.isArray(data.tags)) {
+                          setGeneratedTags(data.tags)
                           setFormData(prev => ({
                             ...prev,
                             attributes: {
                               ...prev.attributes,
-                              tags: tags
+                              tags: data.tags
                             }
                           }))
                         }
-                      } catch (error) {
+                      } catch (error: any) {
                         console.error('Tag generation error:', error)
-                        alert('Tag generatsiya qilishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
+                        alert(error.message || 'Tag generatsiya qilishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
                       } finally {
                         setIsGeneratingTags(false)
                       }

@@ -163,8 +163,8 @@ export async function calculateServiceSearchScore(
   // Limit explanation to top 2-3 reasons (Priority 2: Prevent overload)
   if (includeExplanation) {
     // Sort by score (descending) and take top 3
-    explanation.sort((a, b) => b.score - a.score)
-    explanation = explanation.slice(0, 3)
+    const sortedExplanation = [...explanation].sort((a, b) => b.score - a.score)
+    explanation = sortedExplanation.slice(0, 3)
   }
 
   return includeExplanation ? { score: totalScore, explanation } : totalScore

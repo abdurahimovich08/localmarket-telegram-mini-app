@@ -1,11 +1,7 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Get API key - this file can be used both client-side and server-side
-// In Vite client: import.meta.env.VITE_GEMINI_API_KEY
-// In Node/Vercel: process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
-const API_KEY = typeof process !== 'undefined' && process.env
-  ? (process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '')
-  : (typeof import !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY || '')
+const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
 
 if (!API_KEY) {
   console.warn('GEMINI_API_KEY not found. Tag generation will fail.')
@@ -13,23 +9,23 @@ if (!API_KEY) {
 
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
 
-export async function generateTags(data: {
-  brand: string
-  country_of_origin: string
-  year?: string
-  material: string
-  purpose: string
-  taxonomy?: string
-}): Promise<string[]> {
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
   try {
     if (!genAI) {
-      throw new Error('Gemini API key not configured')
+      return res.status(500).json({ error: 'Gemini API key not configured' })
     }
 
-    const { brand, country_of_origin, year, material, purpose, taxonomy } = data
+    const { brand, country_of_origin, year, material, purpose, taxonomy } = req.body
 
     if (!brand || !country_of_origin || !material || !purpose) {
-      throw new Error('Missing required fields')
+      return res.status(400).json({ error: 'Missing required fields' })
     }
 
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
@@ -72,12 +68,12 @@ Masalan:
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
-      return parsed.tags || []
+      return res.status(200).json({ tags: parsed.tags || [] })
     }
 
-    throw new Error('Failed to parse AI response')
+    return res.status(500).json({ error: 'Failed to parse AI response' })
   } catch (error: any) {
     console.error('Tag generation error:', error)
-    throw error
+    return res.status(500).json({ error: error.message || 'Internal server error' })
   }
 }
