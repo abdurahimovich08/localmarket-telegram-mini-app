@@ -245,16 +245,29 @@ export default function UnifiedReviewForm({
       console.log('Form validation:', {
         validationValid: validation.valid,
         validationMissing: validation.missing,
+        validationMissingDetails: validation.missing.map(field => {
+          // Find the field in schema to get more info
+          const schemaField = schema.fields.find(f => f.key === field || f.label === field)
+          return {
+            field,
+            key: schemaField?.key,
+            type: schemaField?.type,
+            required: schemaField?.required,
+            dependsOn: schemaField?.dependsOn,
+            valueInCore: field in formData.core ? formData.core[field] : undefined,
+            valueInAttributes: field in formData.attributes ? formData.attributes[field] : undefined,
+            actualValue: (field in formData.core ? formData.core[field] : formData.attributes[field]) || 'NOT FOUND'
+          }
+        }),
         photosCount: photos.length,
-        photos: photos.map(p => p.substring(0, 30) + '...'), // First 30 chars of each photo
         hasPhotos,
         user: !!user,
         canSubmit,
-        formDataCore: Object.keys(formData.core),
-        formDataAttributes: Object.keys(formData.attributes)
+        formDataCore: formData.core,
+        formDataAttributes: formData.attributes
       })
     }
-  }, [validation.valid, validation.missing, photos, hasPhotos, user, canSubmit, schema.entityType, formData])
+  }, [validation.valid, validation.missing, photos, hasPhotos, user, canSubmit, schema.entityType, formData, schema])
 
   // Render field input based on field schema
   const renderField = (field: FieldSchema) => {
