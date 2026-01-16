@@ -932,25 +932,6 @@ export default function UnifiedReviewForm({
                 />
               </div>
               
-              {/* Kim uchun mo'ljallangan */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Kim uchun mo'ljallangan *</label>
-                <input
-                  type="text"
-                  value={productDetails.target_audience}
-                  onChange={(e) => {
-                    setProductDetails(prev => ({ ...prev, target_audience: e.target.value }))
-                    setFormData(prev => ({
-                      ...prev,
-                      attributes: { ...prev.attributes, target_audience: e.target.value }
-                    }))
-                  }}
-                  placeholder="Masalan: Erkaklar, Ayollar, Bolalar, Sportchilar"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-primary focus:border-transparent"
-                  required
-                />
-              </div>
-              
               {/* Nima uchun mo'ljallangan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nima uchun mo'ljallangan (maqsad) *</label>
