@@ -562,6 +562,16 @@ export default function UnifiedReviewForm({
           finalAttributes._empty = true // Placeholder to ensure JSONB is not null
         }
 
+        // Map Uzbek condition values to database values
+        const conditionMap: Record<string, string> = {
+          'yangi': 'new',
+          'yangi_kabi': 'like_new',
+          'yaxshi': 'good',
+          'o\'rtacha': 'fair',
+          'eski': 'poor'
+        }
+        const dbCondition = conditionMap[formData.core.condition] || formData.core.condition || 'good'
+
         // Create listing with attributes
         await createListingMutation({
           seller_telegram_id: user.telegram_user_id,
@@ -570,7 +580,7 @@ export default function UnifiedReviewForm({
           price: formData.core.is_free ? undefined : formData.core.price,
           is_free: formData.core.is_free || false,
           category: schema.category as any,
-          condition: formData.core.condition,
+          condition: dbCondition as any,
           photos: photoUrls,
           neighborhood: location?.address || formData.core.neighborhood,
           latitude: location?.latitude || formData.core.latitude,
