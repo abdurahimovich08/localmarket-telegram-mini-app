@@ -164,6 +164,8 @@ export default function UnifiedAICreationPage({
   
   // Handle taxonomy selection complete - Skip AI chat, go directly to form
   const handleTaxonomyComplete = (leaf: TaxonNode, tags: string[]) => {
+    console.log('handleTaxonomyComplete called', { leaf, tags, entityType, category })
+    
     const context = {
       taxonomy: {
         id: leaf.id,
@@ -201,6 +203,7 @@ export default function UnifiedAICreationPage({
       },
     }
     
+    console.log('Setting aiData:', initialData)
     // Set AI data immediately to show form
     setAiData(initialData)
   }
@@ -259,6 +262,8 @@ export default function UnifiedAICreationPage({
 
   // If AI finished and returned data OR taxonomy complete (clothing), show review form
   if (aiData) {
+    console.log('aiData exists, showing form', { aiData, taxonomyContext, schema })
+    
     // Merge taxonomy context into aiData for review form
     const aiDataWithContext = taxonomyContext
       ? {
@@ -270,6 +275,8 @@ export default function UnifiedAICreationPage({
           },
         }
       : aiData
+    
+    console.log('Rendering UnifiedReviewForm with:', { aiDataWithContext, taxonomyContext })
     
     return (
       <UnifiedReviewForm
@@ -290,6 +297,8 @@ export default function UnifiedAICreationPage({
       />
     )
   }
+  
+  console.log('No aiData, showing main UI', { aiData, isClothingCategory, isTaxonomyComplete, taxonomyContext })
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20 relative">
