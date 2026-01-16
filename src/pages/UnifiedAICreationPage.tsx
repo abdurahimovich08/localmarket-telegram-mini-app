@@ -112,14 +112,17 @@ export default function UnifiedAICreationPage({
     )
   }
 
-  // Guard to prevent double session start
+  // Skip AI chat for clothing category - go directly to form after taxonomy
+  // For other categories, still use AI chat (can be enhanced later)
+  const shouldUseAIChat = !isClothingCategory
+  
+  // Guard to prevent double session start (only for non-clothing categories)
   const hasStartedRef = useRef(false)
   
-  // Initialize chat session (skip for clothing until taxonomy selected)
+  // Initialize chat session (only for non-clothing categories)
   useEffect(() => {
-    // For clothing category, wait for taxonomy selection
-    if (isClothingCategory && !taxonomyContext) {
-      // Don't show messages until taxonomy is selected
+    // Skip chat for clothing category
+    if (!shouldUseAIChat) {
       return
     }
 
@@ -138,10 +141,9 @@ export default function UnifiedAICreationPage({
           newSessionId,
           entityType,
           category,
-          taxonomyContext || undefined
+          undefined
         )
         setSessionId(newSessionId)
-        // AI greeting already includes taxonomy confirmation, no need to add UI message
         setMessages([{ role: 'ai', content: greeting }])
       } catch (err) {
         console.error('Error initializing chat:', err)
@@ -158,11 +160,11 @@ export default function UnifiedAICreationPage({
         hasStartedRef.current = false
       }
     }
-  }, [entityType, category, taxonomyContext, isClothingCategory])
+  }, [entityType, category, shouldUseAIChat])
   
-  // Handle taxonomy selection complete
+  // Handle taxonomy selection complete - Skip AI chat, go directly to form
   const handleTaxonomyComplete = (leaf: TaxonNode, tags: string[]) => {
-    setTaxonomyContext({
+    const context = {
       taxonomy: {
         id: leaf.id,
         pathUz: leaf.pathUz,
@@ -175,9 +177,34 @@ export default function UnifiedAICreationPage({
       },
       taxonomyNode: leaf, // Full node for field profiling
       tags,
-      // Store attributes for tag building (will be enriched with entity IDs later)
       attributes: {},
-    })
+    }
+    setTaxonomyContext(context)
+    
+    // Generate initial AI data from taxonomy (skip chat)
+    const initialData: UnifiedAIOutput = {
+      core: {
+        title: `${leaf.labelUz}`, // Will be enriched with brand later
+        description: '',
+        category: category,
+        condition: undefined,
+        price: undefined,
+        is_free: false,
+      },
+      attributes: {
+        gender: leaf.audience,
+        sizes: [],
+        colors: [],
+        stock_by_size_color: {},
+      },
+      context: {
+        taxonomy: context.taxonomy,
+        tags: tags,
+      },
+    }
+    
+    // Set AI data immediately to show form
+    setAiData(initialData)
   }
 
   const scrollToBottom = () => {
@@ -232,7 +259,7 @@ export default function UnifiedAICreationPage({
     }
   }
 
-  // If AI finished and returned data, show review form
+  // If AI finished and returned data OR taxonomy complete (clothing), show review form
   if (aiData) {
     // Merge taxonomy context into aiData for review form
     const aiDataWithContext = taxonomyContext
@@ -250,13 +277,16 @@ export default function UnifiedAICreationPage({
       <UnifiedReviewForm
         data={aiDataWithContext}
         schema={schema}
+        taxonomyContext={taxonomyContext}
         onBack={() => {
           setAiData(null)
-          const session = getSessionData(sessionId!)
-          if (session) {
-            setMessages([
-              { role: 'ai', content: schema.aiInstructions?.greeting || 'Salom! Davom etamizmi?' }
-            ])
+          if (shouldUseAIChat && sessionId) {
+            const session = getSessionData(sessionId)
+            if (session) {
+              setMessages([
+                { role: 'ai', content: schema.aiInstructions?.greeting || 'Salom! Davom etamizmi?' }
+              ])
+            }
           }
         }}
       />
@@ -301,8 +331,8 @@ export default function UnifiedAICreationPage({
       )}
 
       <div className="flex-1 flex flex-col">
-        {/* CHAT AREA - Only show if taxonomy is complete (for clothing) */}
-        {(isTaxonomyComplete || !isClothingCategory) && (
+        {/* CHAT AREA - Only show for non-clothing categories (clothing goes directly to form) */}
+        {shouldUseAIChat && (
           <div
             id="messages-container"
             className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
@@ -337,6 +367,16 @@ export default function UnifiedAICreationPage({
             )}
           </div>
         )}
+        
+        {/* For clothing category, show message that form will appear */}
+        {isClothingCategory && !isTaxonomyComplete && (
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="text-center text-gray-500">
+              <p className="text-lg mb-2">Kiyim turini tanlang 👆</p>
+              <p className="text-sm">Tanlangandan so'ng formaga o'tasiz</p>
+            </div>
+          </div>
+        )}
 
         {/* SELLER MEMORY BANNER - Show before overlay if user has history */}
         {isClothingCategory && !isTaxonomyComplete && user?.id && (
@@ -366,31 +406,29 @@ export default function UnifiedAICreationPage({
           </div>
         )}
 
-        {/* INPUT AREA */}
-        <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-10">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={!isTaxonomyComplete && isClothingCategory ? "Kiyim turini tanlang 👆" : "Xabar yozing..."}
-              className={`flex-1 px-4 py-2 border rounded-lg transition-all ${
-                !isTaxonomyComplete && isClothingCategory
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-transparent'
-                  : 'border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent'
-              }`}
-              disabled={isLoading || (!isTaxonomyComplete && isClothingCategory)}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading || (!isTaxonomyComplete && isClothingCategory)}
-              className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Yuborish
-            </button>
+        {/* INPUT AREA - Only show for non-clothing categories */}
+        {shouldUseAIChat && (
+          <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-10">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Xabar yozing..."
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={isLoading}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isLoading}
+                className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Yuborish
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

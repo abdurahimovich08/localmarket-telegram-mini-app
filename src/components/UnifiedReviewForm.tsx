@@ -21,6 +21,7 @@ import LogoUploader from './LogoUploader'
 import PortfolioUploader from './PortfolioUploader'
 import BackButton from './BackButton'
 import LocationDisplay from './LocationDisplay'
+import InlineAIAssistant from './InlineAIAssistant'
 import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 interface UnifiedReviewFormProps {
@@ -29,6 +30,20 @@ interface UnifiedReviewFormProps {
   onBack?: () => void
   editMode?: boolean
   existingId?: string
+  taxonomyContext?: {
+    taxonomy: { 
+      id: string
+      pathUz: string
+      audience: string
+      segment: string
+      labelUz: string
+      audienceUz?: string
+      segmentUz?: string
+      leafUz?: string
+    }
+    taxonomyNode?: any
+    tags: string[]
+  } | null
 }
 
 export default function UnifiedReviewForm({
@@ -37,6 +52,7 @@ export default function UnifiedReviewForm({
   onBack,
   editMode = false,
   existingId,
+  taxonomyContext,
 }: UnifiedReviewFormProps) {
   const navigate = useNavigate()
   const { user } = useUser()
@@ -233,17 +249,33 @@ export default function UnifiedReviewForm({
         )}
 
         {field.type === 'string' && (
-          <input
-            type="text"
-            value={value || ''}
-            onChange={(e) => updateValue(e.target.value)}
-            placeholder={field.placeholder}
-            maxLength={field.validation?.maxLength}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-              hasError ? 'border-red-300' : 'border-gray-300'
-            }`}
-            required={isRequired}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={value || ''}
+              onChange={(e) => updateValue(e.target.value)}
+              placeholder={field.placeholder}
+              maxLength={field.validation?.maxLength}
+              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                hasError ? 'border-red-300' : 'border-gray-300'
+              }`}
+              required={isRequired}
+            />
+            {schema.category === 'clothing' && taxonomyContext && (
+              <InlineAIAssistant
+                fieldKey={field.key}
+                fieldLabel={field.label}
+                currentValue={value}
+                schema={schema}
+                taxonomyContext={taxonomyContext}
+                onSuggestion={(suggestion) => {
+                  if (typeof suggestion === 'string') {
+                    updateValue(suggestion)
+                  }
+                }}
+              />
+            )}
+          </div>
         )}
 
         {field.type === 'number' && (
