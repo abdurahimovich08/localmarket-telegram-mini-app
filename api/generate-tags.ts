@@ -1,6 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY || '')
+// Get API key - this file can be used both client-side and server-side
+// In Vite client: import.meta.env.VITE_GEMINI_API_KEY
+// In Node/Vercel: process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
+const API_KEY = typeof process !== 'undefined' && process.env
+  ? (process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '')
+  : (typeof import !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY || '')
+
+if (!API_KEY) {
+  console.warn('GEMINI_API_KEY not found. Tag generation will fail.')
+}
+
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
 
 export async function generateTags(data: {
   brand: string
@@ -11,6 +22,10 @@ export async function generateTags(data: {
   taxonomy?: string
 }): Promise<string[]> {
   try {
+    if (!genAI) {
+      throw new Error('Gemini API key not configured')
+    }
+
     const { brand, country_of_origin, year, material, purpose, taxonomy } = data
 
     if (!brand || !country_of_origin || !material || !purpose) {
