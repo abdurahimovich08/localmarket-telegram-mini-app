@@ -183,10 +183,12 @@ export default function UnifiedAICreationPage({
     
     // Generate initial AI data from taxonomy (skip chat)
     const initialData: UnifiedAIOutput = {
+      isFinished: true, // Mark as finished to show form immediately
+      entityType: entityType,
+      category: category,
       core: {
         title: `${leaf.labelUz}`, // Will be enriched with brand later
         description: '',
-        category: category,
         condition: undefined,
         price: undefined,
         is_free: false,
@@ -196,10 +198,6 @@ export default function UnifiedAICreationPage({
         sizes: [],
         colors: [],
         stock_by_size_color: {},
-      },
-      context: {
-        taxonomy: context.taxonomy,
-        tags: tags,
       },
     }
     
