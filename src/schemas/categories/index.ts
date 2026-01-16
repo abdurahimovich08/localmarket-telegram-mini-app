@@ -101,7 +101,16 @@ export function validateRequiredFields(
 
     // Handle string types - check for empty string
     if (field.type === 'string') {
-      if (value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')) {
+      const isEmpty = value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')
+      if (isEmpty) {
+        console.log(`Field ${fieldKey} (${field.label}) is missing or empty:`, {
+          value,
+          type: typeof value,
+          isUndefined: value === undefined,
+          isNull: value === null,
+          isEmptyString: value === '',
+          isWhitespace: typeof value === 'string' && value.trim() === ''
+        })
         missing.push(field.label || fieldKey)
       }
       continue
