@@ -261,7 +261,7 @@ export default function UnifiedAICreationPage({
   }
 
   // If AI finished and returned data OR taxonomy complete (clothing), show review form
-  if (aiData) {
+  if (aiData && schema) {
     console.log('aiData exists, showing form', { aiData, taxonomyContext, schema })
     
     // Merge taxonomy context into aiData for review form
@@ -298,7 +298,7 @@ export default function UnifiedAICreationPage({
     )
   }
   
-  console.log('No aiData, showing main UI', { aiData, isClothingCategory, isTaxonomyComplete, taxonomyContext })
+  console.log('No aiData or schema, showing main UI', { aiData, schema, isClothingCategory, isTaxonomyComplete, taxonomyContext })
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20 relative">
