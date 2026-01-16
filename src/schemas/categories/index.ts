@@ -63,11 +63,51 @@ export function validateRequiredFields(
     const field = schema.fields.find(f => f.key === fieldKey)
     if (!field) continue
 
+    // Skip fields that are excluded from validation (handled separately)
+    // sizes and colors are now handled via stock_by_size_color
+    if (fieldKey === 'sizes' || fieldKey === 'colors') {
+      // Check if stock_by_size_color exists and has data
+      const stockData = data.attributes?.stock_by_size_color
+      if (!stockData || Object.keys(stockData).length === 0) {
+        missing.push(field.label || fieldKey)
+      }
+      continue
+    }
+
+    // Check dependsOn condition - if field depends on another field, only validate if condition is met
+    if (field.dependsOn) {
+      const dependsOnValue = field.dependsOn.field in data.core
+        ? data.core[field.dependsOn.field]
+        : data.attributes[field.dependsOn.field]
+      
+      // If dependsOn condition is not met, skip validation for this field
+      if (dependsOnValue !== field.dependsOn.value) {
+        continue
+      }
+    }
+
     // Check in core or attributes
     const value = fieldKey in data.core 
       ? data.core[fieldKey]
       : data.attributes[fieldKey]
 
+    // Handle array types
+    if (field.type === 'array' || field.type === 'multi_select') {
+      if (!Array.isArray(value) || value.length === 0) {
+        missing.push(field.label || fieldKey)
+      }
+      continue
+    }
+
+    // Handle string types - check for empty string
+    if (field.type === 'string') {
+      if (value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')) {
+        missing.push(field.label || fieldKey)
+      }
+      continue
+    }
+
+    // Handle other types
     if (value === undefined || value === null || value === '') {
       missing.push(field.label || fieldKey)
     }
