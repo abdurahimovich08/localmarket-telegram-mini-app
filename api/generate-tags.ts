@@ -1,34 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
-
-if (!API_KEY) {
-  console.warn('GEMINI_API_KEY not found. Tag generation will fail.')
-}
-
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  try {
-    if (!genAI) {
-      return res.status(500).json({ error: 'Gemini API key not configured' })
-    }
+  const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY
 
+  if (!API_KEY) {
+    console.error('GEMINI_API_KEY is not set in environment variables')
+    return res.status(500).json({ error: 'API key not configured' })
+  }
+
+  try {
     const { brand, country_of_origin, year, material, purpose, taxonomy } = req.body
 
     if (!brand || !country_of_origin || !material || !purpose) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const prompt = `Siz professional e-commerce tag generatsiya mutaxassisisan.
 
@@ -60,9 +53,38 @@ Masalan:
   "tags": ["nike", "sport-shoes", "running", "men", "2024", "cotton", "uzbekistan"]
 }`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    // Build the request body for Gemini API (same pattern as api/gemini.ts)
+    const requestBody: any = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+    }
+
+    // Use gemini-2.0-flash (same as api/gemini.ts)
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Gemini API error:', errorText)
+      return res.status(response.status).json({ error: 'Gemini API error', details: errorText })
+    }
+
+    const data = await response.json()
+    
+    // Extract text from Gemini response (same pattern as other API routes)
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -72,8 +94,8 @@ Masalan:
     }
 
     return res.status(500).json({ error: 'Failed to parse AI response' })
-  } catch (error: any) {
-    console.error('Tag generation error:', error)
-    return res.status(500).json({ error: error.message || 'Internal server error' })
+  } catch (error) {
+    console.error('Error in tag generation API route:', error)
+    return res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' })
   }
 }
