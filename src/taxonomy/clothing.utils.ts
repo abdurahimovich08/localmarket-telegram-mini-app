@@ -42,7 +42,12 @@ export const segmentLabels: Record<Segment, string> = {
  * - Remove special characters
  * - Common alias mappings (krasofka → krossovka)
  */
-export function toSlugUz(input: string): string {
+export function toSlugUz(input: string | undefined | null): string {
+  // Handle null/undefined
+  if (!input || typeof input !== 'string') {
+    return ''
+  }
+  
   // Common alias mappings
   const aliases: Record<string, string> = {
     'krasofka': 'krossovka',
