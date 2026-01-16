@@ -599,6 +599,10 @@ export default function UnifiedReviewForm({
     }
   }, [autoGender])
   
+  // Separate core fields from attribute fields
+  const coreFieldKeys = ['title', 'description', 'price', 'is_free', 'condition', 'neighborhood', 'latitude', 'longitude']
+  const coreFields = schema.fields.filter(f => coreFieldKeys.includes(f.key))
+  
   // Ensure title and description fields are always present and editable
   const titleField: FieldSchema = {
     key: 'title',
