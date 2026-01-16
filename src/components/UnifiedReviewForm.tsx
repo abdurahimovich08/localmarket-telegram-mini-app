@@ -753,7 +753,6 @@ export default function UnifiedReviewForm({
                   onCancel={() => setImageToCrop(null)}
                 />
               )}
-              </div>
             </div>
           ) : (
             <>
