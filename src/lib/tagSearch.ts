@@ -56,7 +56,7 @@ export async function calculateServiceSearchScore(
     : []
 
   let totalScore = 0
-  const explanation: SearchExplanation[] = []
+  let explanation: SearchExplanation[] = []
 
   // Score each query tag against service tags
   for (const queryTag of normalizedQueryTags) {

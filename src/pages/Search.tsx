@@ -1,17 +1,19 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useAppMode } from '../contexts/AppModeContext'
 import { useSearchParams } from 'react-router-dom'
 import { useUnifiedItems } from '../hooks/useUnifiedItems'
 import { useNavigateWithCtx } from '../lib/preserveCtx'
 import { trackUserSearch, trackListingView } from '../lib/tracking'
+import { trackSearch, getRecentSearches, getAutocompleteSuggestions, SearchSuggestion as SearchSuggestionType } from '../lib/searchAnalytics'
 import UniversalCard from '../components/UniversalCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
 import SearchSuggestion from '../components/SearchSuggestion'
 import BackButton from '../components/BackButton'
 import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, XMarkIcon, ClockIcon, FireIcon, TagIcon } from '@heroicons/react/24/outline'
+import { debounce } from '../lib/utils'
 
 export default function Search() {
   const { user } = useUser()
@@ -21,12 +23,117 @@ export default function Search() {
   const initialQuery = searchParams.get('q') || ''
   const initialCategory = searchParams.get('category') || undefined
   const [searchQuery, setSearchQuery] = useState(initialQuery)
+  const [inputValue, setInputValue] = useState(initialQuery) // Separate state for input
   const [filters, setFilters] = useState<SearchFiltersType>({
     category: initialCategory as any,
     radius: user?.search_radius_miles || 10,
   })
+  
+  // Autocomplete state
+  const [showAutocomplete, setShowAutocomplete] = useState(false)
+  const [autocompleteResults, setAutocompleteResults] = useState<SearchSuggestionType[]>([])
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<HTMLDivElement>(null)
 
   const isBrandedMode = mode.kind === 'store' || mode.kind === 'service'
+  
+  // Load recent searches on mount
+  useEffect(() => {
+    setRecentSearches(getRecentSearches(5))
+  }, [])
+  
+  // Debounced search query update
+  const debouncedSetSearchQuery = useMemo(
+    () => debounce((value: string) => {
+      setSearchQuery(value)
+    }, 300),
+    []
+  )
+  
+  // Fetch autocomplete suggestions
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (inputValue.length >= 2) {
+        const results = await getAutocompleteSuggestions(inputValue)
+        setAutocompleteResults(results)
+      } else {
+        setAutocompleteResults([])
+      }
+    }
+    fetchSuggestions()
+  }, [inputValue])
+  
+  // Handle click outside to close autocomplete
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setShowAutocomplete(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+  
+  // Handle input change
+  const handleInputChange = (value: string) => {
+    setInputValue(value)
+    setShowAutocomplete(true)
+    setSelectedIndex(-1)
+    debouncedSetSearchQuery(value)
+  }
+  
+  // Handle suggestion click
+  const handleSuggestionClick = (query: string) => {
+    setInputValue(query)
+    setSearchQuery(query)
+    setShowAutocomplete(false)
+    setSelectedIndex(-1)
+    inputRef.current?.blur()
+  }
+  
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const items = inputValue.length >= 2 ? autocompleteResults : recentSearches.map(q => ({ query: q, score: 0, type: 'recent' as const }))
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedIndex(prev => (prev < items.length - 1 ? prev + 1 : prev))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedIndex(prev => (prev > 0 ? prev - 1 : -1))
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+          const selectedQuery = 'query' in items[selectedIndex] ? items[selectedIndex].query : items[selectedIndex]
+          handleSuggestionClick(selectedQuery as string)
+        }
+        setShowAutocomplete(false)
+        break
+      case 'Escape':
+        setShowAutocomplete(false)
+        setSelectedIndex(-1)
+        break
+    }
+  }
+  
+  // Get icon for suggestion type
+  const getSuggestionIcon = (type: string) => {
+    switch (type) {
+      case 'recent':
+        return <ClockIcon className="w-4 h-4 text-gray-400" />
+      case 'popular':
+        return <FireIcon className="w-4 h-4 text-orange-400" />
+      case 'brand':
+        return <TagIcon className="w-4 h-4 text-blue-400" />
+      default:
+        return <MagnifyingGlassIcon className="w-4 h-4 text-green-400" />
+    }
+  }
 
   // ✅ Filters: mode'ga qarab + search query + filterlar
   const unifiedFilters = useMemo(() => {
@@ -64,13 +171,23 @@ export default function Search() {
 
   // Track search when query changes
   useEffect(() => {
-    if (searchQuery.trim() && user?.telegram_user_id) {
-      trackUserSearch(
-        user.telegram_user_id,
-        searchQuery.trim(),
-        initialCategory,
-        unifiedItems.length
-      )
+    if (searchQuery.trim()) {
+      // Legacy tracking
+      if (user?.telegram_user_id) {
+        trackUserSearch(
+          user.telegram_user_id,
+          searchQuery.trim(),
+          initialCategory,
+          unifiedItems.length
+        )
+      }
+      // New analytics tracking
+      trackSearch({
+        query: searchQuery.trim(),
+        category: initialCategory,
+        resultCount: unifiedItems.length,
+        userId: user?.telegram_user_id,
+      })
     }
   }, [searchQuery, user?.telegram_user_id, initialCategory, unifiedItems.length])
 
@@ -95,23 +212,86 @@ export default function Search() {
           <div className="flex items-center gap-2">
             <BackButton />
             <CartIcon />
-            <div className="flex-1 relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div ref={autocompleteRef} className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
               <input
+                ref={inputRef}
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Qidiruv... (masalan: kamaz, kmz, машин, kuchmas mulk)"
-                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onFocus={() => setShowAutocomplete(true)}
+                onKeyDown={handleKeyDown}
+                placeholder="Qidiruv... (masalan: nike, krossovka, jinsi)"
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary bg-gray-50 focus:bg-white transition-colors"
                 autoFocus
               />
-              {searchQuery && (
+              {inputValue && (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => {
+                    setInputValue('')
+                    setSearchQuery('')
+                    inputRef.current?.focus()
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full"
                 >
-                  <XMarkIcon className="w-5 h-5" />
+                  <XMarkIcon className="w-4 h-4" />
                 </button>
+              )}
+              
+              {/* Autocomplete Dropdown */}
+              {showAutocomplete && (
+                (inputValue.length < 2 && recentSearches.length > 0) ||
+                (inputValue.length >= 2 && autocompleteResults.length > 0)
+              ) && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 
+                                rounded-xl shadow-lg overflow-hidden z-50 animate-fadeIn">
+                  {/* Recent searches (when no query) */}
+                  {inputValue.length < 2 && recentSearches.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                        <span className="text-xs font-medium text-gray-500 uppercase">So'nggi qidiruvlar</span>
+                      </div>
+                      {recentSearches.map((query, index) => (
+                        <button
+                          key={query}
+                          onClick={() => handleSuggestionClick(query)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 
+                                     transition-colors ${selectedIndex === index ? 'bg-primary/5' : ''}`}
+                        >
+                          <ClockIcon className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700">{query}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Autocomplete suggestions */}
+                  {inputValue.length >= 2 && autocompleteResults.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                        <span className="text-xs font-medium text-gray-500 uppercase">Tavsiyalar</span>
+                      </div>
+                      {autocompleteResults.map((suggestion, index) => (
+                        <button
+                          key={`${suggestion.type}-${suggestion.query}`}
+                          onClick={() => handleSuggestionClick(suggestion.query)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 
+                                     transition-colors ${selectedIndex === index ? 'bg-primary/5' : ''}`}
+                        >
+                          {getSuggestionIcon(suggestion.type)}
+                          <span className="text-gray-700 flex-1">
+                            {highlightMatch(suggestion.query, inputValue)}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {suggestion.type === 'popular' && '🔥'}
+                            {suggestion.type === 'brand' && '®️'}
+                            {suggestion.type === 'category' && '📁'}
+                          </span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -124,7 +304,7 @@ export default function Search() {
         {searchQuery && (
           <SearchSuggestion 
             query={searchQuery} 
-            onSuggestionClick={(suggestion) => setSearchQuery(suggestion)}
+            onSuggestionClick={(suggestion) => handleSuggestionClick(suggestion)}
           />
         )}
       </header>
@@ -197,5 +377,24 @@ export default function Search() {
 
       <BottomNav />
     </div>
+  )
+}
+
+// Helper to highlight matching text
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text
+  
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const index = lowerText.indexOf(lowerQuery)
+  
+  if (index === -1) return text
+  
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="font-semibold text-primary">{text.slice(index, index + query.length)}</span>
+      {text.slice(index + query.length)}
+    </>
   )
 }
