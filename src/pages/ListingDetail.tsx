@@ -31,6 +31,16 @@ import {
 import { HeartIcon as HeartIconSolid, StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import AddToCartButton from '../components/AddToCartButton'
 import SimilarListings from '../components/SimilarListings'
+import ReviewsSection from '../components/reviews/ReviewsSection'
+import WriteReviewModal from '../components/reviews/WriteReviewModal'
+import PurchaseClaimButton from '../components/reviews/PurchaseClaimButton'
+import { 
+  getListingReviews, 
+  canWriteReview, 
+  createReview, 
+  voteReviewHelpful,
+  type Review 
+} from '../lib/reviews'
 
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
@@ -44,6 +54,13 @@ export default function ListingDetail() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [scrollY, setScrollY] = useState(0)
+  
+  // Reviews state
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [canUserReview, setCanUserReview] = useState(false)
+  const [hasVerifiedPurchase, setHasVerifiedPurchase] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewsLoading, setReviewsLoading] = useState(true)
   
   // Photos by color - show color-specific photos when a color is selected
   const displayPhotos = useMemo(() => {
@@ -91,6 +108,86 @@ export default function ListingDetail() {
     }
     loadListing()
   }, [id, user])
+
+  // Load reviews
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!id) return
+      setReviewsLoading(true)
+      try {
+        const reviewsData = await getListingReviews(id)
+        setReviews(reviewsData)
+        
+        // Check if user can write a review
+        if (user?.telegram_user_id) {
+          const { canWrite, claim } = await canWriteReview(id, user.telegram_user_id)
+          setCanUserReview(canWrite)
+          setHasVerifiedPurchase(!!claim)
+        }
+      } catch (error) {
+        console.error('Error loading reviews:', error)
+      } finally {
+        setReviewsLoading(false)
+      }
+    }
+    
+    if (!loading && listing) {
+      loadReviews()
+    }
+  }, [id, user, loading, listing])
+
+  // Review stats
+  const reviewStats = useMemo(() => {
+    const total = reviews.length
+    const avgRating = total > 0 
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / total 
+      : 0
+    return { total, avgRating }
+  }, [reviews])
+
+  // Handle review submission
+  const handleSubmitReview = async (reviewData: {
+    rating: number
+    text: string
+    photos: string[]
+    purchasedSize?: string
+    purchasedColor?: string
+  }) => {
+    if (!id || !user?.telegram_user_id) return
+    
+    const newReview = await createReview(
+      id,
+      user.telegram_user_id,
+      reviewData.rating,
+      reviewData.text,
+      reviewData.photos,
+      reviewData.purchasedSize,
+      reviewData.purchasedColor
+    )
+    
+    if (newReview) {
+      setReviews(prev => [newReview, ...prev])
+      setCanUserReview(false)
+    }
+  }
+
+  // Handle helpful vote
+  const handleHelpfulVote = async (reviewId: string, isHelpful: boolean) => {
+    if (!user?.telegram_user_id) return
+    await voteReviewHelpful(reviewId, user.telegram_user_id, isHelpful)
+    
+    // Update local state
+    setReviews(prev => prev.map(r => {
+      if (r.review_id === reviewId) {
+        return {
+          ...r,
+          helpful_count: isHelpful ? (r.helpful_count || 0) + 1 : r.helpful_count,
+          not_helpful_count: !isHelpful ? (r.not_helpful_count || 0) + 1 : r.not_helpful_count
+        }
+      }
+      return r
+    }))
+  }
 
   // Extract variants
   const { availableColors, availableSizes, stockByVariant, totalStock } = useMemo(() => {
@@ -626,12 +723,58 @@ export default function ListingDetail() {
             ))}
           </div>
         )}
+
+        {/* ═══ PURCHASE CLAIM ═══ */}
+        {!isOwnListing && user && (
+          <div className="pt-6 border-t border-white/10 mt-6">
+            <PurchaseClaimButton
+              listingId={listing.listing_id}
+              buyerTelegramId={user.telegram_user_id}
+              selectedSize={selectedSize || undefined}
+              selectedColor={selectedColor || undefined}
+              onClaimApproved={() => setHasVerifiedPurchase(true)}
+              onWriteReview={() => setShowReviewModal(true)}
+            />
+          </div>
+        )}
+
+        {/* ═══ REVIEWS SECTION ═══ */}
+        <div className="pt-8 border-t border-white/10 mt-8">
+          {reviewsLoading ? (
+            <div className="space-y-4">
+              <div className="h-6 bg-white/5 rounded w-32 animate-pulse" />
+              <div className="h-40 bg-white/5 rounded-2xl animate-pulse" />
+            </div>
+          ) : (
+            <ReviewsSection
+              reviews={reviews}
+              averageRating={reviewStats.avgRating}
+              totalReviews={reviewStats.total}
+              canWriteReview={canUserReview}
+              hasVerifiedPurchase={hasVerifiedPurchase}
+              onWriteReview={() => setShowReviewModal(true)}
+              onHelpful={handleHelpfulVote}
+              currentUserTelegramId={user?.telegram_user_id}
+            />
+          )}
+        </div>
       </section>
 
       {/* Similar */}
       <section className="bg-slate-950 pt-8">
         <SimilarListings listing={listing} />
       </section>
+
+      {/* Write Review Modal */}
+      <WriteReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onSubmit={handleSubmitReview}
+        listingTitle={listing.title}
+        listingPhoto={listing.photos?.[0]}
+        purchasedSize={selectedSize || undefined}
+        purchasedColor={selectedColor || undefined}
+      />
 
       {/* ═══════════════════════════════════════════════════════════
           FLOATING ACTION BAR

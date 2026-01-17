@@ -20,6 +20,7 @@
     "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "cropperjs": "1.6.2",
+    "date-fns": "^4.1.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.562.0",
     "node-telegram-bot-api": "^0.66.0",
