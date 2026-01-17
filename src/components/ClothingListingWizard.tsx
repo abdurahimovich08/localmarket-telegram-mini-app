@@ -22,9 +22,13 @@ import {
   SwatchIcon,
   RocketLaunchIcon,
   XMarkIcon,
-  PlusIcon
+  PlusIcon,
+  TagIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
+import { CLOTHING_TAXONOMY, TaxonNode, Audience, Segment } from '../taxonomy/clothing.uz'
+import { buildTagsFromSelection } from '../taxonomy/clothing.utils'
 
 // Types
 interface WizardStep {
@@ -56,6 +60,14 @@ interface ClothingListingWizardProps {
 const STEPS: WizardStep[] = [
   { 
     id: 1, 
+    key: 'taxonomy', 
+    title: 'Kategoriya', 
+    subtitle: 'Mahsulot turini tanlang',
+    icon: <TagIcon className="w-6 h-6" />,
+    emoji: '🏷️'
+  },
+  { 
+    id: 2, 
     key: 'photos', 
     title: 'Rasmlar', 
     subtitle: 'Eng yaxshi rasmlarni yuklang',
@@ -63,7 +75,7 @@ const STEPS: WizardStep[] = [
     emoji: '📸'
   },
   { 
-    id: 2, 
+    id: 3, 
     key: 'details', 
     title: 'Ma\'lumotlar', 
     subtitle: 'Mahsulot haqida',
@@ -71,7 +83,7 @@ const STEPS: WizardStep[] = [
     emoji: '✨'
   },
   { 
-    id: 3, 
+    id: 4, 
     key: 'price', 
     title: 'Narx', 
     subtitle: 'Narxni belgilang',
@@ -79,7 +91,7 @@ const STEPS: WizardStep[] = [
     emoji: '💰'
   },
   { 
-    id: 4, 
+    id: 5, 
     key: 'variants', 
     title: 'Variantlar', 
     subtitle: 'O\'lcham va ranglar',
@@ -87,13 +99,31 @@ const STEPS: WizardStep[] = [
     emoji: '🎨'
   },
   { 
-    id: 5, 
+    id: 6, 
     key: 'publish', 
     title: 'Joylash', 
     subtitle: 'Tayyor!',
     icon: <RocketLaunchIcon className="w-6 h-6" />,
     emoji: '🚀'
   }
+]
+
+// Audience options with emojis
+const AUDIENCE_OPTIONS: { value: Audience; label: string; emoji: string }[] = [
+  { value: 'erkaklar', label: 'Erkaklar', emoji: '👨' },
+  { value: 'ayollar', label: 'Ayollar', emoji: '👩' },
+  { value: 'bolalar', label: 'Bolalar', emoji: '👶' },
+  { value: 'unisex', label: 'Unisex', emoji: '👥' },
+]
+
+// Segment options with emojis
+const SEGMENT_OPTIONS: { value: Segment; label: string; emoji: string }[] = [
+  { value: 'kiyim', label: 'Kiyim', emoji: '👕' },
+  { value: 'oyoq_kiyim', label: 'Oyoq kiyim', emoji: '👟' },
+  { value: 'aksessuar', label: 'Aksessuar', emoji: '👜' },
+  { value: 'ichki_kiyim', label: 'Ichki kiyim', emoji: '🩲' },
+  { value: 'sport', label: 'Sport kiyim', emoji: '🏃' },
+  { value: 'milliy', label: 'Milliy kiyim', emoji: '🎎' },
 ]
 
 // Predefined colors for quick selection
@@ -132,6 +162,29 @@ export default function ClothingListingWizard({
   // Current step
   const [currentStep, setCurrentStep] = useState(1)
   
+  // Taxonomy selection state
+  const [selectedAudience, setSelectedAudience] = useState<Audience | null>(null)
+  const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null)
+  const [selectedTaxonomy, setSelectedTaxonomy] = useState<TaxonNode | null>(
+    initialTaxonomy ? CLOTHING_TAXONOMY.find(t => t.id === initialTaxonomy.id) || null : null
+  )
+  
+  // Get available segments for selected audience
+  const availableSegments = useMemo(() => {
+    if (!selectedAudience) return []
+    const segments = new Set<Segment>()
+    CLOTHING_TAXONOMY.filter(t => t.audience === selectedAudience).forEach(t => segments.add(t.segment))
+    return SEGMENT_OPTIONS.filter(s => segments.has(s.value))
+  }, [selectedAudience])
+  
+  // Get available items for selected audience + segment
+  const availableItems = useMemo(() => {
+    if (!selectedAudience || !selectedSegment) return []
+    return CLOTHING_TAXONOMY.filter(
+      t => t.audience === selectedAudience && t.segment === selectedSegment && t.leaf
+    )
+  }, [selectedAudience, selectedSegment])
+  
   // Form data
   const [photos, setPhotos] = useState<string[]>([])
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
@@ -158,6 +211,15 @@ export default function ClothingListingWizard({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Auto-set size type based on taxonomy (shoes = number, others = letter)
+  useEffect(() => {
+    if (selectedTaxonomy?.segment === 'oyoq_kiyim') {
+      setSizeType('number')
+    } else {
+      setSizeType('letter')
+    }
+  }, [selectedTaxonomy])
+  
   // Entity mutations
   const { create: createListing, isLoading } = useEntityMutations('listing', {
     onSuccess: (listing) => {
@@ -175,14 +237,15 @@ export default function ClothingListingWizard({
   // Step validation
   const isStepValid = useCallback((step: number): boolean => {
     switch (step) {
-      case 1: return photos.length >= 1
-      case 2: return formData.title.trim().length >= 3 && formData.description.trim().length >= 10
-      case 3: return !!formData.price && parseFloat(formData.price) > 0
-      case 4: return selectedColors.length > 0 && selectedSizes.length > 0
-      case 5: return true
+      case 1: return selectedTaxonomy !== null // Taxonomy must be selected
+      case 2: return photos.length >= 1
+      case 3: return formData.title.trim().length >= 3 && formData.description.trim().length >= 10
+      case 4: return !!formData.price && parseFloat(formData.price) > 0
+      case 5: return selectedColors.length > 0 && selectedSizes.length > 0
+      case 6: return true
       default: return false
     }
-  }, [photos, formData, selectedColors, selectedSizes])
+  }, [photos, formData, selectedColors, selectedSizes, selectedTaxonomy])
 
   // Can proceed to next step
   const canProceed = isStepValid(currentStep)
@@ -301,9 +364,23 @@ export default function ClothingListingWizard({
         )
       }
       
-      if (initialTaxonomy) {
-        attributes.taxonomy = initialTaxonomy
-        attributes.clothing_type = initialTaxonomy.leafUz
+      // Use selected taxonomy
+      if (selectedTaxonomy) {
+        attributes.taxonomy = {
+          id: selectedTaxonomy.id,
+          pathUz: selectedTaxonomy.pathUz,
+          audience: selectedTaxonomy.audience,
+          segment: selectedTaxonomy.segment,
+          labelUz: selectedTaxonomy.labelUz,
+          audienceUz: AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)?.label,
+          segmentUz: SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)?.label,
+          leafUz: selectedTaxonomy.labelUz,
+        }
+        attributes.clothing_type = selectedTaxonomy.labelUz
+        
+        // Generate tags from taxonomy
+        const taxonomyTags = buildTagsFromSelection(selectedTaxonomy)
+        attributes.tags = [...new Set([...(attributes.tags || []), ...taxonomyTags])]
       }
       
       // Map condition to database value
@@ -391,6 +468,16 @@ export default function ClothingListingWizard({
             style={{ width: `${progressPercent}%` }}
           />
         </div>
+        
+        {/* Selected taxonomy breadcrumb */}
+        {selectedTaxonomy && currentStep > 1 && (
+          <div className="px-4 py-2 bg-white/5 border-t border-white/5">
+            <p className="text-white/60 text-xs text-center flex items-center justify-center gap-2">
+              <TagIcon className="w-3 h-3" />
+              {selectedTaxonomy.pathUz}
+            </p>
+          </div>
+        )}
       </header>
 
       {/* Step indicators */}
@@ -429,8 +516,152 @@ export default function ClothingListingWizard({
       <div className="px-4 pb-32">
         <div className="max-w-lg mx-auto">
           
-          {/* Step 1: Photos */}
+          {/* Step 1: Taxonomy Selection */}
           {currentStep === 1 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="text-center mb-6">
+                <p className="text-white/80 text-sm">
+                  To'g'ri kategoriya = Tez topilish 🎯
+                </p>
+              </div>
+              
+              {/* Step 1.1: Audience Selection */}
+              {!selectedAudience && (
+                <div className="space-y-3">
+                  <p className="text-white/60 text-sm text-center mb-4">Kim uchun mo'ljallangan?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {AUDIENCE_OPTIONS.map(option => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSelectedAudience(option.value)
+                          setSelectedSegment(null)
+                          setSelectedTaxonomy(null)
+                        }}
+                        className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
+                      >
+                        <span className="text-4xl">{option.emoji}</span>
+                        <span className="text-white font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Step 1.2: Segment Selection */}
+              {selectedAudience && !selectedSegment && (
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => setSelectedAudience(null)}
+                    className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4"
+                  >
+                    <ArrowLeftIcon className="w-4 h-4" />
+                    {AUDIENCE_OPTIONS.find(a => a.value === selectedAudience)?.label}
+                  </button>
+                  
+                  <p className="text-white/60 text-sm text-center mb-4">Qanday kiyim?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableSegments.map(option => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSelectedSegment(option.value)
+                          setSelectedTaxonomy(null)
+                        }}
+                        className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
+                      >
+                        <span className="text-3xl">{option.emoji}</span>
+                        <span className="text-white font-medium text-sm">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Step 1.3: Item Selection */}
+              {selectedAudience && selectedSegment && !selectedTaxonomy && (
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => setSelectedSegment(null)}
+                    className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4"
+                  >
+                    <ArrowLeftIcon className="w-4 h-4" />
+                    {SEGMENT_OPTIONS.find(s => s.value === selectedSegment)?.label}
+                  </button>
+                  
+                  <p className="text-white/60 text-sm text-center mb-4">Aniq turini tanlang</p>
+                  <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pb-4">
+                    {availableItems.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedTaxonomy(item)}
+                        className="p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all text-left"
+                      >
+                        <span className="text-white font-medium text-sm">{item.labelUz}</span>
+                        {item.synonymsUz && item.synonymsUz.length > 0 && (
+                          <p className="text-white/40 text-xs mt-1 truncate">
+                            {item.synonymsUz.slice(0, 2).join(', ')}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Selected Taxonomy Display */}
+              {selectedTaxonomy && (
+                <div className="space-y-4">
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                          <CheckIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-white font-semibold">{selectedTaxonomy.labelUz}</p>
+                          <p className="text-white/60 text-xs">{selectedTaxonomy.pathUz}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedTaxonomy(null)
+                          setSelectedSegment(null)
+                          setSelectedAudience(null)
+                        }}
+                        className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                      >
+                        <XMarkIcon className="w-5 h-5 text-white/60" />
+                      </button>
+                    </div>
+                    
+                    {/* Quick info */}
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
+                        {AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)?.emoji} {AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)?.label}
+                      </span>
+                      <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
+                        {SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)?.emoji} {SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)?.label}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Info about why this matters */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <p className="text-white/80 text-sm font-medium mb-2">✨ Nima uchun muhim?</p>
+                    <ul className="text-white/60 text-xs space-y-1">
+                      <li>• O'xshash e'lonlar orasida ko'rinadi</li>
+                      <li>• Xaridorlar oson topadi</li>
+                      <li>• To'g'ri teglar avtomatik qo'shiladi</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Step 2: Photos */}
+          {currentStep === 2 && (
             <div className="space-y-4 animate-fadeIn">
               <div className="text-center mb-6">
                 <p className="text-white/80 text-sm">
@@ -500,8 +731,8 @@ export default function ClothingListingWizard({
             </div>
           )}
 
-          {/* Step 2: Details */}
-          {currentStep === 2 && (
+          {/* Step 3: Details */}
+          {currentStep === 3 && (
             <div className="space-y-4 animate-fadeIn">
               {/* Title */}
               <div className="space-y-2">
@@ -512,7 +743,7 @@ export default function ClothingListingWizard({
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Masalan: Nike Air Max krossovka"
+                  placeholder={selectedTaxonomy ? `Masalan: Nike ${selectedTaxonomy.labelUz.toLowerCase()}` : "Sarlavha kiriting"}
                   maxLength={80}
                   className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
@@ -589,8 +820,8 @@ export default function ClothingListingWizard({
             </div>
           )}
 
-          {/* Step 3: Price */}
-          {currentStep === 3 && (
+          {/* Step 4: Price */}
+          {currentStep === 4 && (
             <div className="space-y-6 animate-fadeIn">
               {/* Price input */}
               <div className="space-y-2">
@@ -698,8 +929,8 @@ export default function ClothingListingWizard({
             </div>
           )}
 
-          {/* Step 4: Variants */}
-          {currentStep === 4 && (
+          {/* Step 5: Variants */}
+          {currentStep === 5 && (
             <div className="space-y-6 animate-fadeIn">
               {/* Colors */}
               <div className="space-y-3">
@@ -857,8 +1088,8 @@ export default function ClothingListingWizard({
             </div>
           )}
 
-          {/* Step 5: Publish */}
-          {currentStep === 5 && (
+          {/* Step 6: Publish */}
+          {currentStep === 6 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center">
                 <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
