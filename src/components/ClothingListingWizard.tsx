@@ -26,7 +26,9 @@ import {
   PlusIcon,
   TagIcon,
   ChevronRightIcon,
-  PaintBrushIcon
+  PaintBrushIcon,
+  ExclamationCircleIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { CLOTHING_TAXONOMY, TaxonNode, Audience, Segment } from '../taxonomy/clothing.uz'
@@ -211,6 +213,8 @@ export default function ClothingListingWizard({
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [sizeType, setSizeType] = useState<'letter' | 'number'>('letter')
   const [stockByVariant, setStockByVariant] = useState<Record<string, number>>({})
+  const [photosByColor, setPhotosByColor] = useState<Record<string, string[]>>({})
+  const [currentColorForPhoto, setCurrentColorForPhoto] = useState<string | null>(null)
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -245,11 +249,18 @@ export default function ClothingListingWizard({
       case 2: return photos.length >= 1
       case 3: return formData.title.trim().length >= 3 && formData.description.trim().length >= 10
       case 4: return !!formData.price && parseFloat(formData.price) > 0
-      case 5: return selectedColors.length > 0 && selectedSizes.length > 0
+      case 5: {
+        // Check colors, sizes, and that each color has at least one photo
+        if (selectedColors.length === 0 || selectedSizes.length === 0) return false
+        const allColorsHavePhotos = selectedColors.every(color => 
+          (photosByColor[color] || []).length > 0
+        )
+        return allColorsHavePhotos
+      }
       case 6: return true
       default: return false
     }
-  }, [photos, formData, selectedColors, selectedSizes, selectedTaxonomy])
+  }, [photos, formData, selectedColors, selectedSizes, selectedTaxonomy, photosByColor])
 
   // Can proceed to next step
   const canProceed = isStepValid(currentStep)
@@ -345,9 +356,20 @@ export default function ClothingListingWizard({
     setError(null)
     
     try {
-      // Compress and upload images
+      // Compress and upload main images
       const compressedFiles = await compressDataUrls(photos, {}, 'listing')
       const photoUrls = await uploadImages(compressedFiles)
+      
+      // Upload images for each color
+      const uploadedPhotosByColor: Record<string, string[]> = {}
+      for (const color of selectedColors) {
+        const colorPhotos = photosByColor[color] || []
+        if (colorPhotos.length > 0) {
+          const compressedColorPhotos = await compressDataUrls(colorPhotos, {}, 'listing')
+          const uploadedColorUrls = await uploadImages(compressedColorPhotos)
+          uploadedPhotosByColor[color] = uploadedColorUrls
+        }
+      }
       
       // Build attributes
       const attributes: Record<string, any> = {
@@ -357,6 +379,7 @@ export default function ClothingListingWizard({
         sizes: selectedSizes,
         stock_by_size_color: stockByVariant,
         price_negotiable: formData.priceNegotiable,
+        photos_by_color: uploadedPhotosByColor,
       }
       
       if (formData.hasDiscount && formData.originalPrice) {
@@ -1012,23 +1035,100 @@ export default function ClothingListingWizard({
                   </button>
                 </div>
                 
-                {/* Selected colors */}
+                {/* Selected colors with photo upload */}
                 {selectedColors.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedColors.map(color => (
-                      <span
-                        key={color}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/30 text-purple-200 rounded-full text-sm"
-                      >
-                        {color}
-                        <button
-                          onClick={() => toggleColor(color)}
-                          className="hover:text-white"
+                  <div className="space-y-3 mt-4">
+                    <p className="text-white/60 text-sm flex items-center gap-2">
+                      <CameraIcon className="w-4 h-4" />
+                      Har bir rang uchun rasmlar qo'shing
+                    </p>
+                    {selectedColors.map(color => {
+                      const colorPhotos = photosByColor[color] || []
+                      const presetColor = PRESET_COLORS.find(c => c.name === color)
+                      
+                      return (
+                        <div 
+                          key={color}
+                          className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3"
                         >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </span>
-                    ))}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-full border-2 border-white/20"
+                                style={{ backgroundColor: presetColor?.hex || '#888' }}
+                              />
+                              <span className="text-white font-medium">{color}</span>
+                              <span className="text-white/40 text-sm">
+                                ({colorPhotos.length} ta rasm)
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => toggleColor(color)}
+                              className="text-red-400 hover:text-red-300 p-1"
+                            >
+                              <XMarkIcon className="w-5 h-5" />
+                            </button>
+                          </div>
+                          
+                          {/* Photo thumbnails for this color */}
+                          <div className="flex gap-2 flex-wrap">
+                            {colorPhotos.map((photo, idx) => (
+                              <div key={idx} className="relative group">
+                                <img 
+                                  src={photo} 
+                                  alt={`${color} ${idx + 1}`}
+                                  className="w-16 h-16 object-cover rounded-xl"
+                                />
+                                <button
+                                  onClick={() => {
+                                    setPhotosByColor(prev => ({
+                                      ...prev,
+                                      [color]: prev[color].filter((_, i) => i !== idx)
+                                    }))
+                                  }}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <XMarkIcon className="w-3 h-3 text-white" />
+                                </button>
+                              </div>
+                            ))}
+                            
+                            {/* Add photo button */}
+                            <label className="w-16 h-16 border-2 border-dashed border-white/20 rounded-xl flex items-center justify-center cursor-pointer hover:border-purple-500 hover:bg-purple-500/10 transition-all">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                  const files = e.target.files
+                                  if (files) {
+                                    Array.from(files).forEach(file => {
+                                      const reader = new FileReader()
+                                      reader.onloadend = () => {
+                                        setPhotosByColor(prev => ({
+                                          ...prev,
+                                          [color]: [...(prev[color] || []), reader.result as string]
+                                        }))
+                                      }
+                                      reader.readAsDataURL(file)
+                                    })
+                                  }
+                                }}
+                              />
+                              <PlusIcon className="w-6 h-6 text-white/40" />
+                            </label>
+                          </div>
+                          
+                          {colorPhotos.length === 0 && (
+                            <p className="text-amber-400/80 text-xs flex items-center gap-1">
+                              <ExclamationCircleIcon className="w-4 h-4" />
+                              Bu rang uchun kamida 1 ta rasm qo'shing
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>

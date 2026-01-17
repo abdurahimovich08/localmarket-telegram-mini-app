@@ -44,6 +44,19 @@ export default function ListingDetail() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [scrollY, setScrollY] = useState(0)
+  
+  // Photos by color - show color-specific photos when a color is selected
+  const displayPhotos = useMemo(() => {
+    const photosByColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
+    
+    // If color is selected and has photos, show those
+    if (selectedColor && photosByColor && photosByColor[selectedColor]?.length > 0) {
+      return photosByColor[selectedColor]
+    }
+    
+    // Otherwise show main photos
+    return listing?.photos || []
+  }, [listing, selectedColor])
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Scroll tracking for parallax
@@ -202,15 +215,15 @@ export default function ListingDetail() {
         />
         
         {/* Product Image */}
-        {listing.photos && listing.photos.length > 0 ? (
+        {displayPhotos.length > 0 ? (
           <div 
             className="absolute inset-0"
             style={{ transform: `scale(${1 + scrollY * 0.0005}) translateY(${scrollY * 0.2}px)` }}
           >
             <img
-              src={listing.photos[currentPhotoIndex]}
+              src={displayPhotos[currentPhotoIndex] || displayPhotos[0]}
               alt={listing.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-all duration-300"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-transparent to-slate-950/80" />
@@ -268,11 +281,11 @@ export default function ListingDetail() {
         )}
 
         {/* Photo Navigation */}
-        {listing.photos && listing.photos.length > 1 && (
+        {displayPhotos.length > 1 && (
           <>
             {/* Dots */}
             <div className="absolute bottom-32 left-1/2 -translate-x-1/2 flex gap-3 z-20">
-              {listing.photos.map((_, i) => (
+              {displayPhotos.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPhotoIndex(i)}
@@ -295,8 +308,8 @@ export default function ListingDetail() {
                 <ChevronLeftIcon className="w-6 h-6 text-white" />
               </button>
               <button
-                onClick={() => setCurrentPhotoIndex(i => Math.min(listing.photos!.length - 1, i + 1))}
-                disabled={currentPhotoIndex === listing.photos.length - 1}
+                onClick={() => setCurrentPhotoIndex(i => Math.min(displayPhotos.length - 1, i + 1))}
+                disabled={currentPhotoIndex >= displayPhotos.length - 1}
                 className="w-14 h-14 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 disabled:opacity-30 transition-all hover:bg-white/10"
               >
                 <ChevronRightIcon className="w-6 h-6 text-white" />
@@ -426,10 +439,14 @@ export default function ListingDetail() {
               {availableColors.map(color => {
                 const hasStock = selectedSize ? (stockByVariant[`${selectedSize}/${color}`] || 0) > 0 : true
                 const isSelected = selectedColor === color
+                const hasColorPhotos = listing?.attributes?.photos_by_color?.[color]?.length > 0
                 return (
                   <button
                     key={color}
-                    onClick={() => setSelectedColor(isSelected ? null : color)}
+                    onClick={() => {
+                      setSelectedColor(isSelected ? null : color)
+                      setCurrentPhotoIndex(0) // Reset to first photo when color changes
+                    }}
                     disabled={!hasStock}
                     className={`relative h-14 px-6 rounded-2xl font-medium transition-all duration-300 capitalize overflow-hidden ${
                       isSelected
@@ -442,7 +459,12 @@ export default function ListingDetail() {
                     {isSelected && (
                       <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-fuchsia-400" />
                     )}
-                    <span className="relative z-10">{color}</span>
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      {color}
+                      {hasColorPhotos && (
+                        <span className={`text-xs ${isSelected ? 'opacity-60' : 'text-violet-400'}`}>📷</span>
+                      )}
+                    </span>
                   </button>
                 )
               })}
