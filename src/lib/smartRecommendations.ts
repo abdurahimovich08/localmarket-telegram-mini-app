@@ -14,6 +14,29 @@ import { supabase } from './supabase'
 import { normalizeBrand } from './smartSearch'
 import { normalizeText } from './transliteration'
 
+// Helper functions for Uzbek labels
+function getAudienceLabel(audience: string): string {
+  const labels: Record<string, string> = {
+    'erkaklar': 'Erkaklar uchun',
+    'ayollar': 'Ayollar uchun',
+    'bolalar': 'Bolalar uchun',
+    'unisex': 'Unisex',
+  }
+  return labels[audience] || audience
+}
+
+function getSegmentLabel(segment: string): string {
+  const labels: Record<string, string> = {
+    'kiyim': 'Kiyim',
+    'oyoq_kiyim': 'Oyoq kiyim',
+    'aksessuar': 'Aksessuar',
+    'ichki_kiyim': 'Ichki kiyim',
+    'sport': 'Sport kiyim',
+    'milliy': 'Milliy kiyim',
+  }
+  return labels[segment] || segment
+}
+
 export interface RecommendationScore {
   listing_id: string
   score: number
@@ -67,27 +90,33 @@ export function calculateSimilarity(
     }
   }
 
-  // 3. Taxonomy match
+  // 3. Taxonomy match (high value for recommendations)
   if (target.attributes?.taxonomy && candidate.attributes?.taxonomy) {
     const tTax = target.attributes.taxonomy
     const cTax = candidate.attributes.taxonomy
 
-    // Same audience (erkaklar, ayollar, bolalar)
-    if (tTax.audience && tTax.audience === cTax.audience) {
-      score += 15
-      reasons.push('Bir xil auditoriya')
-    }
+    // Exact same taxonomy ID = perfect match
+    if (tTax.id && tTax.id === cTax.id) {
+      score += 50
+      reasons.push('Aynan bir xil tur')
+    } else {
+      // Same audience (erkaklar, ayollar, bolalar)
+      if (tTax.audience && tTax.audience === cTax.audience) {
+        score += 15
+        reasons.push(getAudienceLabel(tTax.audience))
+      }
 
-    // Same segment (oyoq kiyim, ustki kiyim, etc.)
-    if (tTax.segment && tTax.segment === cTax.segment) {
-      score += 20
-      reasons.push('Bir xil segment')
-    }
+      // Same segment (oyoq kiyim, ustki kiyim, etc.)
+      if (tTax.segment && tTax.segment === cTax.segment) {
+        score += 25
+        reasons.push(getSegmentLabel(tTax.segment))
+      }
 
-    // Same item type (exactly same clothing type)
-    if (tTax.labelUz && tTax.labelUz === cTax.labelUz) {
-      score += 25
-      reasons.push('O\'xshash mahsulot turi')
+      // Same item type (exactly same clothing type)
+      if (tTax.labelUz && tTax.labelUz === cTax.labelUz) {
+        score += 30
+        reasons.push(`${cTax.labelUz}`)
+      }
     }
   }
 
@@ -359,4 +388,150 @@ export async function getTrendingInCategory(
   }
 
   return data.map(l => l.listing_id)
+}
+
+/**
+ * Get recommendations based on taxonomy (audience, segment, item type)
+ * This is the most accurate way to find similar clothing items
+ */
+export async function getRecommendationsByTaxonomy(
+  taxonomyId: string,
+  excludeListingId?: string,
+  limit: number = 8
+): Promise<RecommendationScore[]> {
+  // Parse taxonomy ID: "ayollar.kiyim.futbolka"
+  const parts = taxonomyId.split('.')
+  if (parts.length < 2) return []
+  
+  const audience = parts[0]
+  const segment = parts[1]
+  const itemType = parts[2] || null
+
+  // Build query to find similar items
+  let query = supabase
+    .from('listings')
+    .select('listing_id, title, category, price, attributes')
+    .eq('category', 'clothing')
+    .eq('status', 'active')
+
+  if (excludeListingId) {
+    query = query.neq('listing_id', excludeListingId)
+  }
+
+  const { data: candidates, error } = await query.limit(100)
+
+  if (error || !candidates) {
+    console.error('Error fetching taxonomy candidates:', error)
+    return []
+  }
+
+  // Score based on taxonomy match
+  const scored: RecommendationScore[] = []
+
+  for (const candidate of candidates) {
+    const tax = candidate.attributes?.taxonomy
+    if (!tax) continue
+
+    let score = 0
+    const reasons: string[] = []
+
+    // Exact item type match (highest priority)
+    if (itemType && tax.id === taxonomyId) {
+      score += 100
+      reasons.push(`Aynan ${tax.labelUz || 'bir xil tur'}`)
+    }
+    // Same segment and audience
+    else if (tax.audience === audience && tax.segment === segment) {
+      score += 60
+      if (tax.labelUz) {
+        reasons.push(`${getSegmentLabel(segment)} bo'limi`)
+      }
+    }
+    // Same audience only
+    else if (tax.audience === audience) {
+      score += 30
+      reasons.push(getAudienceLabel(audience))
+    }
+    // Same segment only (useful for unisex items)
+    else if (tax.segment === segment) {
+      score += 20
+      reasons.push(getSegmentLabel(segment))
+    }
+
+    // Bonus for same brand
+    if (candidate.attributes?.brand) {
+      score += 10
+    }
+
+    if (score > 0) {
+      scored.push({
+        listing_id: candidate.listing_id,
+        score,
+        reasons
+      })
+    }
+  }
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+}
+
+/**
+ * Get "You may also like" recommendations
+ * Combines taxonomy-based and behavior-based signals
+ */
+export async function getYouMayAlsoLike(
+  currentListingId: string,
+  userId?: number,
+  limit: number = 6
+): Promise<RecommendationScore[]> {
+  // Get current listing
+  const { data: currentListing } = await supabase
+    .from('listings')
+    .select('listing_id, category, attributes')
+    .eq('listing_id', currentListingId)
+    .single()
+
+  if (!currentListing) return []
+
+  const results: RecommendationScore[] = []
+
+  // 1. Get taxonomy-based recommendations (if taxonomy exists)
+  if (currentListing.attributes?.taxonomy?.id) {
+    const taxonomyRecs = await getRecommendationsByTaxonomy(
+      currentListing.attributes.taxonomy.id,
+      currentListingId,
+      Math.ceil(limit * 0.6) // 60% from taxonomy
+    )
+    results.push(...taxonomyRecs)
+  }
+
+  // 2. Get personalized recommendations (if user is logged in)
+  if (userId) {
+    const personalRecs = await getPersonalizedRecommendations(
+      userId,
+      Math.ceil(limit * 0.4) // 40% from personalization
+    )
+    // Add only items not already in results
+    for (const rec of personalRecs) {
+      if (!results.some(r => r.listing_id === rec.listing_id) && rec.listing_id !== currentListingId) {
+        results.push(rec)
+      }
+    }
+  }
+
+  // 3. Fallback to general recommendations
+  if (results.length < limit) {
+    const generalRecs = await getRecommendationsForListing(currentListingId, limit - results.length)
+    for (const rec of generalRecs) {
+      if (!results.some(r => r.listing_id === rec.listing_id)) {
+        results.push(rec)
+      }
+    }
+  }
+
+  return results
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
 }

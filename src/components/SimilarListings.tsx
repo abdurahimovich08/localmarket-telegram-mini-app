@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getListings, getListing } from '../lib/supabase'
 import { getSimilarListings } from '../lib/recommendations'
-import { getRecommendationsForListing, RecommendationScore } from '../lib/smartRecommendations'
+import { getRecommendationsForListing, getRecommendationsByTaxonomy, getYouMayAlsoLike, RecommendationScore } from '../lib/smartRecommendations'
 import { trackListingView } from '../lib/tracking'
 import { useUser } from '../contexts/UserContext'
 import { requestLocation } from '../lib/telegram'
@@ -26,10 +26,29 @@ export default function SimilarListings({ listing }: SimilarListingsProps) {
     const loadSimilarListings = async () => {
       setLoading(true)
       try {
-        // First, try smart recommendations (tag-based)
-        const smartRecs = await getRecommendationsForListing(listing.listing_id, 6)
+        let smartRecs: RecommendationScore[] = []
         
-        if (smartRecs.length >= 3) {
+        // Priority 1: Taxonomy-based recommendations (best for clothing)
+        const taxonomyId = listing.attributes?.taxonomy?.id
+        if (taxonomyId) {
+          smartRecs = await getRecommendationsByTaxonomy(taxonomyId, listing.listing_id, 6)
+        }
+        
+        // Priority 2: "You may also like" (combines taxonomy + personalization)
+        if (smartRecs.length < 3) {
+          smartRecs = await getYouMayAlsoLike(
+            listing.listing_id, 
+            user?.telegram_user_id,
+            6
+          )
+        }
+        
+        // Priority 3: Tag-based recommendations
+        if (smartRecs.length < 3) {
+          smartRecs = await getRecommendationsForListing(listing.listing_id, 6)
+        }
+        
+        if (smartRecs.length >= 2) {
           // Use smart recommendations
           setRecommendations(smartRecs)
           
@@ -86,7 +105,7 @@ export default function SimilarListings({ listing }: SimilarListingsProps) {
     }
 
     loadSimilarListings()
-  }, [listing.listing_id, listing.category, user?.search_radius_miles])
+  }, [listing.listing_id, listing.category, listing.attributes?.taxonomy?.id, user?.search_radius_miles, user?.telegram_user_id])
 
   const handleListingClick = (similarListing: Listing) => {
     // Track view
