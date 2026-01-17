@@ -761,7 +761,7 @@ export default function ListingDetail() {
       </section>
 
       {/* Similar */}
-      <section className="bg-slate-950 pt-8">
+      <section className="bg-slate-950 pt-8 pb-40">
         <SimilarListings listing={listing} />
       </section>
 
@@ -780,12 +780,12 @@ export default function ListingDetail() {
           FLOATING ACTION BAR
       ═══════════════════════════════════════════════════════════ */}
       {!isOwnListing && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="fixed bottom-16 left-0 right-0 z-[60]">
           {/* Gradient fade */}
-          <div className="h-20 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
+          <div className="h-16 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
           
           {/* Action bar */}
-          <div className="bg-slate-950/80 backdrop-blur-xl border-t border-white/10 px-5 py-4 pb-8">
+          <div className="bg-slate-950/95 backdrop-blur-xl border-t border-white/10 px-5 py-3">
             <div className="flex items-center gap-3 max-w-md mx-auto">
               {/* Favorite */}
               <button
