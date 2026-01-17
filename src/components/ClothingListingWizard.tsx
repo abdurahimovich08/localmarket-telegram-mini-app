@@ -12,6 +12,7 @@ import { uploadImages } from '../lib/imageUpload'
 import { compressDataUrls } from '../lib/imageCompression'
 import { useEntityMutations } from '../hooks/useEntityMutations'
 import BannerCropper from './BannerCropper'
+import BannerCreator from './BannerCreator'
 import { 
   ArrowLeftIcon, 
   ArrowRightIcon,
@@ -24,7 +25,8 @@ import {
   XMarkIcon,
   PlusIcon,
   TagIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  PaintBrushIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { CLOTHING_TAXONOMY, TaxonNode, Audience, Segment } from '../taxonomy/clothing.uz'
@@ -188,6 +190,8 @@ export default function ClothingListingWizard({
   // Form data
   const [photos, setPhotos] = useState<string[]>([])
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [showBannerCreator, setShowBannerCreator] = useState(false)
+  const [imageForBanner, setImageForBanner] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     title: '',
@@ -681,12 +685,26 @@ export default function ClothingListingWizard({
                       alt={`Photo ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    <button
-                      onClick={() => removePhoto(index)}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <XMarkIcon className="w-4 h-4 text-white" />
-                    </button>
+                    {/* Action buttons */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => {
+                          setImageForBanner(photo)
+                          setShowBannerCreator(true)
+                        }}
+                        className="p-2 bg-violet-500 rounded-xl hover:bg-violet-600 transition-colors"
+                        title="Banner yaratish"
+                      >
+                        <PaintBrushIcon className="w-5 h-5 text-white" />
+                      </button>
+                      <button
+                        onClick={() => removePhoto(index)}
+                        className="p-2 bg-red-500 rounded-xl hover:bg-red-600 transition-colors"
+                        title="O'chirish"
+                      >
+                        <XMarkIcon className="w-5 h-5 text-white" />
+                      </button>
+                    </div>
                     {index === 0 && (
                       <div className="absolute bottom-2 left-2 px-2 py-1 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full">
                         <span className="text-white text-xs font-medium">Asosiy</span>
@@ -705,6 +723,21 @@ export default function ClothingListingWizard({
                   </button>
                 )}
               </div>
+              
+              {/* Banner Creator CTA */}
+              {photos.length > 0 && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border border-violet-500/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                      <SparklesIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium text-sm">Professional banner yarating</p>
+                      <p className="text-white/60 text-xs">Rasmni bosing va 🎨 tugmasini tanlang</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {photos.length === 0 && (
                 <div 
@@ -1212,6 +1245,26 @@ export default function ClothingListingWizard({
           aspectRatio={1}
           onCrop={handleCroppedImage}
           onCancel={() => setImageToCrop(null)}
+        />
+      )}
+      
+      {/* Banner Creator modal */}
+      {showBannerCreator && imageForBanner && (
+        <BannerCreator
+          productImage={imageForBanner}
+          productTitle={formData.title || selectedTaxonomy?.labelUz || 'Mahsulot'}
+          productPrice={formData.price ? parseFloat(formData.price.replace(/\s/g, '')) : undefined}
+          productBrand={formData.brand || undefined}
+          onComplete={(bannerUrl) => {
+            // Add banner as new photo (at the beginning for prominence)
+            setPhotos(prev => [bannerUrl, ...prev])
+            setShowBannerCreator(false)
+            setImageForBanner(null)
+          }}
+          onCancel={() => {
+            setShowBannerCreator(false)
+            setImageForBanner(null)
+          }}
         />
       )}
     </div>
