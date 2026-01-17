@@ -209,18 +209,30 @@ export const getListings = async (filters?: {
 
   // Score listings by relevance if search query exists
   if (filters?.search && filters.search.trim()) {
-    // Get search variations for enhanced matching
-    const variations = buildSearchVariations(filters.search.trim())
+    // Import smart search for enhanced matching
+    const { buildSmartSearch, smartScoreRelevance, soundsSimilar, normalizeBrand } = await import('./smartSearch')
+    
+    // Get smart search data
+    const smartSearch = buildSmartSearch(filters.search.trim())
     const searchTerm = filters.search.trim().toLowerCase()
     
-    // Client-side filtering and scoring for fuzzy matching
+    // Client-side filtering and scoring with smart matching
     const scoredResults = results.map((listing: Listing) => {
       const titleLower = listing.title.toLowerCase()
       const descLower = (listing.description || '').toLowerCase()
-      let relevanceScore = scoreListingRelevance(listing, filters.search!)
       
-      // Check variations for better matching
-      variations.forEach(variation => {
+      // Use smart scoring for enhanced relevance
+      let relevanceScore = smartScoreRelevance(
+        { 
+          title: listing.title, 
+          description: listing.description || '',
+          attributes: listing.attributes
+        }, 
+        filters.search!
+      )
+      
+      // Check all variations for better matching
+      smartSearch.searchVariations.forEach(variation => {
         const varLower = variation.toLowerCase()
         if (titleLower.includes(varLower)) {
           relevanceScore += 30 // Bonus for variation match in title
@@ -228,6 +240,25 @@ export const getListings = async (filters?: {
           relevanceScore += 10 // Bonus for variation match in description
         }
       })
+      
+      // Phonetic matching bonus
+      const titleWords = titleLower.split(/\s+/)
+      const searchWords = searchTerm.split(/\s+/)
+      for (const titleWord of titleWords) {
+        for (const searchWord of searchWords) {
+          if (soundsSimilar(titleWord, searchWord)) {
+            relevanceScore += 25 // Phonetic match bonus
+          }
+        }
+      }
+      
+      // Brand match bonus
+      if (smartSearch.brandMatch && listing.attributes?.brand) {
+        const listingBrand = normalizeBrand(listing.attributes.brand)
+        if (listingBrand === smartSearch.brandMatch) {
+          relevanceScore += 40 // Brand match bonus
+        }
+      }
       
       // Exact match bonus (title has higher weight)
       if (titleLower.includes(searchTerm)) {

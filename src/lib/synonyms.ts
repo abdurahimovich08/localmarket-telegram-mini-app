@@ -41,11 +41,35 @@ const FURNITURE_SYNONYMS: Record<string, string[]> = {
   'karavot': ['krovat', 'karavot sotish', 'krovat sotish'],
 }
 
-// Clothing Synonyms
+// Clothing Synonyms - Enhanced
 const CLOTHING_SYNONYMS: Record<string, string[]> = {
-  'kiyim': ['kiyim sotish', 'yangi kiyim'],
-  'poyabzal': ['botinka', 'poyabzal sotish', 'botinka sotish'],
-  'botinka': ['poyabzal', 'etiklari'],
+  // General
+  'kiyim': ['kiyim sotish', 'yangi kiyim', 'одежда', 'odejda'],
+  'poyabzal': ['botinka', 'poyabzal sotish', 'botinka sotish', 'oyoq kiyim', 'обувь'],
+  'botinka': ['poyabzal', 'etiklari', 'oyoq kiyim', 'ботинки'],
+  
+  // Footwear
+  'krossovka': ['krasovka', 'krosovka', 'sport oyoq kiyimi', 'sportivka', 'sneaker', 'кроссовки'],
+  'tufli': ['туфли', 'ayollar tufli', 'balandposhnali', 'klassik oyoq kiyim'],
+  'sandal': ['сандали', 'yozgi oyoq kiyimi', 'sandali', 'shippak'],
+  'etik': ['сапоги', 'sapogi', 'uzun botinka', 'qishki oyoq kiyim'],
+  
+  // Upper body
+  'futbolka': ['футболка', 'tshirt', 't-shirt', 'mayka', 'майка', 'yengil kiyim'],
+  'ko\'ylak': ['рубашка', 'rubashka', 'shirt', 'koylak', 'klassik kiyim'],
+  'kurtka': ['куртка', 'jacket', 'jaket', 'ustki kiyim'],
+  'sviter': ['свитер', 'sweater', 'suiter', 'issiq kiyim'],
+  'hoodie': ['худи', 'xudi', 'kapushonli', 'sport kiyim'],
+  
+  // Lower body
+  'shim': ['брюки', 'bryuki', 'pants', 'shtani', 'штаны', 'klassik shim'],
+  'jinsi': ['джинсы', 'jeans', 'jins', 'джинс', 'denim'],
+  'shorty': ['шорты', 'shorts', 'qisqa shim', 'yozgi shim'],
+  
+  // Full body
+  'kostyum': ['костюм', 'suit', 'klassik kostyum', 'ish kiyimi'],
+  'sport forma': ['спортивный костюм', 'trenirovka kiyimi', 'sportivka', 'sport kiyim'],
+  'ko\'ylak-libos': ['платье', 'dress', 'platie', 'ayollar kiyimi'],
 }
 
 // Russian → Uzbek mappings (for Russian users)

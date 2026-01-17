@@ -7,6 +7,7 @@ import { useNavigateWithCtx } from '../lib/preserveCtx'
 import { trackUserSearch, trackListingView } from '../lib/tracking'
 import UniversalCard from '../components/UniversalCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
+import SearchSuggestion from '../components/SearchSuggestion'
 import BackButton from '../components/BackButton'
 import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
@@ -118,6 +119,14 @@ export default function Search() {
         
         {/* Filters */}
         <SearchFilters filters={filters} onFiltersChange={setFilters} />
+        
+        {/* Smart Search Suggestions */}
+        {searchQuery && (
+          <SearchSuggestion 
+            query={searchQuery} 
+            onSuggestionClick={(suggestion) => setSearchQuery(suggestion)}
+          />
+        )}
       </header>
 
       {/* ✅ UI States: Loading/Error/Empty/Results */}
