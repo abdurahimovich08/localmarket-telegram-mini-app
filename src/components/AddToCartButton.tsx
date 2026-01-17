@@ -8,6 +8,8 @@ interface AddToCartButtonProps {
   listingId: string
   className?: string
   showIcon?: boolean
+  selectedSize?: string
+  selectedColor?: string
   onAdd?: () => void
   onRemove?: () => void
 }
@@ -16,6 +18,8 @@ export default function AddToCartButton({
   listingId,
   className = '',
   showIcon = true,
+  selectedSize,
+  selectedColor,
   onAdd,
   onRemove,
 }: AddToCartButtonProps) {
