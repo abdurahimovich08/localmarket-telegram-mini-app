@@ -19,6 +19,7 @@ import AIChatCreationPage from './pages/AIChatCreationPage'
 import ServiceDetailsPage from './pages/ServiceDetailsPage'
 import ServiceEdit from './pages/ServiceEdit'
 import UnifiedAICreationPage from './pages/UnifiedAICreationPage'
+import ClothingListingWizard from './components/ClothingListingWizard'
 import ChooseCategoryUnified from './pages/ChooseCategoryUnified'
 import Dashboard from './pages/Dashboard'
 import DashboardRank from './pages/DashboardRank'
@@ -210,6 +211,7 @@ function AppRoutes() {
       {/* Unified AI Creation Routes */}
       <Route path="/create-unified" element={<MarketplaceLayout><ChooseCategoryUnified /></MarketplaceLayout>} />
       <Route path="/create-unified/chat" element={<MarketplaceLayout><UnifiedAICreationPage entityType="product" category="" /></MarketplaceLayout>} />
+      <Route path="/create-clothing" element={<ClothingListingWizard />} />
       <Route path="/create-service-unified" element={<MarketplaceLayout><UnifiedAICreationPage entityType="service" category="service" /></MarketplaceLayout>} />
       <Route path="/service/:id" element={<MarketplaceLayout><ServiceDetailsPage /></MarketplaceLayout>} />
       <Route path="/service/:id/edit" element={<MarketplaceLayout><ServiceEdit /></MarketplaceLayout>} />
