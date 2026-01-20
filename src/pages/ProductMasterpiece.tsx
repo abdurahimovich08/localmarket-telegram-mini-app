@@ -119,13 +119,7 @@ export default function ProductMasterpiece() {
   
   // Refs
   const heroRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
-  const touchStartY = useRef(0)
-  const lastY = useRef(0)
-  const [sheetOffset, setSheetOffset] = useState(0) // How much the sheet is pulled up
-  const [isDragging, setIsDragging] = useState(false)
-  const maxPullUp = 300 // Maximum pull up distance
   
   // ─────────────────────────────────────────────────────────────────────────
   // COMPUTED VALUES
@@ -301,30 +295,6 @@ export default function ProductMasterpiece() {
     }
   }
   
-  // Bottom sheet drag handling
-  const handleSheetTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY
-    lastY.current = sheetOffset
-    setIsDragging(true)
-  }
-  
-  const handleSheetTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return
-    const currentY = e.touches[0].clientY
-    const diff = touchStartY.current - currentY // Positive when pulling up
-    const newOffset = Math.max(0, Math.min(maxPullUp, lastY.current + diff))
-    setSheetOffset(newOffset)
-  }
-  
-  const handleSheetTouchEnd = () => {
-    setIsDragging(false)
-    // Snap to positions
-    if (sheetOffset > maxPullUp / 2) {
-      setSheetOffset(maxPullUp) // Snap to full
-    } else {
-      setSheetOffset(0) // Snap back
-    }
-  }
   
   // ─────────────────────────────────────────────────────────────────────────
   // LOADING STATE
@@ -408,15 +378,14 @@ export default function ProductMasterpiece() {
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          🖼️ HERO ZONE - Visual Impact
+          🖼️ HERO ZONE - Fixed Background
           
           PSYCHOLOGY:
           - Large image = premium feel
-          - Swipeable = engagement
-          - Discount badge = attention grab
-          - Photo count = set expectations
+          - Fixed position = content scrolls over it
+          - Parallax feel = premium experience
       ═══════════════════════════════════════════════════════════════════ */}
-      <section ref={heroRef} className="bg-white">
+      <section ref={heroRef} className="sticky top-14 z-0 bg-white">
         <div 
           className="relative aspect-[4/5] overflow-hidden"
           onTouchStart={handleTouchStart}
@@ -523,25 +492,20 @@ export default function ProductMasterpiece() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          📦 DRAGGABLE CONTENT SHEET
-          - Can be pulled up over the image
-          - Smooth snap animation
+          📦 CONTENT SHEET
+          - Scrolls over the sticky image
+          - Rounded top for visual separation
+          - Shadow for depth
       ═══════════════════════════════════════════════════════════════════ */}
       <div 
-        ref={contentRef}
-        className="relative z-20 bg-[#FAFAF8] rounded-t-[32px] -mt-8"
+        className="relative z-10 bg-[#FAFAF8] rounded-t-[28px] -mt-7"
         style={{
-          transform: `translateY(-${sheetOffset}px)`,
-          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          boxShadow: sheetOffset > 0 ? '0 -10px 40px rgba(0,0,0,0.15)' : '0 -4px 20px rgba(0,0,0,0.08)',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.1)',
         }}
-        onTouchStart={handleSheetTouchStart}
-        onTouchMove={handleSheetTouchMove}
-        onTouchEnd={handleSheetTouchEnd}
       >
-        {/* Drag Handle */}
-        <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        {/* Pull Indicator */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
         
       {/* ═══════════════════════════════════════════════════════════════════
