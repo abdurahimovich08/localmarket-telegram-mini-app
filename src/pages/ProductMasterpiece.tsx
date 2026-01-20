@@ -106,6 +106,7 @@ export default function ProductMasterpiece() {
   const [loading, setLoading] = useState(true)
   const [favorited, setFavorited] = useState(false)
   const [favAnimating, setFavAnimating] = useState(false)
+  const [favoritesCount, setFavoritesCount] = useState(0)
   const [currentPhoto, setCurrentPhoto] = useState(0)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
@@ -217,6 +218,7 @@ export default function ProductMasterpiece() {
         const data = await getListing(id)
         if (data) {
           setListing(data)
+          setFavoritesCount(data.favorites_count || 0)
           incrementViewCount(id)
           if (user?.telegram_user_id) {
             const fav = await isFavorite(user.telegram_user_id, id)
@@ -241,12 +243,16 @@ export default function ProductMasterpiece() {
     setFavAnimating(true)
     setTimeout(() => setFavAnimating(false), 600)
     
+    // Optimistic update
     if (favorited) {
+      setFavoritesCount(prev => Math.max(0, prev - 1))
+      setFavorited(false)
       await removeFavorite(user.telegram_user_id, listing.listing_id)
     } else {
+      setFavoritesCount(prev => prev + 1)
+      setFavorited(true)
       await addFavorite(user.telegram_user_id, listing.listing_id)
     }
-    setFavorited(!favorited)
   }, [user, listing, favorited])
   
   const handleAddToCart = useCallback(async () => {
@@ -438,7 +444,7 @@ export default function ProductMasterpiece() {
             } ${favAnimating ? 'animate-heartbeat' : ''}`}
           >
             <span className="font-semibold text-lg">
-              {formatLikeCount(listing.favorites_count || 0)}
+              {formatLikeCount(favoritesCount)}
             </span>
             {favorited ? (
               <HeartSolid className="w-6 h-6 text-red-500" />
