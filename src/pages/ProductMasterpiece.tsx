@@ -361,26 +361,12 @@ export default function ProductMasterpiece() {
             <ChevronLeftIcon className="w-6 h-6 text-gray-800" />
           </button>
           
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={handleShare}
-              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 active:scale-95 transition-all"
-            >
-              <ShareIcon className="w-5 h-5 text-gray-700" />
-            </button>
-            <button 
-              onClick={toggleFavorite}
-              className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all ${
-                favorited ? 'text-red-500' : 'text-gray-700 hover:bg-black/5'
-              } ${favAnimating ? 'animate-heartbeat' : ''}`}
-            >
-              {favorited ? (
-                <HeartSolid className="w-6 h-6" />
-              ) : (
-                <HeartIcon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+          <button 
+            onClick={handleShare}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 active:scale-95 transition-all"
+          >
+            <ShareIcon className="w-5 h-5 text-gray-700" />
+          </button>
         </div>
       </header>
 
@@ -433,13 +419,24 @@ export default function ProductMasterpiece() {
             </div>
           )}
           
-          {/* 🔥 Hot Badge - If popular */}
-          {(listing.views || 0) > 50 && (
-            <div className="absolute top-4 right-4 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-              <FireIcon className="w-3 h-3" />
-              Ommabop
-            </div>
-          )}
+          {/* ❤️ Like Counter Badge - Bottom Right */}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFavorite() }}
+            className={`absolute bottom-20 right-4 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg backdrop-blur-md transition-all active:scale-95 ${
+              favorited 
+                ? 'bg-white text-gray-900' 
+                : 'bg-white/90 text-gray-700 hover:bg-white'
+            } ${favAnimating ? 'animate-heartbeat' : ''}`}
+          >
+            <span className="font-semibold text-lg">
+              {formatLikeCount(listing.favorites_count || 0)}
+            </span>
+            {favorited ? (
+              <HeartSolid className="w-6 h-6 text-red-500" />
+            ) : (
+              <HeartIcon className="w-6 h-6" />
+            )}
+          </button>
           
           {/* Photo Navigation Dots */}
           {photos.length > 1 && (
@@ -1117,4 +1114,14 @@ function getConditionLabel(condition: string): string {
     'fair': "O'rtacha",
   }
   return labels[condition] || condition
+}
+
+function formatLikeCount(count: number): string {
+  if (count >= 1000000) {
+    return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  }
+  if (count >= 1000) {
+    return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+  }
+  return count.toString()
 }
