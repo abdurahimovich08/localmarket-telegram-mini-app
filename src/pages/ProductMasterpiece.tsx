@@ -422,18 +422,6 @@ export default function ProductMasterpiece() {
             </div>
           )}
           
-          {/* 🏷️ Discount Badge - Below Cart Badge */}
-          {discount && (
-            <div className={`absolute ${(listing.in_carts_count || 0) > 0 ? 'top-16' : 'top-4'} left-4 flex items-center gap-2`}>
-              <div className="bg-emerald-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
-                -{discount.percent}%
-              </div>
-              <div className="bg-white/90 backdrop-blur text-emerald-600 text-xs font-medium px-2 py-1 rounded-full shadow">
-                {discount.savings?.toLocaleString()} so'm tejang!
-              </div>
-            </div>
-          )}
-          
           {/* ❤️ Like Counter Badge - Bottom Right */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleFavorite() }}
@@ -517,7 +505,22 @@ export default function ProductMasterpiece() {
           - Scarcity message = urgency
           - Rating = social proof
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden">
+      <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden relative">
+        {/* 🏷️ Discount Ribbon - Right Side */}
+        {discount && (
+          <div className="absolute -right-2 top-6 z-10">
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-bold px-4 py-1.5 shadow-lg"
+                 style={{
+                   clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 8px 50%)'
+                 }}>
+              {discount.percent}% OFF
+            </div>
+            {/* Ribbon fold */}
+            <div className="absolute -bottom-1 right-0 w-2 h-2 bg-orange-700" 
+                 style={{ clipPath: 'polygon(100% 0, 0 100%, 100% 100%)' }} />
+          </div>
+        )}
+        
         <div className="p-5">
           {/* Brand Tag */}
           {listing.attributes?.brand && (
@@ -528,7 +531,7 @@ export default function ProductMasterpiece() {
           )}
           
           {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3">
+          <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3 pr-16">
             {listing.title}
           </h1>
           
