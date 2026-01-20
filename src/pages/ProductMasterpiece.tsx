@@ -506,18 +506,18 @@ export default function ProductMasterpiece() {
           - Rating = social proof
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden relative">
-        {/* 🏷️ Discount Ribbon - Right Side */}
+        {/* 🏷️ Discount Ribbon - Angled Corner */}
         {discount && (
-          <div className="absolute -right-2 top-6 z-10">
-            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white text-sm font-bold px-4 py-1.5 shadow-lg"
-                 style={{
-                   clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%, 8px 50%)'
-                 }}>
-              {discount.percent}% OFF
+          <div className="absolute -top-3 -right-3 z-10 overflow-visible">
+            <div 
+              className="bg-amber-500 text-white text-xs font-bold px-6 py-1 shadow-lg"
+              style={{
+                transform: 'rotate(45deg) translateX(8px)',
+                transformOrigin: 'center',
+              }}
+            >
+              -{discount.percent}%
             </div>
-            {/* Ribbon fold */}
-            <div className="absolute -bottom-1 right-0 w-2 h-2 bg-orange-700" 
-                 style={{ clipPath: 'polygon(100% 0, 0 100%, 100% 100%)' }} />
           </div>
         )}
         
