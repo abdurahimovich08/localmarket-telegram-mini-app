@@ -119,7 +119,13 @@ export default function ProductMasterpiece() {
   
   // Refs
   const heroRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const lastY = useRef(0)
+  const [sheetOffset, setSheetOffset] = useState(0) // How much the sheet is pulled up
+  const [isDragging, setIsDragging] = useState(false)
+  const maxPullUp = 300 // Maximum pull up distance
   
   // ─────────────────────────────────────────────────────────────────────────
   // COMPUTED VALUES
@@ -292,6 +298,31 @@ export default function ProductMasterpiece() {
       } else if (diff < 0 && currentPhoto > 0) {
         setCurrentPhoto(p => p - 1)
       }
+    }
+  }
+  
+  // Bottom sheet drag handling
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    lastY.current = sheetOffset
+    setIsDragging(true)
+  }
+  
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return
+    const currentY = e.touches[0].clientY
+    const diff = touchStartY.current - currentY // Positive when pulling up
+    const newOffset = Math.max(0, Math.min(maxPullUp, lastY.current + diff))
+    setSheetOffset(newOffset)
+  }
+  
+  const handleSheetTouchEnd = () => {
+    setIsDragging(false)
+    // Snap to positions
+    if (sheetOffset > maxPullUp / 2) {
+      setSheetOffset(maxPullUp) // Snap to full
+    } else {
+      setSheetOffset(0) // Snap back
     }
   }
   
@@ -492,6 +523,28 @@ export default function ProductMasterpiece() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
+          📦 DRAGGABLE CONTENT SHEET
+          - Can be pulled up over the image
+          - Smooth snap animation
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div 
+        ref={contentRef}
+        className="relative z-20 bg-[#FAFAF8] rounded-t-[32px] -mt-8"
+        style={{
+          transform: `translateY(-${sheetOffset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          boxShadow: sheetOffset > 0 ? '0 -10px 40px rgba(0,0,0,0.15)' : '0 -4px 20px rgba(0,0,0,0.08)',
+        }}
+        onTouchStart={handleSheetTouchStart}
+        onTouchMove={handleSheetTouchMove}
+        onTouchEnd={handleSheetTouchEnd}
+      >
+        {/* Drag Handle */}
+        <div className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+        
+      {/* ═══════════════════════════════════════════════════════════════════
           💰 DECISION ZONE - Price & Core Info
           
           PSYCHOLOGY:
@@ -500,7 +553,7 @@ export default function ProductMasterpiece() {
           - Scarcity message = urgency
           - Rating = social proof
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="mx-4 mt-3 bg-white rounded-3xl shadow-sm overflow-hidden">
+      <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden">
         <div className="p-5">
           {/* Brand Tag */}
           {listing.attributes?.brand && (
@@ -976,6 +1029,8 @@ export default function ProductMasterpiece() {
 
       {/* Bottom Spacer for Fixed CTA */}
       <div className="h-8" />
+      
+      </div> {/* End of Draggable Content Sheet */}
 
       {/* ═══════════════════════════════════════════════════════════════════
           🛒 FLOATING ACTION BAR - The Close
