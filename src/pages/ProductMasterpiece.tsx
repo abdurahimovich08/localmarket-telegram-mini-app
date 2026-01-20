@@ -243,11 +243,14 @@ export default function ProductMasterpiece() {
     <div className="min-h-screen bg-[#FAFAF8] pb-32">
       
       {/* ═══════════════════════════════════════════════════════════════════
-          🖼️ IMMERSIVE HERO - Full Screen Image with Overlays
+          🖼️ IMMERSIVE HERO - Almost Full Screen (95vh)
+          - Rasm deyarli butun ekranni egallaydi
+          - Pastda faqat kichik hint ko'rinadi
       ═══════════════════════════════════════════════════════════════════ */}
       <section 
         ref={heroRef} 
-        className="relative h-[75vh] bg-black overflow-hidden"
+        className="relative bg-black overflow-hidden"
+        style={{ height: 'calc(100vh - 60px)' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -372,18 +375,47 @@ export default function ProductMasterpiece() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          📦 CONTENT SHEET - Scrolls over image
+          📦 CONTENT SHEET - Peek indicator + scrollable content
+          - Faqat 60px ko'rinadi (tepaga tortish uchun hint)
+          - Scroll qilganda to'liq ochiladi
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 bg-[#FAFAF8] rounded-t-[28px] -mt-7" style={{ boxShadow: '0 -8px 30px rgba(0,0,0,0.1)' }}>
-        {/* Pull Indicator */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
+      <div 
+        className="relative z-10 bg-white rounded-t-[32px] -mt-16"
+        style={{ 
+          boxShadow: '0 -12px 40px rgba(0,0,0,0.15)',
+          minHeight: '100vh'
+        }}
+      >
+        {/* Pull Up Indicator - Animated hint */}
+        <div className="flex flex-col items-center pt-4 pb-3">
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-2" />
+          <p className="text-xs text-gray-400 animate-pulse">Tepaga suring ↑</p>
+        </div>
+        
+        {/* Quick Preview - Price peek */}
+        <div className="px-5 pb-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                {listing.price?.toLocaleString()} <span className="text-sm font-normal text-gray-500">so'm</span>
+              </p>
+              {discount && (
+                <p className="text-sm text-gray-400 line-through">{discount.original?.toLocaleString()} so'm</p>
+              )}
+            </div>
+            {reviewStats.count > 0 && (
+              <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full">
+                <StarIcon className="w-4 h-4 text-amber-500" />
+                <span className="font-bold text-amber-700">{reviewStats.average.toFixed(1)}</span>
+              </div>
+            )}
+          </div>
         </div>
         
       {/* ═══════════════════════════════════════════════════════════════════
-          💰 DECISION ZONE - Price & Core Info
+          💰 PRODUCT INFO - Title, Brand, Features
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden relative">
+      <section className="mx-4 mt-3 bg-gray-50 rounded-3xl overflow-hidden relative">
         {/* Discount Ribbon */}
         {discount && (
           <div className="absolute top-0 right-0 z-20 w-24 h-24 overflow-hidden">
@@ -396,65 +428,42 @@ export default function ProductMasterpiece() {
         <div className="p-5">
           {/* Brand Tag */}
           {listing.attributes?.brand && (
-            <div className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
+            <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">
               <TagIcon className="w-3 h-3" />
               {listing.attributes.brand}
             </div>
           )}
           
           {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3 pr-16">
+          <h2 className="text-xl font-bold text-gray-900 leading-tight mb-3 pr-16">
             {listing.title}
-          </h1>
+          </h2>
           
-          {/* Rating & Reviews Row */}
-          <div className="flex items-center gap-3 mb-4">
-            {reviewStats.count > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center bg-amber-50 px-2 py-1 rounded-lg">
-                  <StarIcon className="w-4 h-4 text-amber-500" />
-                  <span className="ml-1 font-bold text-amber-700">{reviewStats.average.toFixed(1)}</span>
-                </div>
-                <span className="text-gray-400 text-sm">({reviewStats.count} sharh)</span>
+          {/* Features Row */}
+          <div className="flex flex-wrap gap-2">
+            {/* Delivery Badge */}
+            {listing.attributes?.delivery_available && (
+              <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full text-sm font-medium">
+                <TruckIcon className="w-4 h-4" />
+                Yetkazib berish
               </div>
-            ) : (
-              <span className="text-gray-400 text-sm flex items-center gap-1">
-                <StarOutline className="w-4 h-4" />
-                Yangi mahsulot
-              </span>
+            )}
+            
+            {/* Stock Status */}
+            {stockStatus.status !== 'available' && stockStatus.status !== 'out' && (
+              <div className={`flex items-center gap-1.5 ${stockStatus.color} bg-orange-50 px-3 py-1.5 rounded-full text-sm font-medium`}>
+                <SparklesIcon className="w-4 h-4" />
+                {stockStatus.message}
+              </div>
+            )}
+            
+            {/* Reviews count */}
+            {reviewStats.count > 0 && (
+              <div className="flex items-center gap-1.5 text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full text-sm">
+                <span>{reviewStats.count} ta sharh</span>
+              </div>
             )}
           </div>
-          
-          {/* Price Section */}
-          <div className="flex items-end gap-3 mb-4">
-            <span className="text-4xl font-black text-gray-900 tracking-tight">
-              {listing.price?.toLocaleString()}
-              <span className="text-lg font-medium text-gray-500 ml-1">so'm</span>
-            </span>
-            {discount && (
-              <span className="text-xl text-gray-400 line-through mb-1">
-                {discount.original?.toLocaleString()}
-              </span>
-            )}
-          </div>
-          
-          {/* Delivery Badge */}
-          {listing.attributes?.delivery_available && (
-            <div className="flex items-center gap-2 text-emerald-600 mb-3">
-              <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                <TruckIcon className="w-3 h-3" />
-              </div>
-              <span className="text-sm font-medium">Yetkazib berish mavjud</span>
-            </div>
-          )}
-          
-          {/* Stock Status */}
-          {stockStatus.status !== 'available' && stockStatus.status !== 'out' && (
-            <div className={`inline-flex items-center gap-2 ${stockStatus.color} text-sm font-semibold bg-orange-50 px-3 py-1.5 rounded-full`}>
-              <SparklesIcon className="w-4 h-4" />
-              {stockStatus.message}
-            </div>
-          )}
         </div>
       </section>
 
