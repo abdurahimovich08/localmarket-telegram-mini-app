@@ -506,14 +506,13 @@ export default function ProductMasterpiece() {
           - Rating = social proof
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="mx-4 bg-white rounded-3xl shadow-sm overflow-hidden relative">
-        {/* 🏷️ Discount Ribbon - Angled Corner */}
+        {/* 🏷️ Discount Ribbon - Corner Banner */}
         {discount && (
-          <div className="absolute -top-3 -right-3 z-10 overflow-visible">
+          <div className="absolute top-0 right-0 z-20 w-24 h-24 overflow-hidden">
             <div 
-              className="bg-amber-500 text-white text-xs font-bold px-6 py-1 shadow-lg"
+              className="absolute top-4 -right-8 w-32 bg-amber-500 text-white text-sm font-bold py-1.5 text-center shadow-lg"
               style={{
-                transform: 'rotate(45deg) translateX(8px)',
-                transformOrigin: 'center',
+                transform: 'rotate(45deg)',
               }}
             >
               -{discount.percent}%
