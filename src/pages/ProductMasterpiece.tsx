@@ -553,6 +553,16 @@ export default function ProductMasterpiece() {
             )}
           </div>
           
+          {/* Delivery Badge */}
+          {listing.attributes?.delivery_available && (
+            <div className="flex items-center gap-2 text-emerald-600 mb-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                <TruckIcon className="w-3 h-3" />
+              </div>
+              <span className="text-sm font-medium">Yetkazib berish mavjud</span>
+            </div>
+          )}
+          
           {/* Stock Status Alert */}
           {stockStatus.status !== 'available' && stockStatus.status !== 'out' && (
             <div className={`inline-flex items-center gap-2 ${stockStatus.color} text-sm font-semibold bg-orange-50 px-3 py-1.5 rounded-full`}>
