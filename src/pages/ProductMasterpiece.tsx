@@ -407,13 +407,22 @@ export default function ProductMasterpiece() {
             </div>
           )}
           
-          {/* 🏷️ Discount Badge - Top Left */}
+          {/* 🛒 In Carts Badge - Top Left */}
+          {(listing.in_carts_count || 0) > 0 && (
+            <div className="absolute top-4 left-4 bg-red-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5">
+              <span className="uppercase tracking-wide">
+                {formatLikeCount(listing.in_carts_count || 0)} ta savatda
+              </span>
+            </div>
+          )}
+          
+          {/* 🏷️ Discount Badge - Below Cart Badge */}
           {discount && (
-            <div className="absolute top-4 left-4 flex items-center gap-2">
-              <div className="bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse-subtle">
+            <div className={`absolute ${(listing.in_carts_count || 0) > 0 ? 'top-16' : 'top-4'} left-4 flex items-center gap-2`}>
+              <div className="bg-emerald-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
                 -{discount.percent}%
               </div>
-              <div className="bg-white/90 backdrop-blur text-red-600 text-xs font-medium px-2 py-1 rounded-full shadow">
+              <div className="bg-white/90 backdrop-blur text-emerald-600 text-xs font-medium px-2 py-1 rounded-full shadow">
                 {discount.savings?.toLocaleString()} so'm tejang!
               </div>
             </div>
