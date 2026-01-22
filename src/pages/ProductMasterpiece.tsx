@@ -497,32 +497,68 @@ export default function ProductMasterpiece() {
             )}
           </div>
           
-          {/* Circular Image Gallery */}
-          <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
-            {photos.map((photo, index) => {
-              const isSelected = index === currentPhoto
-              return (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPhoto(index)}
-                  className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-110' : ''}`}
-                >
-                  <div className={`rounded-full overflow-hidden transition-all duration-300 ${
-                    isSelected 
-                      ? 'w-16 h-16 ring-3 ring-white shadow-xl' 
-                      : 'w-12 h-12 ring-2 ring-white/40 opacity-70'
-                  }`}>
-                    <img src={photo} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  {isSelected && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
-                      <FireIcon className="w-3 h-3 text-white" />
+          {/* Color Variant Gallery - Mini Thumbnails */}
+          {variants.colors.length > 0 ? (
+            <div className="flex items-end justify-center gap-3 overflow-x-auto pb-2 px-2">
+              {variants.colors.map((color) => {
+                const byColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
+                const colorPhotos = byColor?.[color] || listing?.photos || []
+                const firstPhoto = colorPhotos[0] || listing?.photos?.[0] || ''
+                const isSelected = selectedColor === color
+                
+                return (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      setSelectedColor(color)
+                      setCurrentPhoto(0)
+                    }}
+                    className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-105' : ''}`}
+                  >
+                    <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
+                      isSelected 
+                        ? 'w-20 h-20 ring-3 ring-orange-500 shadow-xl' 
+                        : 'w-16 h-16 ring-2 ring-white/40 opacity-80 hover:opacity-100'
+                    }`}>
+                      <img src={firstPhoto} alt={color} className="w-full h-full object-cover" />
                     </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+                    {isSelected && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-orange-500 rounded-full">
+                        <span className="text-[10px] font-semibold text-white capitalize">{color}</span>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            /* Fallback: Original Circular Gallery if no color variants */
+            <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
+              {photos.map((photo, index) => {
+                const isSelected = index === currentPhoto
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentPhoto(index)}
+                    className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-110' : ''}`}
+                  >
+                    <div className={`rounded-full overflow-hidden transition-all duration-300 ${
+                      isSelected 
+                        ? 'w-16 h-16 ring-3 ring-white shadow-xl' 
+                        : 'w-12 h-12 ring-2 ring-white/40 opacity-70'
+                    }`}>
+                      <img src={photo} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    {isSelected && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+                        <FireIcon className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           
           {/* Collection Label */}
           {listing.subcategory && (
@@ -637,73 +673,45 @@ export default function ProductMasterpiece() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          🎨 VARIANT SELECTION
+          🎨 VARIANT SELECTION (Only Sizes - Colors moved to image gallery)
       ═══════════════════════════════════════════════════════════════════ */}
-      {(variants.colors.length > 0 || variants.sizes.length > 0) && (
+      {variants.sizes.length > 0 && (
         <section className="mx-4 mt-3 bg-white rounded-3xl shadow-sm overflow-hidden">
-          {/* Colors */}
-          {variants.colors.length > 0 && (
-            <div className="p-5 border-b border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Rang tanlang</h3>
-                {selectedColor && <span className="text-sm text-gray-500 capitalize bg-gray-100 px-2 py-0.5 rounded">{selectedColor}</span>}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {variants.colors.map(color => {
-                  const isSelected = selectedColor === color
-                  return (
-                    <button
-                      key={color}
-                      onClick={() => { setSelectedColor(isSelected ? null : color); setCurrentPhoto(0) }}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all capitalize ${
-                        isSelected ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          
           {/* Sizes */}
-          {variants.sizes.length > 0 && (
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">O'lcham tanlang</h3>
-                {selectedSize && <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{selectedSize}</span>}
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                {variants.sizes.map(size => {
-                  const isSelected = selectedSize === size
-                  const inStock = getStockForVariant(size, selectedColor) > 0
-                  
-                  return (
-                    <button
-                      key={size}
-                      onClick={() => inStock && setSelectedSize(isSelected ? null : size)}
-                      disabled={!inStock}
-                      className={`relative h-12 rounded-xl font-semibold transition-all ${
-                        isSelected ? 'bg-black text-white' : inStock ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  )
-                })}
-              </div>
-              {/* Selected stock info */}
-              {(selectedSize || selectedColor) && (
-                <div className="mt-4 text-sm text-gray-500 flex items-center justify-between">
-                  <span>Tanlangan variant mavjudligi</span>
-                  <span className={`font-semibold ${selectedVariantStock > 0 ? 'text-gray-900' : 'text-red-600'}`}>
-                    {selectedVariantStock > 0 ? `${selectedVariantStock} ta` : 'Tugagan'}
-                  </span>
-                </div>
-              )}
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">O'lcham tanlang</h3>
+              {selectedSize && <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{selectedSize}</span>}
             </div>
-          )}
+            <div className="grid grid-cols-5 gap-2">
+              {variants.sizes.map(size => {
+                const isSelected = selectedSize === size
+                const inStock = getStockForVariant(size, selectedColor) > 0
+                
+                return (
+                  <button
+                    key={size}
+                    onClick={() => inStock && setSelectedSize(isSelected ? null : size)}
+                    disabled={!inStock}
+                    className={`relative h-12 rounded-xl font-semibold transition-all ${
+                      isSelected ? 'bg-black text-white' : inStock ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Selected stock info */}
+            {(selectedSize || selectedColor) && (
+              <div className="mt-4 text-sm text-gray-500 flex items-center justify-between">
+                <span>Tanlangan variant mavjudligi</span>
+                <span className={`font-semibold ${selectedVariantStock > 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                  {selectedVariantStock > 0 ? `${selectedVariantStock} ta` : 'Tugagan'}
+                </span>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
