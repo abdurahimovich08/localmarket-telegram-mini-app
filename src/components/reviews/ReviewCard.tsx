@@ -66,6 +66,17 @@ export default function ReviewCard({ review, onHelpful, isOwnReview }: ReviewCar
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
+  const timeAgo = (() => {
+    try {
+      if (!review.created_at) return null
+      const d = new Date(review.created_at)
+      if (Number.isNaN(d.getTime())) return null
+      return formatDistanceToNow(d, { addSuffix: true, locale: uz })
+    } catch {
+      return null
+    }
+  })()
+
   return (
     <>
       <div className="bg-white/5 rounded-2xl overflow-hidden border border-white/10">
@@ -113,12 +124,9 @@ export default function ReviewCard({ review, onHelpful, isOwnReview }: ReviewCar
                   />
                 ))}
               </div>
-              <span className="text-white/40 text-xs">
-                {formatDistanceToNow(new Date(review.created_at), { 
-                  addSuffix: true, 
-                  locale: uz 
-                })}
-              </span>
+              {timeAgo && (
+                <span className="text-white/40 text-xs">{timeAgo}</span>
+              )}
             </div>
 
             {/* Variant */}
