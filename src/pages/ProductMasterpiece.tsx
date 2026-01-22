@@ -959,76 +959,77 @@ export default function ProductMasterpiece() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          🛒 FLOATING ACTION BAR
+          🛒 STICKY BOTTOM BAR - Premium Design
       ═══════════════════════════════════════════════════════════════════ */}
       {!isOwnListing && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="h-6 bg-gradient-to-t from-white to-transparent" />
-          <div className="bg-white border-t border-gray-100 px-4 pb-6 pt-3">
-            <div className="max-w-lg mx-auto">
-              <div className="flex items-center justify-between mb-3">
-                <div className="min-w-0">
-                  <p className="text-xs text-gray-500">Narx</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-gray-900">{listing.price?.toLocaleString()}</span>
-                    <span className="text-gray-500">so'm</span>
+        <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom">
+          <div className="bg-white border-t border-gray-200 shadow-2xl">
+            <div className="max-w-lg mx-auto px-4 py-4">
+              {/* Pricing Section */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  {/* Discount Badge */}
+                  {discount && (
+                    <div className="mb-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-green-500 text-white text-xs font-bold">
+                        {discount.percent}%
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Price */}
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-3xl font-extrabold text-gray-900">
+                      {listing.price?.toLocaleString()}
+                    </span>
+                    <span className="text-base text-gray-500 font-medium">so'm</span>
+                    {discount && (
+                      <span className="text-lg text-gray-400 line-through ml-1">
+                        {discount.original?.toLocaleString()}
+                      </span>
+                    )}
                   </div>
-                  {(variants.colors.length > 0 || variants.sizes.length > 0) && (
-                    <p className="text-xs text-gray-500 truncate">
-                      Variant: {selectedColor || '—'} / {selectedSize || '—'}
+                  
+                  {/* Delivery Info */}
+                  {listing.attributes?.delivery_available && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Yetkazib berish 1-3 kun ichida
                     </p>
                   )}
                 </div>
-
-                <div className="flex items-center bg-gray-100 rounded-full">
-                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center">
-                    <MinusIcon className="w-4 h-4" />
-                  </button>
-                  <span className="w-8 text-center font-bold">{quantity}</span>
-                  <button onClick={() => setQuantity(q => q + 1)} className="w-10 h-10 flex items-center justify-center">
-                    <PlusIcon className="w-4 h-4" />
+                
+                {/* Add to Bag Button */}
+                <div className="ml-4 flex-shrink-0">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart || stockStatus.status === 'out'}
+                    className={`px-8 py-3.5 rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all whitespace-nowrap ${
+                      cartSuccess 
+                        ? 'bg-green-500 text-white' 
+                        : stockStatus.status === 'out' 
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                          : 'bg-black text-white hover:bg-gray-800 active:scale-95'
+                    }`}
+                    style={{ fontStyle: 'normal' }}
+                  >
+                    {addingToCart ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : cartSuccess ? (
+                      <>
+                        <CheckIcon className="w-5 h-5" />
+                        <span>Qo'shildi</span>
+                      </>
+                    ) : (
+                      <span>Savatga qo'shish</span>
+                    )}
                   </button>
                 </div>
               </div>
 
+              {/* Variant Error */}
               {variantError && (
-                <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+                <div className="mb-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
                   {variantError}
-                </div>
-              )}
-              
-              <button
-                onClick={handleAddToCart}
-                disabled={addingToCart || stockStatus.status === 'out'}
-                className={`w-full h-14 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-                  cartSuccess ? 'bg-green-500 text-white' : stockStatus.status === 'out' ? 'bg-gray-200 text-gray-400' : 'bg-black text-white'
-                }`}
-              >
-                {addingToCart ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : cartSuccess ? (
-                  <><CheckIcon className="w-6 h-6" /> Qo'shildi!</>
-                ) : (
-                  "Savatga qo'shish"
-                )}
-              </button>
-
-              {!isOwnListing && (
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <button
-                    onClick={messageSeller}
-                    className="h-12 rounded-2xl bg-gray-100 text-gray-800 font-semibold flex items-center justify-center gap-2"
-                  >
-                    <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />
-                    Yozish
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="h-12 rounded-2xl bg-gray-100 text-gray-800 font-semibold flex items-center justify-center gap-2"
-                  >
-                    <ShareIcon className="w-5 h-5" />
-                    Ulashish
-                  </button>
                 </div>
               )}
             </div>
