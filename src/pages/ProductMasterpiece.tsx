@@ -518,44 +518,62 @@ export default function ProductMasterpiece() {
 
       {/* Color Variant Gallery - Below Image Section */}
       {variants.colors.length > 0 && (
-        <div className="bg-white px-4 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-900">Rang tanlang</h3>
-            {selectedColor && (
-              <span className="text-xs text-gray-500 capitalize bg-gray-100 px-2 py-0.5 rounded">{selectedColor}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 overflow-x-auto pb-2">
-            {variants.colors.map((color) => {
-              const byColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
-              const colorPhotos = byColor?.[color] || listing?.photos || []
-              const firstPhoto = colorPhotos[0] || listing?.photos?.[0] || ''
-              const isSelected = selectedColor === color
-              
-              return (
-                <button
-                  key={color}
-                  onClick={() => {
-                    setSelectedColor(color)
-                    setCurrentPhoto(0)
-                  }}
-                  className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-105' : ''}`}
-                >
-                  <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
-                    isSelected 
-                      ? 'w-20 h-20 ring-3 ring-orange-500 shadow-xl' 
-                      : 'w-16 h-16 ring-2 ring-gray-200 opacity-80 hover:opacity-100'
-                  }`}>
-                    <img src={firstPhoto} alt={color} className="w-full h-full object-cover" />
-                  </div>
-                  {isSelected && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-orange-500 rounded-full">
-                      <span className="text-[10px] font-semibold text-white capitalize">{color}</span>
+        <div className="relative z-20 bg-white mx-4 mt-4 mb-2 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="px-5 pt-4 pb-3">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full"></div>
+                <h3 className="text-base font-bold text-gray-900">Rang tanlang</h3>
+              </div>
+              {selectedColor && (
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-50 to-amber-50 rounded-full border border-orange-200">
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                  <span className="text-xs font-semibold text-orange-700 capitalize">{selectedColor}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-hide">
+              {variants.colors.map((color) => {
+                const byColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
+                const colorPhotos = byColor?.[color] || listing?.photos || []
+                const firstPhoto = colorPhotos[0] || listing?.photos?.[0] || ''
+                const isSelected = selectedColor === color
+                
+                return (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      setSelectedColor(color)
+                      setCurrentPhoto(0)
+                    }}
+                    className={`relative flex flex-col items-center gap-2 flex-shrink-0 transition-all duration-300 ${
+                      isSelected ? 'scale-105' : 'hover:scale-102'
+                    }`}
+                  >
+                    <div className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${
+                      isSelected 
+                        ? 'w-24 h-24 ring-4 ring-orange-500 shadow-2xl shadow-orange-200/50' 
+                        : 'w-20 h-20 ring-2 ring-gray-200 hover:ring-gray-300'
+                    }`}>
+                      <img src={firstPhoto} alt={color} className="w-full h-full object-cover" />
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-orange-500/20 to-transparent"></div>
+                      )}
                     </div>
-                  )}
-                </button>
-              )
-            })}
+                    <div className={`text-xs font-medium capitalize transition-colors ${
+                      isSelected ? 'text-orange-600 font-bold' : 'text-gray-600'
+                    }`}>
+                      {color}
+                    </div>
+                    {isSelected && (
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                        <CheckIcon className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -564,7 +582,7 @@ export default function ProductMasterpiece() {
       {/* ═══════════════════════════════════════════════════════════════════
           📦 CONTENT SHEET - Scrolls over image
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 bg-[#FAFAF8] rounded-t-[28px] -mt-7" style={{ boxShadow: '0 -8px 30px rgba(0,0,0,0.1)' }}>
+      <div className={`relative z-10 bg-[#FAFAF8] rounded-t-[28px] ${variants.colors.length > 0 ? 'mt-2' : '-mt-7'}`} style={{ boxShadow: '0 -8px 30px rgba(0,0,0,0.1)' }}>
         {/* Pull Indicator */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
