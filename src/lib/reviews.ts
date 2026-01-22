@@ -46,7 +46,7 @@ export interface Review {
     telegram_user_id: number
     first_name?: string
     username?: string
-    photo_url?: string
+    profile_photo_url?: string
   }
 }
 
@@ -129,7 +129,7 @@ export async function getPendingClaimsForSeller(
     .select(`
       *,
       listing:listings(listing_id, title, photos, price),
-      buyer:users!purchase_claims_buyer_telegram_id_fkey(telegram_user_id, first_name, username, photo_url)
+      buyer:users!purchase_claims_buyer_telegram_id_fkey(telegram_user_id, first_name, username, profile_photo_url)
     `)
     .eq('seller_telegram_id', sellerTelegramId)
     .eq('status', 'pending')
@@ -315,7 +315,7 @@ export async function createReview(
     })
     .select(`
       *,
-      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, photo_url)
+      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, profile_photo_url)
     `)
     .single()
 
@@ -338,7 +338,7 @@ export async function getListingReviews(listingId: string): Promise<Review[]> {
     .from('reviews')
     .select(`
       *,
-      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, photo_url)
+      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, profile_photo_url)
     `)
     .eq('listing_id', listingId)
     .order('created_at', { ascending: false })
@@ -359,7 +359,7 @@ export async function getSellerReviews(sellerTelegramId: number): Promise<Review
     .from('reviews')
     .select(`
       *,
-      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, photo_url),
+      reviewer:users!reviews_reviewer_telegram_id_fkey(telegram_user_id, first_name, username, profile_photo_url),
       listing:listings(listing_id, title, photos)
     `)
     .eq('reviewed_telegram_id', sellerTelegramId)

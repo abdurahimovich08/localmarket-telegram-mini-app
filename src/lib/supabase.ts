@@ -447,7 +447,7 @@ export const isFavorite = async (telegramUserId: number, listingId: string): Pro
     .select('favorite_id')
     .eq('user_telegram_id', telegramUserId)
     .eq('listing_id', listingId)
-    .single()
+    .maybeSingle()
 
   if (error) return false
   return !!data

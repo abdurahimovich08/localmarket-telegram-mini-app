@@ -41,6 +41,8 @@ interface ReviewCardProps {
       telegram_user_id: number
       first_name?: string
       username?: string
+      profile_photo_url?: string
+      // Backward compat in case some payloads still send this name
       photo_url?: string
     }
   }
@@ -87,9 +89,9 @@ export default function ReviewCard({ review, onHelpful, isOwnReview }: ReviewCar
             className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm overflow-hidden flex-shrink-0"
             style={{ backgroundColor: avatarColor }}
           >
-            {review.reviewer?.photo_url ? (
+            {review.reviewer?.profile_photo_url || review.reviewer?.photo_url ? (
               <img 
-                src={review.reviewer.photo_url} 
+                src={review.reviewer.profile_photo_url || review.reviewer.photo_url} 
                 alt="" 
                 className="w-full h-full object-cover"
               />

@@ -198,6 +198,22 @@ export default function ProductMasterpiece() {
     if (variants.total <= 10) return { status: 'limited', message: `${variants.total} ta mavjud`, color: 'text-amber-600' }
     return { status: 'available', message: 'Mavjud', color: 'text-green-600' }
   }, [variants.total])
+
+  // Condition label (must be above early returns to keep hooks order stable)
+  const conditionLabel = useMemo(() => {
+    const cond = listing?.condition
+    if (!cond) return null
+    if (cond === 'new') return 'Yangi'
+    if (cond === 'like_new') return 'Like new'
+    if (cond === 'good') return 'Yaxshi'
+    if (cond === 'fair') return 'Qoniqarli'
+    if (cond === 'poor') return 'Yomon'
+    return null
+  }, [listing?.condition])
+
+  const selectedVariantStock = useMemo(() => {
+    return getStockForVariant(selectedSize, selectedColor)
+  }, [getStockForVariant, selectedSize, selectedColor])
   
   // Load data
   useEffect(() => {
@@ -363,21 +379,6 @@ export default function ProductMasterpiece() {
     )
   }
   
-  const conditionLabel = useMemo(() => {
-    const cond = listing?.condition
-    if (!cond) return null
-    if (cond === 'new') return 'Yangi'
-    if (cond === 'like_new') return 'Like new'
-    if (cond === 'good') return 'Yaxshi'
-    if (cond === 'fair') return 'Qoniqarli'
-    if (cond === 'poor') return 'Yomon'
-    return null
-  }, [listing?.condition])
-
-  const selectedVariantStock = useMemo(() => {
-    return getStockForVariant(selectedSize, selectedColor)
-  }, [getStockForVariant, selectedSize, selectedColor])
-
   return (
     <div className="min-h-screen bg-[#FAFAF8] pb-40">
       
