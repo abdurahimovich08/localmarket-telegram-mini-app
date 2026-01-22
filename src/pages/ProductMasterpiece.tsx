@@ -390,7 +390,7 @@ export default function ProductMasterpiece() {
       <section 
         ref={heroRef} 
         className="relative bg-black overflow-hidden"
-        style={{ height: 'calc(100vh - 60px)' }}
+        style={{ height: '60vh' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -476,10 +476,10 @@ export default function ProductMasterpiece() {
           </button>
         </div>
         
-        {/* Bottom: Caption + Circular Gallery */}
+        {/* Bottom: Caption */}
         <div className="absolute bottom-0 left-0 right-0 z-20 p-4">
           {/* Micro copy */}
-          <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <div className="mb-2 flex items-center gap-2 flex-wrap">
             {conditionLabel && (
               <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/80 border border-white/10">
                 {conditionLabel}
@@ -497,80 +497,69 @@ export default function ProductMasterpiece() {
             )}
           </div>
           
-          {/* Color Variant Gallery - Mini Thumbnails */}
-          {variants.colors.length > 0 ? (
-            <div className="flex items-end justify-center gap-3 overflow-x-auto pb-2 px-2">
-              {variants.colors.map((color) => {
-                const byColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
-                const colorPhotos = byColor?.[color] || listing?.photos || []
-                const firstPhoto = colorPhotos[0] || listing?.photos?.[0] || ''
-                const isSelected = selectedColor === color
-                
-                return (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      setSelectedColor(color)
-                      setCurrentPhoto(0)
-                    }}
-                    className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-105' : ''}`}
-                  >
-                    <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
-                      isSelected 
-                        ? 'w-20 h-20 ring-3 ring-orange-500 shadow-xl' 
-                        : 'w-16 h-16 ring-2 ring-white/40 opacity-80 hover:opacity-100'
-                    }`}>
-                      <img src={firstPhoto} alt={color} className="w-full h-full object-cover" />
-                    </div>
-                    {isSelected && (
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-orange-500 rounded-full">
-                        <span className="text-[10px] font-semibold text-white capitalize">{color}</span>
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            /* Fallback: Original Circular Gallery if no color variants */
-            <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
-              {photos.map((photo, index) => {
-                const isSelected = index === currentPhoto
-                return (
-                  <button
+          {/* Swipe Hint - Show if multiple photos */}
+          {photos.length > 1 && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="flex gap-1">
+                {photos.map((_, index) => (
+                  <div
                     key={index}
-                    onClick={() => setCurrentPhoto(index)}
-                    className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-110' : ''}`}
-                  >
-                    <div className={`rounded-full overflow-hidden transition-all duration-300 ${
-                      isSelected 
-                        ? 'w-16 h-16 ring-3 ring-white shadow-xl' 
-                        : 'w-12 h-12 ring-2 ring-white/40 opacity-70'
-                    }`}>
-                      <img src={photo} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    {isSelected && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
-                        <FireIcon className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-          
-          {/* Collection Label */}
-          {listing.subcategory && (
-            <div className="flex justify-center mt-3">
-              <div className="flex items-center gap-2 bg-white/25 backdrop-blur-xl rounded-full px-4 py-1.5">
-                <span className="text-white text-sm">{listing.subcategory.name}</span>
-                <span>🏷️</span>
+                    className={`h-1 rounded-full transition-all ${
+                      index === currentPhoto ? 'w-6 bg-white' : 'w-1 bg-white/40'
+                    }`}
+                  />
+                ))}
               </div>
+              <span className="text-white/80 text-[10px]">← Swipe →</span>
             </div>
           )}
         </div>
       </section>
+
+      {/* Color Variant Gallery - Below Image Section */}
+      {variants.colors.length > 0 && (
+        <div className="bg-white px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-900">Rang tanlang</h3>
+            {selectedColor && (
+              <span className="text-xs text-gray-500 capitalize bg-gray-100 px-2 py-0.5 rounded">{selectedColor}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 overflow-x-auto pb-2">
+            {variants.colors.map((color) => {
+              const byColor = listing?.attributes?.photos_by_color as Record<string, string[]> | undefined
+              const colorPhotos = byColor?.[color] || listing?.photos || []
+              const firstPhoto = colorPhotos[0] || listing?.photos?.[0] || ''
+              const isSelected = selectedColor === color
+              
+              return (
+                <button
+                  key={color}
+                  onClick={() => {
+                    setSelectedColor(color)
+                    setCurrentPhoto(0)
+                  }}
+                  className={`relative flex-shrink-0 transition-all duration-300 ${isSelected ? 'scale-105' : ''}`}
+                >
+                  <div className={`rounded-xl overflow-hidden transition-all duration-300 ${
+                    isSelected 
+                      ? 'w-20 h-20 ring-3 ring-orange-500 shadow-xl' 
+                      : 'w-16 h-16 ring-2 ring-gray-200 opacity-80 hover:opacity-100'
+                  }`}>
+                    <img src={firstPhoto} alt={color} className="w-full h-full object-cover" />
+                  </div>
+                  {isSelected && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-orange-500 rounded-full">
+                      <span className="text-[10px] font-semibold text-white capitalize">{color}</span>
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      
 
       {/* ═══════════════════════════════════════════════════════════════════
           📦 CONTENT SHEET - Scrolls over image
