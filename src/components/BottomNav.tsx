@@ -21,11 +21,6 @@ export default function BottomNav() {
 
   const actionSheetOptions = [
     {
-      emoji: '📦',
-      label: 'Narsa sotaman',
-      onClick: () => navigateWithCtx('/create-unified?entityType=product'),
-    },
-    {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
       onClick: () => navigateWithCtx('/create-service-unified'),
@@ -77,27 +72,9 @@ export default function BottomNav() {
             onClick={handleSoqqaClick}
             className="flex flex-col items-center justify-center flex-1 h-full text-gray-600 hover:text-primary transition-colors"
           >
-            <span className="text-2xl">💰</span>
-            <span className="text-xs mt-1 font-medium">SOQQA</span>
+            <span className="text-2xl">🛠️</span>
+            <span className="text-xs mt-1 font-medium">Xizmat</span>
           </button>
-
-          {/* Sevimlilar */}
-          <Link
-            to="/favorites"
-            className="flex flex-col items-center justify-center flex-1 h-full text-gray-600 hover:text-primary transition-colors"
-          >
-            {isActive('/favorites') ? (
-              <>
-                <HeartIconSolid className="w-6 h-6 text-primary" />
-                <span className="text-xs mt-1 text-primary font-medium">Sevimlilar</span>
-              </>
-            ) : (
-              <>
-                <HeartIcon className="w-6 h-6" />
-                <span className="text-xs mt-1">Sevimlilar</span>
-              </>
-            )}
-          </Link>
 
           {/* Profil */}
           <Link
