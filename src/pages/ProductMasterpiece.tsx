@@ -959,83 +959,85 @@ export default function ProductMasterpiece() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          🛒 STICKY BOTTOM BAR - Premium Design (Above Navbar)
+          🛒 FLOATING BOTTOM BAR - Premium Design (Floating above navbar)
       ═══════════════════════════════════════════════════════════════════ */}
       {!isOwnListing && (
         <div 
-          className="fixed left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl"
+          className="fixed left-4 right-4 z-40"
           style={{ 
-            bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' // 64px (h-16) navbar + safe area
+            bottom: 'calc(4rem + 0.75rem + env(safe-area-inset-bottom, 0px))' // Navbar + gap
           }}
         >
-          <div className="max-w-lg mx-auto px-4 py-3.5">
-            {/* Pricing Section */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                {/* Discount Badge */}
-                {discount && (
-                  <div className="mb-1.5">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-green-500 text-white text-xs font-bold shadow-sm">
-                      {discount.percent}%
-                    </span>
-                  </div>
-                )}
-                
-                {/* Price */}
-                <div className="flex items-baseline gap-2 mb-0.5">
-                  <span className="text-2xl font-extrabold text-gray-900 leading-tight">
-                    {listing.price?.toLocaleString()}
-                  </span>
-                  <span className="text-sm text-gray-500 font-medium">so'm</span>
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            <div className="px-5 py-4">
+              {/* Pricing Section */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  {/* Discount Badge */}
                   {discount && (
-                    <span className="text-base text-gray-400 line-through ml-1">
-                      {discount.original?.toLocaleString()}
+                    <div className="mb-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-green-500 text-white text-xs font-bold">
+                        {discount.percent}%
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Price */}
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-3xl font-extrabold text-gray-900">
+                      {listing.price?.toLocaleString()}
                     </span>
+                    <span className="text-base text-gray-500 font-medium">so'm</span>
+                    {discount && (
+                      <span className="text-lg text-gray-400 line-through ml-1">
+                        {discount.original?.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Delivery Info */}
+                  {listing.attributes?.delivery_available && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Yetkazib berish 1-3 kun ichida
+                    </p>
                   )}
                 </div>
                 
-                {/* Delivery Info */}
-                {listing.attributes?.delivery_available && (
-                  <p className="text-xs text-gray-500 mt-0.5 leading-tight">
-                    Yetkazib berish 1-3 kun ichida
-                  </p>
-                )}
+                {/* Add to Bag Button */}
+                <div className="flex-shrink-0">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart || stockStatus.status === 'out'}
+                    className={`px-8 py-3.5 rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all whitespace-nowrap ${
+                      cartSuccess 
+                        ? 'bg-green-500 text-white' 
+                        : stockStatus.status === 'out' 
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                          : 'bg-black text-white hover:bg-gray-800 active:scale-95'
+                    }`}
+                    style={{ fontStyle: 'italic' }}
+                  >
+                    {addingToCart ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : cartSuccess ? (
+                      <>
+                        <CheckIcon className="w-5 h-5" />
+                        <span>Qo'shildi</span>
+                      </>
+                    ) : (
+                      <span>Savatga qo'shish</span>
+                    )}
+                  </button>
+                </div>
               </div>
-              
-              {/* Add to Bag Button */}
-              <div className="flex-shrink-0">
-                <button
-                  onClick={handleAddToCart}
-                  disabled={addingToCart || stockStatus.status === 'out'}
-                  className={`px-6 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-lg ${
-                    cartSuccess 
-                      ? 'bg-green-500 text-white' 
-                      : stockStatus.status === 'out' 
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                        : 'bg-black text-white hover:bg-gray-800 active:scale-95'
-                  }`}
-                  style={{ fontStyle: 'normal' }}
-                >
-                  {addingToCart ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : cartSuccess ? (
-                    <>
-                      <CheckIcon className="w-4 h-4" />
-                      <span>Qo'shildi</span>
-                    </>
-                  ) : (
-                    <span>Savatga qo'shish</span>
-                  )}
-                </button>
-              </div>
-            </div>
 
-            {/* Variant Error */}
-            {variantError && (
-              <div className="mt-2 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
-                {variantError}
-              </div>
-            )}
+              {/* Variant Error */}
+              {variantError && (
+                <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg">
+                  {variantError}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
