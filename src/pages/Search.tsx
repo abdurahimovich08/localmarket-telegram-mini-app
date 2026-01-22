@@ -10,6 +10,7 @@ import UniversalCard from '../components/UniversalCard'
 import SearchFilters, { type SearchFilters as SearchFiltersType } from '../components/SearchFilters'
 import SearchSuggestion from '../components/SearchSuggestion'
 import BackButton from '../components/BackButton'
+import CartIcon from '../components/CartIcon'
 import BottomNav from '../components/BottomNav'
 import { MagnifyingGlassIcon, XMarkIcon, ClockIcon, FireIcon, TagIcon } from '@heroicons/react/24/outline'
 import { debounce } from '../lib/utils'
@@ -134,10 +135,9 @@ export default function Search() {
     }
   }
 
-  // ✅ Filters: Only services (pivot to services-only marketplace)
+  // ✅ Filters: mode'ga qarab + search query + filterlar
   const unifiedFilters = useMemo(() => {
     const baseFilters: any = {
-      itemType: 'service' as const, // Only services
       searchQuery: searchQuery.trim() || undefined,
       category: filters.category || initialCategory || undefined,
       minPrice: filters.minPrice,
@@ -145,8 +145,20 @@ export default function Search() {
       limit: 100,
     }
 
+    // Store mode: faqat store mahsulotlar
+    if (mode.kind === 'store') {
+      baseFilters.itemType = 'store_product'
+      baseFilters.storeId = mode.storeId
+    } 
+    // Service mode: faqat services
+    else if (mode.kind === 'service') {
+      baseFilters.itemType = 'service'
+    }
+    // Marketplace mode: hamma itemlar (listing + service)
+    // itemType undefined = hammasi
+
     return baseFilters
-  }, [searchQuery, filters, initialCategory])
+  }, [searchQuery, filters, initialCategory, mode])
 
   // ✅ useUnifiedItems hook
   const { 
@@ -184,8 +196,12 @@ export default function Search() {
     if (user?.telegram_user_id) {
       trackListingView(user.telegram_user_id, item.id, undefined)
     }
-    // Only services now
-    navigateWithCtx(`/service/${item.id}`)
+    // ✅ Routing: entity_type bo'yicha + useNavigateWithCtx
+    if (item.type === 'service') {
+      navigateWithCtx(`/service/${item.id}`)
+    } else {
+      navigateWithCtx(`/listing/${item.id}`)
+    }
   }
 
   return (
@@ -195,6 +211,7 @@ export default function Search() {
         <div className="px-4 py-3">
           <div className="flex items-center gap-2">
             <BackButton />
+            <CartIcon />
             <div ref={autocompleteRef} className="flex-1 relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
               <input

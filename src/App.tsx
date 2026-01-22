@@ -4,8 +4,13 @@ import { initTelegram, getTelegramUser } from './lib/telegram'
 import { createOrUpdateUser, getUser, getUserReferralStore } from './lib/supabase'
 import type { User } from './types'
 import Home from './pages/Home'
+import ListingDetail from './pages/ProductMasterpiece'
+import CreateListing from './pages/CreateListing'
+import MyListings from './pages/MyListings'
 import Profile from './pages/Profile'
+import Favorites from './pages/Favorites'
 import Search from './pages/Search'
+import Cart from './pages/Cart'
 import CreateStore from './pages/CreateStore'
 import EditStore from './pages/EditStore'
 import StoreDetail from './pages/StoreDetail'
@@ -14,6 +19,8 @@ import AIChatCreationPage from './pages/AIChatCreationPage'
 import ServiceDetailsPage from './pages/ServiceDetailsPage'
 import ServiceEdit from './pages/ServiceEdit'
 import UnifiedAICreationPage from './pages/UnifiedAICreationPage'
+import ClothingListingWizard from './components/ClothingListingWizard'
+import ChooseCategoryUnified from './pages/ChooseCategoryUnified'
 import Dashboard from './pages/Dashboard'
 import DashboardRank from './pages/DashboardRank'
 import DashboardRecommendations from './pages/DashboardRecommendations'
@@ -155,8 +162,14 @@ function AppRoutes() {
   
   // Pages that should always use marketplace layout (admin, creation, etc.)
   const alwaysMarketplacePaths = [
+    '/create',
+    '/create-unified',
+    '/my-listings',
     '/profile',
+    '/favorites',
     '/search',
+    '/create-store',
+    '/store/:id/edit',
     '/create-service',
     '/create-service-unified',
     '/service/:id/edit',
@@ -172,8 +185,8 @@ function AppRoutes() {
       path.startsWith(marketplacePath.replace('/:id', '').replace(':id?', ''))
     )
     
-    // Use branded layout only on home page when in branded mode
-    if (useBrandedLayout && path === '/' && !isMarketplacePage) {
+    // Use branded layout only on home and cart pages when in branded mode
+    if (useBrandedLayout && (path === '/' || path === '/cart') && !isMarketplacePage) {
       return <BrandedLayout>{children}</BrandedLayout>
     }
     
@@ -183,9 +196,22 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LayoutWrapper><Home /></LayoutWrapper>} />
+      <Route path="/listing/:id" element={<LayoutWrapper><ListingDetail /></LayoutWrapper>} />
+      <Route path="/create" element={<MarketplaceLayout><CreateListing /></MarketplaceLayout>} />
+      <Route path="/my-listings" element={<MarketplaceLayout><MyListings /></MarketplaceLayout>} />
       <Route path="/profile/:id?" element={<MarketplaceLayout><Profile /></MarketplaceLayout>} />
+      <Route path="/favorites" element={<MarketplaceLayout><Favorites /></MarketplaceLayout>} />
       <Route path="/search" element={<MarketplaceLayout><Search /></MarketplaceLayout>} />
+      <Route path="/cart" element={<LayoutWrapper><Cart /></LayoutWrapper>} />
+      <Route path="/create-store" element={<MarketplaceLayout><CreateStore /></MarketplaceLayout>} />
+      <Route path="/store/:id/edit" element={<MarketplaceLayout><EditStore /></MarketplaceLayout>} />
+      <Route path="/store/:id/manage" element={<MarketplaceLayout><StoreManagement /></MarketplaceLayout>} />
+      <Route path="/store/:id" element={<MarketplaceLayout><StoreDetail /></MarketplaceLayout>} />
       <Route path="/create-service" element={<MarketplaceLayout><AIChatCreationPage /></MarketplaceLayout>} />
+      {/* Unified AI Creation Routes */}
+      <Route path="/create-unified" element={<MarketplaceLayout><ChooseCategoryUnified /></MarketplaceLayout>} />
+      <Route path="/create-unified/chat" element={<MarketplaceLayout><UnifiedAICreationPage entityType="product" category="" /></MarketplaceLayout>} />
+      <Route path="/create-clothing" element={<ClothingListingWizard />} />
       <Route path="/create-service-unified" element={<MarketplaceLayout><UnifiedAICreationPage entityType="service" category="service" /></MarketplaceLayout>} />
       <Route path="/service/:id" element={<MarketplaceLayout><ServiceDetailsPage /></MarketplaceLayout>} />
       <Route path="/service/:id/edit" element={<MarketplaceLayout><ServiceEdit /></MarketplaceLayout>} />
