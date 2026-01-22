@@ -28,6 +28,8 @@ export interface User {
   is_premium: boolean
   rating_average: number
   total_reviews: number
+  // Some parts of the app (seller trust) use this field (added via migrations)
+  total_sales?: number
   items_sold_count: number
   last_active?: string
   created_at: string
@@ -63,6 +65,8 @@ export interface Listing {
   status: ListingStatus
   view_count: number
   favorite_count: number
+  // Some queries return this name (legacy/alternate field name)
+  favorites_count?: number
   is_boosted: boolean
   boosted_until?: string
   created_at: string
@@ -72,6 +76,9 @@ export interface Listing {
   seller?: User // Populated seller info
   store_id?: string // Optional: associated store
   store?: Store // Populated store info
+  // Some listing detail queries include joined taxonomy/subcategory
+  subcategory?: { name: string } | null
+  subcategory_id?: string | null
   // Store management fields
   store_category_id?: string // Reference to store category
   old_price?: number // Previous price for promotions

@@ -25,12 +25,21 @@ import {
   MapPinIcon,
   TagIcon,
   SparklesIcon,
-  ArrowRightIcon,
   CheckBadgeIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, StarIcon, FireIcon } from '@heroicons/react/24/solid'
-import { getListingReviews, type Review } from '../lib/reviews'
+import SimilarListings from '../components/SimilarListings'
+import ReviewsSection from '../components/reviews/ReviewsSection'
+import WriteReviewModal from '../components/reviews/WriteReviewModal'
+import PurchaseClaimButton from '../components/reviews/PurchaseClaimButton'
+import { 
+  getListingReviews, 
+  canWriteReview, 
+  createReview, 
+  voteReviewHelpful,
+  type Review 
+} from '../lib/reviews'
 
 export default function ProductMasterpiece() {
   const { id } = useParams<{ id: string }>()
@@ -48,9 +57,18 @@ export default function ProductMasterpiece() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [reviews, setReviews] = useState<Review[]>([])
+  const [canUserReview, setCanUserReview] = useState(false)
+  const [hasVerifiedPurchase, setHasVerifiedPurchase] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [addingToCart, setAddingToCart] = useState(false)
   const [cartSuccess, setCartSuccess] = useState(false)
   const [showAllSpecs, setShowAllSpecs] = useState(false)
+  const [variantError, setVariantError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<{ details: boolean; delivery: boolean; qa: boolean }>({
+    details: true,
+    delivery: true,
+    qa: false,
+  })
   
   // Refs
   const heroRef = useRef<HTMLDivElement>(null)
@@ -65,6 +83,46 @@ export default function ProductMasterpiece() {
     return listing?.photos || []
   }, [listing, selectedColor])
   
+  const parseVariantKey = useCallback((key: string): { size?: string; color?: string } => {
+    // Common formats in this repo: "S_red" (wizard), sometimes "S/red" (older code)
+    if (key.includes('_')) {
+      const [size, color] = key.split('_')
+      return { size: size || undefined, color: color || undefined }
+    }
+    if (key.includes('/')) {
+      const [size, color] = key.split('/')
+      return { size: size || undefined, color: color || undefined }
+    }
+    return { size: key || undefined, color: undefined }
+  }, [])
+
+  const getStockForVariant = useCallback((size?: string | null, color?: string | null): number => {
+    const stockMap = listing?.attributes?.stock_by_size_color as Record<string, number> | undefined
+    if (!stockMap) return listing?.stock_qty || 0
+    if (!size && !color) {
+      return Object.values(stockMap).reduce((sum, v) => sum + (Number(v) || 0), 0)
+    }
+    if (size && color) {
+      // Try both formats
+      return Number(stockMap[`${size}_${color}`] ?? stockMap[`${size}/${color}`] ?? 0) || 0
+    }
+    // If only one dimension chosen, sum all matching
+    const entries = Object.entries(stockMap)
+    if (size && !color) {
+      return entries.reduce((sum, [k, v]) => {
+        const parsed = parseVariantKey(k)
+        return parsed.size === size ? sum + (Number(v) || 0) : sum
+      }, 0)
+    }
+    if (!size && color) {
+      return entries.reduce((sum, [k, v]) => {
+        const parsed = parseVariantKey(k)
+        return parsed.color === color ? sum + (Number(v) || 0) : sum
+      }, 0)
+    }
+    return 0
+  }, [listing, parseVariantKey])
+
   // Variants
   const variants = useMemo(() => {
     const colors = new Set<string>()
@@ -74,11 +132,15 @@ export default function ProductMasterpiece() {
     
     if (listing?.attributes?.stock_by_size_color) {
       Object.entries(listing.attributes.stock_by_size_color).forEach(([key, qty]) => {
-        const [size, color] = key.split('_')
+        const { size, color } = parseVariantKey(key)
         if (size) sizes.add(size)
         if (color) colors.add(color)
-        stock[`${size}/${color}`] = qty as number
-        total += qty as number
+        // Keep both for easy lookup later
+        if (size && color) {
+          stock[`${size}_${color}`] = Number(qty) || 0
+          stock[`${size}/${color}`] = Number(qty) || 0
+        }
+        total += Number(qty) || 0
       })
     } else {
       listing?.attributes?.sizes?.forEach((s: string) => sizes.add(s))
@@ -92,7 +154,7 @@ export default function ProductMasterpiece() {
       stock, 
       total: total || listing?.stock_qty || 0 
     }
-  }, [listing])
+  }, [listing, parseVariantKey])
   
   // Discount
   const discount = useMemo(() => {
@@ -154,6 +216,15 @@ export default function ProductMasterpiece() {
           }
           const fetchedReviews = await getListingReviews(id)
           setReviews(fetchedReviews)
+
+          if (user?.telegram_user_id) {
+            const { canWrite, claim } = await canWriteReview(id, user.telegram_user_id)
+            setCanUserReview(canWrite)
+            setHasVerifiedPurchase(!!claim)
+          } else {
+            setCanUserReview(false)
+            setHasVerifiedPurchase(false)
+          }
         }
       } finally {
         setLoading(false)
@@ -179,8 +250,23 @@ export default function ProductMasterpiece() {
     }
   }, [user, listing, favorited])
   
+  const validateVariants = useCallback((): boolean => {
+    if (!listing) return false
+    if (variants.colors.length > 0 && !selectedColor) {
+      setVariantError('Rang tanlang')
+      return false
+    }
+    if (variants.sizes.length > 0 && !selectedSize) {
+      setVariantError("O'lcham tanlang")
+      return false
+    }
+    setVariantError(null)
+    return true
+  }, [listing, variants.colors.length, variants.sizes.length, selectedColor, selectedSize])
+
   const handleAddToCart = useCallback(async () => {
     if (!user || !listing || stockStatus.status === 'out') return
+    if (!validateVariants()) return
     setAddingToCart(true)
     try {
       await addToCart(user.telegram_user_id, listing.listing_id, quantity)
@@ -189,7 +275,7 @@ export default function ProductMasterpiece() {
     } finally {
       setAddingToCart(false)
     }
-  }, [user, listing, quantity, stockStatus])
+  }, [user, listing, quantity, stockStatus, validateVariants])
   
   const messageSeller = useCallback(() => {
     if (!listing?.seller?.username) return
@@ -198,8 +284,46 @@ export default function ProductMasterpiece() {
   
   const handleShare = useCallback(() => {
     if (!listing) return
-    shareListing(listing.listing_id, listing.title)
+    shareListing(listing.listing_id, listing.title, listing.price || undefined)
   }, [listing])
+
+  // Reviews handlers
+  const handleSubmitReview = useCallback(async (reviewData: {
+    rating: number
+    text: string
+    photos: string[]
+    purchasedSize?: string
+    purchasedColor?: string
+  }) => {
+    if (!id || !user?.telegram_user_id) return
+    const newReview = await createReview(
+      id,
+      user.telegram_user_id,
+      reviewData.rating,
+      reviewData.text,
+      reviewData.photos,
+      reviewData.purchasedSize,
+      reviewData.purchasedColor
+    )
+
+    if (newReview) {
+      setReviews(prev => [newReview, ...prev])
+      setCanUserReview(false)
+    }
+  }, [id, user?.telegram_user_id])
+
+  const handleHelpfulVote = useCallback(async (reviewId: string, isHelpful: boolean) => {
+    if (!user?.telegram_user_id) return
+    await voteReviewHelpful(reviewId, user.telegram_user_id, isHelpful)
+    setReviews(prev => prev.map(r => {
+      if (r.review_id !== reviewId) return r
+      return {
+        ...r,
+        helpful_count: isHelpful ? (r.helpful_count || 0) + 1 : r.helpful_count,
+        not_helpful_count: !isHelpful ? (r.not_helpful_count || 0) + 1 : r.not_helpful_count,
+      }
+    }))
+  }, [user?.telegram_user_id])
   
   // Image swipe
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -239,8 +363,23 @@ export default function ProductMasterpiece() {
     )
   }
   
+  const conditionLabel = useMemo(() => {
+    const cond = listing?.condition
+    if (!cond) return null
+    if (cond === 'new') return 'Yangi'
+    if (cond === 'like_new') return 'Like new'
+    if (cond === 'good') return 'Yaxshi'
+    if (cond === 'fair') return 'Qoniqarli'
+    if (cond === 'poor') return 'Yomon'
+    return null
+  }, [listing?.condition])
+
+  const selectedVariantStock = useMemo(() => {
+    return getStockForVariant(selectedSize, selectedColor)
+  }, [getStockForVariant, selectedSize, selectedColor])
+
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pb-32">
+    <div className="min-h-screen bg-[#FAFAF8] pb-40">
       
       {/* ═══════════════════════════════════════════════════════════════════
           🖼️ IMMERSIVE HERO - Almost Full Screen (95vh)
@@ -281,12 +420,12 @@ export default function ProductMasterpiece() {
             <ChevronLeftIcon className="w-6 h-6 text-white" />
           </button>
           
-          {/* Seller Info */}
+          {/* Seller quick chip */}
           <Link 
             to={`/profile/${listing.seller?.telegram_user_id}`}
-            className="flex items-center gap-2 bg-white/20 backdrop-blur-xl rounded-full pl-1 pr-4 py-1"
+            className="flex items-center gap-2 bg-white/15 hover:bg-white/20 transition-colors backdrop-blur-xl rounded-full pl-1 pr-4 py-1"
           >
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/30 ring-2 ring-white/50">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/30 ring-2 ring-white/40">
               {listing.seller?.profile_photo_url ? (
                 <img src={listing.seller.profile_photo_url} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -295,12 +434,20 @@ export default function ProductMasterpiece() {
                 </div>
               )}
             </div>
-            <span className="text-white font-medium text-sm">{listing.seller?.first_name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-white font-medium text-sm">{listing.seller?.first_name}</span>
+              {sellerTrust?.level === 'top' && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/20">TOP</span>
+              )}
+              {sellerTrust?.level === 'trusted' && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/15 text-emerald-200 border border-emerald-300/20">Trusted</span>
+              )}
+            </div>
           </Link>
           
           {/* Category Badge */}
           {listing.subcategory && (
-            <div className="flex items-center gap-1 bg-white/20 backdrop-blur-xl rounded-full px-3 py-1.5">
+            <div className="flex items-center gap-1 bg-white/15 backdrop-blur-xl rounded-full px-3 py-1.5">
               <span className="text-white text-xs font-medium">{listing.subcategory.name}</span>
               <XMarkIcon className="w-3 h-3 text-white/70" />
             </div>
@@ -328,12 +475,26 @@ export default function ProductMasterpiece() {
           </button>
         </div>
         
-        {/* Bottom: Title & Circular Gallery */}
+        {/* Bottom: Caption + Circular Gallery */}
         <div className="absolute bottom-0 left-0 right-0 z-20 p-4">
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-white mb-4 pr-16 leading-tight">
-            {listing.title}
-          </h1>
+          {/* Micro copy */}
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
+            {conditionLabel && (
+              <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/10 text-white/80 border border-white/10">
+                {conditionLabel}
+              </span>
+            )}
+            {stockStatus.status !== 'available' && (
+              <span className={`text-[11px] px-2.5 py-1 rounded-full bg-white/10 border border-white/10 ${stockStatus.color}`}>
+                {stockStatus.message}
+              </span>
+            )}
+            {discount && (
+              <span className="text-[11px] px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-200 border border-amber-300/20">
+                -{discount.percent}% • Tejaysiz {discount.savings?.toLocaleString()} so'm
+              </span>
+            )}
+          </div>
           
           {/* Circular Image Gallery */}
           <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
@@ -384,7 +545,7 @@ export default function ProductMasterpiece() {
         </div>
         
       {/* ═══════════════════════════════════════════════════════════════════
-          💰 DECISION ZONE - Price & Core Info
+          💰 DECISION ZONE - Core shopping info (clothing-style)
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="mx-4 mt-2 bg-white rounded-3xl shadow-sm overflow-hidden relative">
         {/* Discount Ribbon */}
@@ -406,12 +567,12 @@ export default function ProductMasterpiece() {
           )}
           
           {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-3 pr-16">
+          <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight mb-2 pr-16 tracking-tight">
             {listing.title}
           </h1>
           
           {/* Rating & Reviews Row */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             {reviewStats.count > 0 ? (
               <div className="flex items-center gap-1.5">
                 <div className="flex items-center bg-amber-50 px-2 py-1 rounded-lg">
@@ -426,11 +587,16 @@ export default function ProductMasterpiece() {
                 Yangi mahsulot
               </span>
             )}
+            {conditionLabel && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
+                {conditionLabel}
+              </span>
+            )}
           </div>
           
           {/* Price Section */}
           <div className="flex items-end gap-3 mb-4">
-            <span className="text-4xl font-black text-gray-900 tracking-tight">
+            <span className="text-[38px] font-black text-gray-900 tracking-tight leading-none">
               {listing.price?.toLocaleString()}
               <span className="text-lg font-medium text-gray-500 ml-1">so'm</span>
             </span>
@@ -456,6 +622,14 @@ export default function ProductMasterpiece() {
             <div className={`inline-flex items-center gap-2 ${stockStatus.color} text-sm font-semibold bg-orange-50 px-3 py-1.5 rounded-full`}>
               <SparklesIcon className="w-4 h-4" />
               {stockStatus.message}
+            </div>
+          )}
+
+          {/* Variant-required hint */}
+          {variantError && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+              <span className="font-semibold">⚠️</span>
+              <span>{variantError}</span>
             </div>
           )}
         </div>
@@ -502,8 +676,7 @@ export default function ProductMasterpiece() {
               <div className="grid grid-cols-5 gap-2">
                 {variants.sizes.map(size => {
                   const isSelected = selectedSize === size
-                  const stockKey = selectedColor ? `${size}/${selectedColor}` : size
-                  const inStock = !selectedColor || (variants.stock[stockKey] || 0) > 0
+                  const inStock = getStockForVariant(size, selectedColor) > 0
                   
                   return (
                     <button
@@ -519,6 +692,15 @@ export default function ProductMasterpiece() {
                   )
                 })}
               </div>
+              {/* Selected stock info */}
+              {(selectedSize || selectedColor) && (
+                <div className="mt-4 text-sm text-gray-500 flex items-center justify-between">
+                  <span>Tanlangan variant mavjudligi</span>
+                  <span className={`font-semibold ${selectedVariantStock > 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                    {selectedVariantStock > 0 ? `${selectedVariantStock} ta` : 'Tugagan'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -590,60 +772,172 @@ export default function ProductMasterpiece() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          📋 INFO ZONE - Description
+          📋 DETAILS - Accordion blocks (premium clarity)
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="mx-4 mt-3 bg-white rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5">
-          <h2 className="font-bold text-lg text-gray-900 mb-4">Mahsulot haqida</h2>
-          <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {listing.description || 'Tavsif mavjud emas'}
-          </p>
-          
-          {listing.neighborhood && (
-            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                <MapPinIcon className="w-5 h-5 text-gray-500" />
+        {/* Details */}
+        <button
+          onClick={() => setExpanded(e => ({ ...e, details: !e.details }))}
+          className="w-full px-5 py-4 flex items-center justify-between"
+        >
+          <span className="font-bold text-gray-900">Mahsulot haqida</span>
+          <span className="text-gray-400">{expanded.details ? '−' : '+'}</span>
+        </button>
+        {expanded.details && (
+          <div className="px-5 pb-5 border-b border-gray-100">
+            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+              {listing.description || 'Tavsif mavjud emas'}
+            </p>
+
+            {listing.neighborhood && (
+              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <MapPinIcon className="w-5 h-5 text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Joylashuv</p>
+                  <p className="text-sm text-gray-500">{listing.neighborhood}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Joylashuv</p>
-                <p className="text-sm text-gray-500">{listing.neighborhood}</p>
+            )}
+
+            {/* Specs (optional) */}
+            {listing.attributes && Object.keys(listing.attributes).length > 0 && (
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-gray-900">Xususiyatlar</p>
+                  <button
+                    onClick={() => setShowAllSpecs(s => !s)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    {showAllSpecs ? 'Yopish' : "Ko'proq"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(listing.attributes)
+                    .filter(([k]) => !['stock_by_size_color', 'photos_by_color'].includes(k))
+                    .slice(0, showAllSpecs ? 12 : 6)
+                    .map(([k, v]) => (
+                      <div key={k} className="bg-gray-50 rounded-xl px-3 py-2">
+                        <p className="text-[11px] text-gray-500 truncate">{k}</p>
+                        <p className="text-sm text-gray-900 truncate">{String(v)}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Delivery & returns */}
+        <button
+          onClick={() => setExpanded(e => ({ ...e, delivery: !e.delivery }))}
+          className="w-full px-5 py-4 flex items-center justify-between"
+        >
+          <span className="font-bold text-gray-900">Yetkazish & olish</span>
+          <span className="text-gray-400">{expanded.delivery ? '−' : '+'}</span>
+        </button>
+        {expanded.delivery && (
+          <div className="px-5 pb-5 border-b border-gray-100">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <TruckIcon className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {listing.attributes?.delivery_available ? 'Yetkazib berish mavjud' : 'Olib ketish (lokatsiya bo‘yicha)'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {listing.attributes?.delivery_available
+                      ? 'Sotuvchi bilan yozishib yetkazish narxi va vaqtini kelishing.'
+                      : 'Mahsulotni joyida ko‘rib, tekshirib olishingiz mumkin.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <ShieldCheckIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Ishonch</p>
+                  <p className="text-sm text-gray-500">Sharhlar va tasdiqlangan xaridlar sotuvchi reputatsiyasini ko‘rsatadi.</p>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Q/A */}
+        <button
+          onClick={() => setExpanded(e => ({ ...e, qa: !e.qa }))}
+          className="w-full px-5 py-4 flex items-center justify-between"
+        >
+          <span className="font-bold text-gray-900">Savollar</span>
+          <span className="text-gray-400">{expanded.qa ? '−' : '+'}</span>
+        </button>
+        {expanded.qa && (
+          <div className="px-5 pb-5">
+            <div className="space-y-3">
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-gray-900 mb-1">Qanday olish mumkin?</p>
+                <p className="text-sm text-gray-600">Pastdagi “Savatga qo‘shish” yoki “Yozish” orqali sotuvchiga chiqasiz.</p>
+              </div>
+              <div className="bg-gray-50 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-gray-900 mb-1">Rang/o‘lcham tugab qolgan bo‘lsa?</p>
+                <p className="text-sm text-gray-600">Boshqa rang/o‘lchamni tanlab ko‘ring yoki sotuvchidan so‘rang.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          ⭐ REVIEWS ZONE
+          ⭐ REVIEWS - full section + verified gating
       ═══════════════════════════════════════════════════════════════════ */}
-      <section className="mx-4 mt-3 bg-white rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5">
-          <h2 className="font-bold text-lg text-gray-900 mb-4">Sharhlar</h2>
-          
-          {reviewStats.count > 0 ? (
-            <div className="space-y-4">
-              {reviews.slice(0, 3).map(review => (
-                <div key={review.review_id} className="pb-4 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex">
-                      {[1,2,3,4,5].map(i => (
-                        <StarIcon key={i} className={`w-4 h-4 ${i <= review.rating ? 'text-amber-400' : 'text-gray-200'}`} />
-                      ))}
-                    </div>
-                    <span className="text-gray-400 text-sm">{review.reviewer?.first_name || 'Foydalanuvchi'}</span>
-                  </div>
-                  {review.review_text && <p className="text-sm text-gray-600 line-clamp-2">{review.review_text}</p>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-400">
-              <StarOutline className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Hali sharhlar yo'q</p>
+      <section className="mx-4 mt-3 overflow-hidden rounded-3xl">
+        <div className="bg-gradient-to-b from-slate-950 to-slate-900 rounded-3xl p-5 shadow-sm border border-black/5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-bold text-lg">Sharhlar</h2>
+            <span className="text-white/50 text-sm">{reviewStats.count} ta</span>
+          </div>
+
+          {/* Purchase claim gating (buyer only) */}
+          {user?.telegram_user_id && !isOwnListing && (
+            <div className="mb-4">
+              <PurchaseClaimButton
+                listingId={listing.listing_id}
+                buyerTelegramId={user.telegram_user_id}
+                selectedSize={selectedSize || undefined}
+                selectedColor={selectedColor || undefined}
+                onClaimApproved={() => {
+                  setHasVerifiedPurchase(true)
+                  if (id && user?.telegram_user_id) {
+                    canWriteReview(id, user.telegram_user_id).then(({ canWrite }) => setCanUserReview(canWrite))
+                  }
+                }}
+                onWriteReview={() => setShowReviewModal(true)}
+              />
             </div>
           )}
+
+          <ReviewsSection
+            reviews={reviews as any}
+            averageRating={reviewStats.average}
+            totalReviews={reviewStats.count}
+            canWriteReview={canUserReview}
+            hasVerifiedPurchase={hasVerifiedPurchase}
+            onWriteReview={() => setShowReviewModal(true)}
+            onHelpful={(reviewId, isHelpful) => handleHelpfulVote(reviewId, isHelpful)}
+            currentUserTelegramId={user?.telegram_user_id}
+          />
         </div>
       </section>
+
+      {/* Similar listings */}
+      <div className="mt-4">
+        <SimilarListings listing={listing} />
+      </div>
 
       <div className="h-8" />
       </div>
@@ -657,11 +951,19 @@ export default function ProductMasterpiece() {
           <div className="bg-white border-t border-gray-100 px-4 pb-6 pt-3">
             <div className="max-w-lg mx-auto">
               <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-2xl font-bold text-gray-900">{listing.price?.toLocaleString()}</span>
-                  <span className="text-gray-500 ml-1">so'm</span>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500">Narx</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-extrabold text-gray-900">{listing.price?.toLocaleString()}</span>
+                    <span className="text-gray-500">so'm</span>
+                  </div>
+                  {(variants.colors.length > 0 || variants.sizes.length > 0) && (
+                    <p className="text-xs text-gray-500 truncate">
+                      Variant: {selectedColor || '—'} / {selectedSize || '—'}
+                    </p>
+                  )}
                 </div>
-                
+
                 <div className="flex items-center bg-gray-100 rounded-full">
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center">
                     <MinusIcon className="w-4 h-4" />
@@ -672,6 +974,12 @@ export default function ProductMasterpiece() {
                   </button>
                 </div>
               </div>
+
+              {variantError && (
+                <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+                  {variantError}
+                </div>
+              )}
               
               <button
                 onClick={handleAddToCart}
@@ -688,10 +996,40 @@ export default function ProductMasterpiece() {
                   "Savatga qo'shish"
                 )}
               </button>
+
+              {!isOwnListing && (
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={messageSeller}
+                    className="h-12 rounded-2xl bg-gray-100 text-gray-800 font-semibold flex items-center justify-center gap-2"
+                  >
+                    <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />
+                    Yozish
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="h-12 rounded-2xl bg-gray-100 text-gray-800 font-semibold flex items-center justify-center gap-2"
+                  >
+                    <ShareIcon className="w-5 h-5" />
+                    Ulashish
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Write Review Modal */}
+      <WriteReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onSubmit={handleSubmitReview}
+        listingTitle={listing.title}
+        listingPhoto={photos[0]}
+        purchasedSize={selectedSize || undefined}
+        purchasedColor={selectedColor || undefined}
+      />
 
       {/* Animations */}
       <style>{`
