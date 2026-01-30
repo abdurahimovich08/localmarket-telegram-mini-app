@@ -368,24 +368,38 @@ export default function ClothingListingWizard({
         
         // Create user if doesn't exist
         if (!dbUser) {
-          dbUser = await createOrUpdateUser({
-            telegram_user_id: telegramUser.id,
-            username: telegramUser.username,
-            first_name: telegramUser.first_name,
-            last_name: telegramUser.last_name,
-            profile_photo_url: telegramUser.photo_url,
-            search_radius_miles: 10,
-            is_premium: false,
-            rating_average: 0,
-            total_reviews: 0,
-            items_sold_count: 0,
-            created_at: new Date().toISOString(),
-            last_active: new Date().toISOString()
-          })
+          try {
+            dbUser = await createOrUpdateUser({
+              telegram_user_id: telegramUser.id,
+              username: telegramUser.username,
+              first_name: telegramUser.first_name,
+              last_name: telegramUser.last_name,
+              profile_photo_url: telegramUser.photo_url,
+              search_radius_miles: 10,
+              is_premium: false,
+              rating_average: 0,
+              total_reviews: 0,
+              items_sold_count: 0,
+              created_at: new Date().toISOString(),
+              last_active: new Date().toISOString()
+            })
+            
+            if (!dbUser) {
+              // Try to get user again after creation attempt
+              await new Promise(resolve => setTimeout(resolve, 500))
+              dbUser = await getUser(telegramUser.id)
+            }
+          } catch (createErr: any) {
+            console.error('Error creating user:', createErr)
+            // Try to get user again in case it was created but not returned
+            await new Promise(resolve => setTimeout(resolve, 500))
+            dbUser = await getUser(telegramUser.id)
+          }
         }
         
         if (!dbUser) {
-          setError('Foydalanuvchi yaratilmadi. Iltimos, qayta urinib ko\'ring.')
+          setError('Foydalanuvchi yaratilmadi. Iltimos, ilovani qayta yuklang yoki admin bilan bog\'laning.')
+          console.error('User creation failed. Telegram ID:', telegramUser.id)
           return
         }
         

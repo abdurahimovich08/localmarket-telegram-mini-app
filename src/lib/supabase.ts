@@ -30,20 +30,37 @@ export const getUser = async (telegramUserId: number): Promise<User | null> => {
 }
 
 export const createOrUpdateUser = async (userData: Partial<User>): Promise<User | null> => {
-  const { data, error } = await supabase
-    .from('users')
-    .upsert(userData, {
-      onConflict: 'telegram_user_id',
-      ignoreDuplicates: false
-    })
-    .select()
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert(userData, {
+        onConflict: 'telegram_user_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single()
 
-  if (error) {
-    console.error('Error creating/updating user:', error)
+    if (error) {
+      console.error('Error creating/updating user:', error)
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      console.error('Error details:', error.details)
+      console.error('Error hint:', error.hint)
+      console.error('User data attempted:', userData)
+      
+      // If it's a unique constraint violation, try to fetch the existing user
+      if (error.code === '23505' && userData.telegram_user_id) {
+        console.log('User already exists, fetching...')
+        return await getUser(userData.telegram_user_id)
+      }
+      
+      return null
+    }
+    return data
+  } catch (err: any) {
+    console.error('Exception in createOrUpdateUser:', err)
     return null
   }
-  return data
 }
 
 // Listing operations
