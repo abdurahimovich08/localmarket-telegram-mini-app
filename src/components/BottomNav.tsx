@@ -5,6 +5,7 @@ import { HomeIcon as HomeIconSolid, MagnifyingGlassIcon as MagnifyingGlassIconSo
 import ActionSheet from './ActionSheet'
 import { useNavigateWithCtx } from '../lib/preserveCtx'
 import { useAppMode } from '../contexts/AppModeContext'
+import Icons8Icon from './Icons8Icon'
 
 export default function BottomNav() {
   const location = useLocation()
@@ -24,11 +25,13 @@ export default function BottomNav() {
       emoji: '📦',
       label: 'Narsa sotaman',
       onClick: () => navigateWithCtx('/create-unified?entityType=product'),
+      iconName: 'product' as keyof typeof import('../utils/icons8').Icons8,
     },
     {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
       onClick: () => navigateWithCtx('/create-service-unified'),
+      iconName: 'shop' as keyof typeof import('../utils/icons8').Icons8,
     },
   ]
 

@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
+import Icons8Icon from './Icons8Icon'
 
 interface ActionSheetOption {
   emoji: string
   label: string
   onClick: () => void
   disabled?: boolean
+  iconName?: keyof typeof import('../utils/icons8').Icons8
 }
 
 interface ActionSheetProps {
@@ -67,7 +69,11 @@ export default function ActionSheet({ isOpen, onClose, title, options }: ActionS
                   : 'bg-gray-50 hover:bg-primary/10 active:bg-primary/20 text-gray-900'
               }`}
             >
-              <span className="text-3xl">{option.emoji}</span>
+              {option.iconName ? (
+                <Icons8Icon name={option.iconName} size={32} className="opacity-90" />
+              ) : (
+                <span className="text-3xl">{option.emoji}</span>
+              )}
               <span className={`flex-1 text-left font-medium ${option.disabled ? 'text-gray-400' : 'text-gray-900'}`}>
                 {option.label}
               </span>

@@ -15,6 +15,7 @@ import { getUser, createOrUpdateUser } from '../lib/supabase'
 import { getTelegramUser } from '../lib/telegram'
 import BannerCropper from './BannerCropper'
 import BannerCreator from './BannerCreator'
+import Icons8Icon from './Icons8Icon'
 import { 
   ArrowLeftIcon, 
   ArrowRightIcon,
@@ -62,14 +63,14 @@ interface ClothingListingWizardProps {
   initialTaxonomy?: TaxonomySelection | null
 }
 
-// Step definitions
+// Step definitions with premium icons
 const STEPS: WizardStep[] = [
   { 
     id: 1, 
     key: 'taxonomy', 
     title: 'Kategoriya', 
     subtitle: 'Mahsulot turini tanlang',
-    icon: <TagIcon className="w-6 h-6" />,
+    icon: <Icons8Icon name="tagWindow" size={24} className="opacity-90" />,
     emoji: '🏷️'
   },
   { 
@@ -85,7 +86,7 @@ const STEPS: WizardStep[] = [
     key: 'details', 
     title: 'Ma\'lumotlar', 
     subtitle: 'Mahsulot haqida',
-    icon: <SparklesIcon className="w-6 h-6" />,
+    icon: <Icons8Icon name="product" size={24} className="opacity-90" />,
     emoji: '✨'
   },
   { 
@@ -93,7 +94,7 @@ const STEPS: WizardStep[] = [
     key: 'price', 
     title: 'Narx', 
     subtitle: 'Narxni belgilang',
-    icon: <CurrencyDollarIcon className="w-6 h-6" />,
+    icon: <Icons8Icon name="priceTag" size={24} className="opacity-90" />,
     emoji: '💰'
   },
   { 
@@ -114,22 +115,22 @@ const STEPS: WizardStep[] = [
   }
 ]
 
-// Audience options with emojis
-const AUDIENCE_OPTIONS: { value: Audience; label: string; emoji: string }[] = [
-  { value: 'erkaklar', label: 'Erkaklar', emoji: '👨' },
-  { value: 'ayollar', label: 'Ayollar', emoji: '👩' },
-  { value: 'bolalar', label: 'Bolalar', emoji: '👶' },
-  { value: 'unisex', label: 'Unisex', emoji: '👥' },
+// Audience options with premium icons
+const AUDIENCE_OPTIONS: { value: Audience; label: string; emoji: string; iconName?: keyof typeof import('../utils/icons8').Icons8 }[] = [
+  { value: 'erkaklar', label: 'Erkaklar', emoji: '👨', iconName: 'product' },
+  { value: 'ayollar', label: 'Ayollar', emoji: '👩', iconName: 'product' },
+  { value: 'bolalar', label: 'Bolalar', emoji: '👶', iconName: 'product' },
+  { value: 'unisex', label: 'Unisex', emoji: '👥', iconName: 'product' },
 ]
 
-// Segment options with emojis
-const SEGMENT_OPTIONS: { value: Segment; label: string; emoji: string }[] = [
-  { value: 'kiyim', label: 'Kiyim', emoji: '👕' },
-  { value: 'oyoq_kiyim', label: 'Oyoq kiyim', emoji: '👟' },
-  { value: 'aksessuar', label: 'Aksessuar', emoji: '👜' },
-  { value: 'ichki_kiyim', label: 'Ichki kiyim', emoji: '🩲' },
-  { value: 'sport', label: 'Sport kiyim', emoji: '🏃' },
-  { value: 'milliy', label: 'Milliy kiyim', emoji: '🎎' },
+// Segment options with premium icons
+const SEGMENT_OPTIONS: { value: Segment; label: string; emoji: string; iconName?: keyof typeof import('../utils/icons8').Icons8 }[] = [
+  { value: 'kiyim', label: 'Kiyim', emoji: '👕', iconName: 'product' },
+  { value: 'oyoq_kiyim', label: 'Oyoq kiyim', emoji: '👟', iconName: 'product' },
+  { value: 'aksessuar', label: 'Aksessuar', emoji: '👜', iconName: 'shoppingBag' },
+  { value: 'ichki_kiyim', label: 'Ichki kiyim', emoji: '🩲', iconName: 'product' },
+  { value: 'sport', label: 'Sport kiyim', emoji: '🏃', iconName: 'product' },
+  { value: 'milliy', label: 'Milliy kiyim', emoji: '🎎', iconName: 'product' },
 ]
 
 // Predefined colors for quick selection
@@ -150,12 +151,12 @@ const PRESET_COLORS = [
 const LETTER_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 const NUMBER_SIZES = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48']
 
-// Condition options
+// Condition options with premium icons
 const CONDITIONS = [
-  { value: 'yangi', label: 'Yangi', emoji: '✨', description: 'Hech ishlatilmagan' },
-  { value: 'yangi_kabi', label: 'Yangi kabi', emoji: '👌', description: '1-2 marta kiyilgan' },
-  { value: 'yaxshi', label: 'Yaxshi', emoji: '👍', description: 'Yaxshi holatda' },
-  { value: 'o\'rtacha', label: 'O\'rtacha', emoji: '🤏', description: 'Ishlatilgan' },
+  { value: 'yangi', label: 'Yangi', emoji: '✨', description: 'Hech ishlatilmagan', iconName: 'new' as keyof typeof import('../utils/icons8').Icons8 },
+  { value: 'yangi_kabi', label: 'Yangi kabi', emoji: '👌', description: '1-2 marta kiyilgan', iconName: 'product' as keyof typeof import('../utils/icons8').Icons8 },
+  { value: 'yaxshi', label: 'Yaxshi', emoji: '👍', description: 'Yaxshi holatda', iconName: 'product' as keyof typeof import('../utils/icons8').Icons8 },
+  { value: 'o\'rtacha', label: 'O\'rtacha', emoji: '🤏', description: 'Ishlatilgan', iconName: 'product' as keyof typeof import('../utils/icons8').Icons8 },
 ]
 
 export default function ClothingListingWizard({ 
@@ -578,8 +579,9 @@ export default function ClothingListingWizard({
           </button>
           
           <div className="text-center">
-            <h1 className="text-white font-semibold text-lg">
-              {STEPS[currentStep - 1].emoji} {STEPS[currentStep - 1].title}
+            <h1 className="text-white font-semibold text-lg flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center">{STEPS[currentStep - 1].icon}</span>
+              {STEPS[currentStep - 1].title}
             </h1>
             <p className="text-white/60 text-xs">
               {STEPS[currentStep - 1].subtitle}
@@ -631,7 +633,7 @@ export default function ClothingListingWizard({
                 {currentStep > step.id ? (
                   <CheckIcon className="w-5 h-5" />
                 ) : (
-                  <span className="text-lg">{step.emoji}</span>
+                  <span className="flex items-center justify-center">{step.icon}</span>
                 )}
               </button>
               {index < STEPS.length - 1 && (
@@ -672,7 +674,11 @@ export default function ClothingListingWizard({
                         }}
                         className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
                       >
-                        <span className="text-4xl">{option.emoji}</span>
+                        {option.iconName ? (
+                          <Icons8Icon name={option.iconName} size={32} className="opacity-90" />
+                        ) : (
+                          <span className="text-4xl">{option.emoji}</span>
+                        )}
                         <span className="text-white font-medium">{option.label}</span>
                       </button>
                     ))}
@@ -702,7 +708,11 @@ export default function ClothingListingWizard({
                         }}
                         className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
                       >
-                        <span className="text-3xl">{option.emoji}</span>
+                        {option.iconName ? (
+                          <Icons8Icon name={option.iconName} size={28} className="opacity-90" />
+                        ) : (
+                          <span className="text-3xl">{option.emoji}</span>
+                        )}
                         <span className="text-white font-medium text-sm">{option.label}</span>
                       </button>
                     ))}
@@ -971,7 +981,13 @@ export default function ClothingListingWizard({
                           : 'border-white/10 bg-white/5 hover:border-white/20'
                       }`}
                     >
-                      <span className="text-2xl block mb-1">{cond.emoji}</span>
+                      {cond.iconName ? (
+                        <div className="mb-1 flex items-center justify-center">
+                          <Icons8Icon name={cond.iconName} size={24} className="opacity-90" />
+                        </div>
+                      ) : (
+                        <span className="text-2xl block mb-1">{cond.emoji}</span>
+                      )}
                       <span className="text-white font-medium text-sm">{cond.label}</span>
                       <span className="text-white/50 text-xs block">{cond.description}</span>
                     </button>
