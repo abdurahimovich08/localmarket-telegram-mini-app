@@ -5,11 +5,12 @@
  * Designed for mobile-first with "wow" factor
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { uploadImages } from '../lib/imageUpload'
 import { compressDataUrls } from '../lib/imageCompression'
+import { sanitizeText, containsPII, simpleHash } from '../lib/aiUtils'
 import { useEntityMutations } from '../hooks/useEntityMutations'
 import { getUser, createOrUpdateUser } from '../lib/supabase'
 import { getTelegramUser } from '../lib/telegram'
@@ -198,7 +199,25 @@ export default function ClothingListingWizard({
   const [showBannerCreator, setShowBannerCreator] = useState(false)
   const [imageForBanner, setImageForBanner] = useState<string | null>(null)
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string
+    description: string
+    brand: string
+    material: string
+    condition: 'yangi' | 'yangi_kabi' | 'yaxshi' | 'o\'rtacha'
+    price: string
+    priceNegotiable: boolean
+    hasDiscount: boolean
+    originalPrice: string
+    discountReason: string
+    _aiMeta?: {
+      generatedAt: string
+      model: string
+      imagesUsed: number
+      hintUsed: boolean
+      version: string
+    }
+  }>({
     title: '',
     description: '',
     brand: '',
@@ -221,6 +240,13 @@ export default function ClothingListingWizard({
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // AI generation state
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiGenerated, setAiGenerated] = useState(false)
+  const [skipAI, setSkipAI] = useState(false)
+  const [userHint, setUserHint] = useState('') // Optional hint for AI in Step 2
   
   // Auto-set size type based on taxonomy (shoes = number, others = letter)
   useEffect(() => {
@@ -350,6 +376,263 @@ export default function ClothingListingWizard({
   const parsePrice = (value: string): number => {
     return parseInt(value.replace(/\s/g, '')) || 0
   }
+
+  // Check internet connection
+  const checkInternet = useCallback(async (): Promise<boolean> => {
+    if (!navigator.onLine) return false
+    try {
+      const response = await fetch('https://www.google.com/favicon.ico', { 
+        method: 'HEAD', 
+        mode: 'no-cors',
+        cache: 'no-cache'
+      })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
+  // Optimize image for AI: compress to 512px and remove base64 prefix
+  const optimizeImageForAI = useCallback(async (imageDataUrl: string): Promise<string> => {
+    try {
+      // Convert data URL to File
+      const response = await fetch(imageDataUrl)
+      const blob = await response.blob()
+      const file = new File([blob], 'image.jpg', { type: 'image/jpeg' })
+      
+      // Compress to 512px max dimension
+      const compressedFiles = await compressDataUrls([imageDataUrl], {
+        maxWidthOrHeight: 512,
+        maxSizeMB: 0.2, // 200KB max
+      }, 'listing')
+      
+      if (compressedFiles.length > 0) {
+        // Convert back to data URL and remove prefix
+        const reader = new FileReader()
+        const dataUrl = await new Promise<string>((resolve) => {
+          reader.onload = (e) => resolve(e.target?.result as string)
+          reader.readAsDataURL(compressedFiles[0])
+        })
+        // Remove data:image/...;base64, prefix
+        return dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
+      }
+      
+      // Fallback: remove prefix from original
+      return imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl
+    } catch (error) {
+      console.warn('Image optimization failed:', error)
+      // Fallback: remove prefix from original
+      return imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl
+    }
+  }, [])
+
+  // Generate AI content from images and category (Production-ready)
+  const generateAIContent = useCallback(async (overwrite: boolean = false) => {
+    // 1. Validation
+    if (!selectedTaxonomy || photos.length === 0) {
+      setAiError('Kategoriya va rasmlar kerak')
+      return
+    }
+
+    // 3. Double-trigger protection
+    if (aiRequestInFlightRef.current) {
+      console.warn('AI request already in flight, skipping duplicate')
+      return
+    }
+
+    // Abort previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+
+    // Create new AbortController for timeout
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
+    // Set timeout (12-15s)
+    const timeoutId = setTimeout(() => {
+      abortController.abort()
+    }, 15000)
+
+    aiRequestInFlightRef.current = true
+    setIsGeneratingAI(true)
+    setAiError(null)
+    if (overwrite) {
+      setAiGenerated(false)
+    }
+
+    const startTime = Date.now()
+    const modelVersion = 'gemini-2.0-flash'
+    const sanitizedHint = sanitizeText(userHint.trim())
+
+    try {
+      // Prepare images: limit to 3, optimize (512px, remove prefix)
+      const imagesToSend = photos.slice(0, 3)
+      const processedImages: string[] = []
+      
+      for (const imageDataUrl of imagesToSend) {
+        const optimized = await optimizeImageForAI(imageDataUrl)
+        processedImages.push(optimized)
+      }
+
+      // 9. Cache check
+      const cacheKey = generateCacheKey(processedImages, selectedTaxonomy.id, sanitizedHint)
+      const cached = aiCacheRef.current.get(cacheKey)
+      const cacheAge = cached ? Date.now() - cached.timestamp : Infinity
+      const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+
+      let aiData: any
+      if (cached && cacheAge < CACHE_TTL) {
+        console.log('Using cached AI response', { cacheAge: Math.round(cacheAge / 1000) + 's' })
+        aiData = cached.data
+      } else {
+        // Calculate request size for observability
+        const requestSize = JSON.stringify({
+          images: processedImages,
+          category: selectedTaxonomy,
+          userHint: sanitizedHint
+        }).length
+
+        // 8. Observability: Log request
+        console.log('[AI Request]', {
+          taxonomy: selectedTaxonomy.id,
+          imagesCount: processedImages.length,
+          requestSizeKB: Math.round(requestSize / 1024),
+          hasHint: !!sanitizedHint,
+          timestamp: new Date().toISOString()
+        })
+
+        // Call AI API with AbortController
+        const response = await fetch('/api/gemini-image-analysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            category: {
+              id: selectedTaxonomy.id,
+              labelUz: selectedTaxonomy.labelUz,
+              audience: selectedTaxonomy.audience,
+              segment: selectedTaxonomy.segment,
+            },
+            images: processedImages,
+            userHint: sanitizedHint || undefined,
+            language: 'uz',
+          }),
+          signal: abortController.signal,
+        })
+
+        const latency = Date.now() - startTime
+
+        // 4. Rate limit handling (429)
+        if (response.status === 429) {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('[AI Error] Rate limit exceeded', { latency })
+          setAiError('AI hozir band. Xohlasangiz qo\'lda davom eting yoki 1 daqiqadan so\'ng qayta urinib ko\'ring.')
+          return
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('[AI Error]', { status: response.status, error: errorData, latency })
+          throw new Error(errorData.error || 'AI javob olishda xatolik')
+        }
+
+        aiData = await response.json()
+
+        // 8. Observability: Log success
+        console.log('[AI Success]', {
+          latency: latency + 'ms',
+          responseSize: JSON.stringify(aiData).length,
+          timestamp: new Date().toISOString()
+        })
+
+        // Cache the response
+        aiCacheRef.current.set(cacheKey, {
+          data: aiData,
+          timestamp: Date.now()
+        })
+
+        // Clean old cache entries (keep only last 10)
+        if (aiCacheRef.current.size > 10) {
+          const entries = Array.from(aiCacheRef.current.entries())
+          entries.sort((a, b) => b[1].timestamp - a[1].timestamp)
+          aiCacheRef.current.clear()
+          entries.slice(0, 10).forEach(([key, value]) => {
+            aiCacheRef.current.set(key, value)
+          })
+        }
+      }
+
+      // Validate response
+      if (!aiData || typeof aiData !== 'object') {
+        throw new Error('AI javob formati noto\'g\'ri')
+      }
+
+      // 10. Security: Check for PII in AI response
+      if (aiData.description && containsPII(aiData.description)) {
+        console.warn('[AI Security] PII detected in description, sanitizing')
+        aiData.description = sanitizeText(aiData.description)
+      }
+      if (aiData.title && containsPII(aiData.title)) {
+        console.warn('[AI Security] PII detected in title, sanitizing')
+        aiData.title = sanitizeText(aiData.title)
+      }
+
+      // 1. AI Metadata (source-tag)
+      const aiMeta = {
+        generatedAt: new Date().toISOString(),
+        model: modelVersion,
+        imagesUsed: processedImages.length,
+        hintUsed: !!sanitizedHint,
+        version: '1.0.0'
+      }
+
+      // 5. Condition mapping: null instead of default if invalid
+      const validatedCondition = aiData.condition && 
+        ['yangi', 'yangi_kabi', 'yaxshi', 'o\'rtacha'].includes(aiData.condition)
+        ? aiData.condition
+        : null
+
+      // AI Merge Logic: Only fill empty fields (unless overwrite=true)
+      setFormData(prev => ({
+        ...prev,
+        title: overwrite || !prev.title.trim() ? (aiData.title || prev.title) : prev.title,
+        description: overwrite || !prev.description.trim() ? (aiData.description || prev.description) : prev.description,
+        brand: overwrite || !prev.brand.trim() ? (aiData.brand || prev.brand) : prev.brand,
+        material: overwrite || !prev.material.trim() ? (aiData.material || prev.material) : prev.material,
+        condition: overwrite || prev.condition === 'yangi' 
+          ? (validatedCondition || prev.condition) 
+          : prev.condition,
+        _aiMeta: aiMeta, // 1. Source-tag for debugging
+      }))
+
+      setAiGenerated(true)
+    } catch (err: any) {
+      const latency = Date.now() - startTime
+      
+      // 8. Observability: Log error
+      console.error('[AI Error]', {
+        error: err.message,
+        latency: latency + 'ms',
+        aborted: err.name === 'AbortError',
+        timestamp: new Date().toISOString()
+      })
+
+      if (err.name === 'AbortError') {
+        setAiError('AI javob olish vaqti tugadi. Iltimos, qayta urinib ko\'ring.')
+      } else if (err.message.includes('429') || err.message.includes('rate limit')) {
+        setAiError('AI hozir band. Xohlasangiz qo\'lda davom eting yoki 1 daqiqadan so\'ng qayta urinib ko\'ring.')
+      } else {
+        setAiError(err.message || 'AI yordamida to\'ldirishda xatolik yuz berdi')
+      }
+    } finally {
+      clearTimeout(timeoutId)
+      aiRequestInFlightRef.current = false
+      abortControllerRef.current = null
+      setIsGeneratingAI(false)
+    }
+  }, [selectedTaxonomy, photos, userHint, optimizeImageForAI, generateCacheKey])
 
   // Submit listing
   const handleSubmit = async () => {
@@ -545,10 +828,16 @@ export default function ClothingListingWizard({
   }
 
   // Navigate between steps
-  const goNext = () => {
-    if (canProceed && currentStep < STEPS.length) {
-      setCurrentStep(prev => prev + 1)
+  const goNext = async () => {
+    if (!canProceed || currentStep >= STEPS.length) return
+
+    // Auto-trigger AI generation when moving from step 2 to step 3
+    if (currentStep === 2 && currentStep + 1 === 3) {
+      // Trigger AI generation before moving to next step
+      await generateAIContent()
     }
+
+    setCurrentStep(prev => prev + 1)
   }
 
   const goBack = () => {
@@ -915,6 +1204,37 @@ export default function ClothingListingWizard({
                 </div>
               )}
               
+              {/* User Hint Input (Optional) */}
+              <div className="mt-6 space-y-2">
+                <label className="text-white/80 text-sm font-medium flex items-center gap-2">
+                  <Icons8Icon name="idea" size={16} className="opacity-90" />
+                  AI uchun qo'shimcha ma'lumot (ixtiyoriy)
+                </label>
+                <input
+                  type="text"
+                  value={userHint}
+                  onChange={(e) => setUserHint(e.target.value)}
+                  placeholder="Masalan: Nike sport kurtka, Adidas futbolka..."
+                  maxLength={50}
+                  className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
+                />
+                <p className="text-white/40 text-xs">Brend yoki model nomini yozing - AI aniqroq to'ldiradi</p>
+              </div>
+
+              {/* Skip AI Option */}
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="skipAI"
+                  checked={skipAI}
+                  onChange={(e) => setSkipAI(e.target.checked)}
+                  className="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500"
+                />
+                <label htmlFor="skipAI" className="text-white/70 text-sm cursor-pointer">
+                  AI yordamida to'ldirishni o'tkazib yuborish
+                </label>
+              </div>
+
               {/* Tips */}
               <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10">
                 <p className="text-white/80 text-sm font-medium mb-2 flex items-center gap-2">
@@ -933,94 +1253,209 @@ export default function ClothingListingWizard({
           {/* Step 3: Details */}
           {currentStep === 3 && (
             <div className="space-y-4 animate-fadeIn">
+              {/* AI Status Banner */}
+              {isGeneratingAI && (
+                <div className="p-4 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
+                  <p className="text-white/90 text-sm">AI ma'lumotlarni generatsiya qilmoqda...</p>
+                </div>
+              )}
+              
+              {aiError && (
+                <div className="p-4 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ExclamationCircleIcon className="w-5 h-5 text-red-400" />
+                    <p className="text-white/90 text-sm">{aiError}</p>
+                  </div>
+                  <button
+                    onClick={() => setAiError(null)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              {aiGenerated && !isGeneratingAI && (
+                <div className="p-4 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-400" />
+                  <p className="text-white/90 text-sm">AI to'ldirildi - kerak bo'lsa tahrirlashingiz mumkin</p>
+                </div>
+              )}
+
+              {/* Manual AI Button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <p className="text-white/80 text-sm font-medium mb-1">AI yordamida to'ldirish</p>
+                  <p className="text-white/50 text-xs">Rasmlar va kategoriya asosida avtomatik to'ldirish</p>
+                </div>
+                <button
+                  onClick={generateAIContent}
+                  disabled={isGeneratingAI || !selectedTaxonomy || photos.length === 0}
+                  className={`px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                    isGeneratingAI || !selectedTaxonomy || photos.length === 0
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 active:scale-95'
+                  }`}
+                >
+                  {isGeneratingAI ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Kutilmoqda...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons8Icon name="sparkles" size={18} className="opacity-90" />
+                      <span>AI to'ldirish</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
-                <label className="text-white/80 text-sm font-medium">
+                <label className="text-white/80 text-sm font-medium flex items-center gap-2">
                   Sarlavha *
+                  {isGeneratingAI && (
+                    <span className="text-xs text-white/50">(AI generatsiya qilmoqda...)</span>
+                  )}
                 </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder={selectedTaxonomy ? `Masalan: Nike ${selectedTaxonomy.labelUz.toLowerCase()}` : "Sarlavha kiriting"}
-                  maxLength={80}
-                  className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                />
-                <p className="text-white/40 text-xs text-right">{formData.title.length}/80</p>
+                {isGeneratingAI && !formData.title ? (
+                  <div className="w-full h-14 bg-white/5 rounded-2xl animate-pulse"></div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder={selectedTaxonomy ? `Masalan: Nike ${selectedTaxonomy.labelUz.toLowerCase()}` : "Sarlavha kiriting"}
+                      maxLength={80}
+                      disabled={isGeneratingAI}
+                      className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50"
+                    />
+                    <p className="text-white/40 text-xs text-right">{formData.title.length}/80</p>
+                  </>
+                )}
               </div>
 
               {/* Description */}
               <div className="space-y-2">
-                <label className="text-white/80 text-sm font-medium">
+                <label className="text-white/80 text-sm font-medium flex items-center gap-2">
                   Tavsif *
+                  {isGeneratingAI && (
+                    <span className="text-xs text-white/50">(AI generatsiya qilmoqda...)</span>
+                  )}
                 </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Mahsulot haqida batafsil yozing..."
-                  rows={4}
-                  maxLength={500}
-                  className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
-                />
-                <p className="text-white/40 text-xs text-right">{formData.description.length}/500</p>
+                {isGeneratingAI && !formData.description ? (
+                  <div className="w-full h-32 bg-white/5 rounded-2xl animate-pulse"></div>
+                ) : (
+                  <>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Mahsulot haqida batafsil yozing..."
+                      rows={4}
+                      maxLength={500}
+                      disabled={isGeneratingAI}
+                      className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none disabled:opacity-50"
+                    />
+                    <p className="text-white/40 text-xs text-right">{formData.description.length}/500</p>
+                  </>
+                )}
               </div>
 
               {/* Brand */}
               <div className="space-y-2">
                 <label className="text-white/80 text-sm font-medium">
-                  Brend
+                  Brend <span className="text-white/40 text-xs">(ixtiyoriy)</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.brand}
-                  onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-                  placeholder="Masalan: Nike, Adidas, Zara"
-                  className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                />
+                {isGeneratingAI && !formData.brand ? (
+                  <div className="w-full h-14 bg-white/5 rounded-2xl animate-pulse"></div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={formData.brand}
+                      onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                      placeholder={formData.brand ? "Masalan: Nike, Adidas, Zara" : "Aniqlanmadi (ixtiyoriy)"}
+                      disabled={isGeneratingAI}
+                      className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50"
+                    />
+                    {!formData.brand && (
+                      <p className="text-white/50 text-xs">Brendni yozsangiz tezroq sotiladi</p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Material */}
               <div className="space-y-2">
                 <label className="text-white/80 text-sm font-medium">
-                  Material
+                  Material <span className="text-white/40 text-xs">(ixtiyoriy)</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.material}
-                  onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
-                  placeholder="Masalan: Paxta, Teri, Poliester"
-                  className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                />
+                {isGeneratingAI && !formData.material ? (
+                  <div className="w-full h-14 bg-white/5 rounded-2xl animate-pulse"></div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={formData.material}
+                      onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+                      placeholder={formData.material ? "Masalan: Paxta, Teri, Poliester" : "Aniqlanmadi (ixtiyoriy)"}
+                      disabled={isGeneratingAI}
+                      className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50"
+                    />
+                    {!formData.material && (
+                      <p className="text-white/50 text-xs">Materialni ko'rsatsangiz xaridorlar ishonchliroq</p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Condition */}
               <div className="space-y-3">
-                <label className="text-white/80 text-sm font-medium">
+                <label className="text-white/80 text-sm font-medium flex items-center gap-2">
                   Holati *
+                  {isGeneratingAI && formData.condition === 'yangi' && (
+                    <span className="text-xs text-white/50">(AI aniqlayapti...)</span>
+                  )}
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {CONDITIONS.map(cond => (
-                    <button
-                      key={cond.value}
-                      onClick={() => setFormData(prev => ({ ...prev, condition: cond.value }))}
-                      className={`p-4 rounded-2xl border-2 transition-all ${
-                        formData.condition === cond.value
-                          ? 'border-purple-500 bg-purple-500/20'
-                          : 'border-white/10 bg-white/5 hover:border-white/20'
-                      }`}
-                    >
-                      {cond.iconName ? (
-                        <div className="mb-1 flex items-center justify-center">
-                          <Icons8Icon name={cond.iconName} size={24} className="opacity-90" />
-                        </div>
-                      ) : (
-                        <span className="text-2xl block mb-1">{cond.emoji}</span>
-                      )}
-                      <span className="text-white font-medium text-sm">{cond.label}</span>
-                      <span className="text-white/50 text-xs block">{cond.description}</span>
-                    </button>
-                  ))}
-                </div>
+                {isGeneratingAI && formData.condition === 'yangi' ? (
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                    <p className="text-white/60 text-sm text-center">AI holatni aniqlayapti...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      {CONDITIONS.map(cond => (
+                        <button
+                          key={cond.value}
+                          onClick={() => setFormData(prev => ({ ...prev, condition: cond.value }))}
+                          className={`p-4 rounded-2xl border-2 transition-all ${
+                            formData.condition === cond.value
+                              ? 'border-purple-500 bg-purple-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          {cond.iconName ? (
+                            <div className="mb-1 flex items-center justify-center">
+                              <Icons8Icon name={cond.iconName} size={24} className="opacity-90" />
+                            </div>
+                          ) : (
+                            <span className="text-2xl block mb-1">{cond.emoji}</span>
+                          )}
+                          <span className="text-white font-medium text-sm">{cond.label}</span>
+                          <span className="text-white/50 text-xs block">{cond.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {formData.condition === 'yangi' && aiGenerated && (
+                      <p className="text-white/50 text-xs text-center">
+                        AI aniqlay olmadi - o'zingiz tanlang
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
