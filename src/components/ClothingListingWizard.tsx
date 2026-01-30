@@ -32,11 +32,13 @@ import {
   ChevronRightIcon,
   PaintBrushIcon,
   ExclamationCircleIcon,
-  CameraIcon
+  CameraIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { CLOTHING_TAXONOMY, TaxonNode, Audience, Segment } from '../taxonomy/clothing.uz'
 import { buildTagsFromSelection } from '../taxonomy/clothing.utils'
+import { clothingTaxonomyRegistry, getPopularItems, getSegmentsForAudience } from '../taxonomy/clothingRegistry'
 
 // Types
 interface WizardStep {
@@ -116,23 +118,9 @@ const STEPS: WizardStep[] = [
   }
 ]
 
-// Audience options with premium icons
-const AUDIENCE_OPTIONS: { value: Audience; label: string; emoji: string; iconName?: keyof typeof import('../utils/icons8').Icons8 }[] = [
-  { value: 'erkaklar', label: 'Erkaklar', emoji: '👨', iconName: 'product' },
-  { value: 'ayollar', label: 'Ayollar', emoji: '👩', iconName: 'product' },
-  { value: 'bolalar', label: 'Bolalar', emoji: '👶', iconName: 'product' },
-  { value: 'unisex', label: 'Unisex', emoji: '👥', iconName: 'product' },
-]
-
-// Segment options with premium icons
-const SEGMENT_OPTIONS: { value: Segment; label: string; emoji: string; iconName?: keyof typeof import('../utils/icons8').Icons8 }[] = [
-  { value: 'kiyim', label: 'Kiyim', emoji: '👕', iconName: 'product' },
-  { value: 'oyoq_kiyim', label: 'Oyoq kiyim', emoji: '👟', iconName: 'product' },
-  { value: 'aksessuar', label: 'Aksessuar', emoji: '👜', iconName: 'shoppingBag' },
-  { value: 'ichki_kiyim', label: 'Ichki kiyim', emoji: '🩲', iconName: 'product' },
-  { value: 'sport', label: 'Sport kiyim', emoji: '🏃', iconName: 'product' },
-  { value: 'milliy', label: 'Milliy kiyim', emoji: '🎎', iconName: 'product' },
-]
+// Get options from registry (separated data layer)
+const AUDIENCE_OPTIONS = clothingTaxonomyRegistry.audiences
+const SEGMENT_OPTIONS = clothingTaxonomyRegistry.segments
 
 // Predefined colors for quick selection
 const PRESET_COLORS = [
@@ -177,21 +165,76 @@ export default function ClothingListingWizard({
     initialTaxonomy ? CLOTHING_TAXONOMY.find(t => t.id === initialTaxonomy.id) || null : null
   )
   
-  // Get available segments for selected audience
+  // Search state for Step 1.3
+  const [itemSearchQuery, setItemSearchQuery] = useState('')
+  
+  // Recent selections (localStorage)
+  const [recentSelections, setRecentSelections] = useState<TaxonNode[]>([])
+  
+  // Load recent selections on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('clothing_wizard_recent_selections')
+      if (stored) {
+        const recentIds = JSON.parse(stored) as string[]
+        const recent = recentIds
+          .map(id => CLOTHING_TAXONOMY.find(n => n.id === id))
+          .filter((n): n is TaxonNode => !!n)
+          .slice(0, 5)
+        setRecentSelections(recent)
+      }
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, [])
+  
+  // Save to recent selections
+  const saveToRecent = useCallback((item: TaxonNode) => {
+    try {
+      const stored = localStorage.getItem('clothing_wizard_recent_selections') || '[]'
+      const recentIds = JSON.parse(stored) as string[]
+      const updated = [item.id, ...recentIds.filter(id => id !== item.id)].slice(0, 5)
+      localStorage.setItem('clothing_wizard_recent_selections', JSON.stringify(updated))
+      setRecentSelections(prev => {
+        const filtered = prev.filter(n => n.id !== item.id)
+        return [item, ...filtered].slice(0, 5)
+      })
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, [])
+  
+  // Popular categories from registry
+  const popularItems = useMemo(() => {
+    return getPopularItems(clothingTaxonomyRegistry)
+  }, [])
+  
+  // Get available segments for selected audience from registry
   const availableSegments = useMemo(() => {
     if (!selectedAudience) return []
-    const segments = new Set<Segment>()
-    CLOTHING_TAXONOMY.filter(t => t.audience === selectedAudience).forEach(t => segments.add(t.segment))
-    return SEGMENT_OPTIONS.filter(s => segments.has(s.value))
+    return getSegmentsForAudience(clothingTaxonomyRegistry, selectedAudience)
   }, [selectedAudience])
   
-  // Get available items for selected audience + segment
+  // Get available items for selected audience + segment (with search filter)
   const availableItems = useMemo(() => {
     if (!selectedAudience || !selectedSegment) return []
-    return CLOTHING_TAXONOMY.filter(
+    let items = CLOTHING_TAXONOMY.filter(
       t => t.audience === selectedAudience && t.segment === selectedSegment && t.leaf
     )
-  }, [selectedAudience, selectedSegment])
+    
+    // Apply search filter
+    if (itemSearchQuery.trim()) {
+      const query = itemSearchQuery.toLowerCase().trim()
+      items = items.filter(item => {
+        const labelMatch = item.labelUz.toLowerCase().includes(query)
+        const synonymsMatch = item.synonymsUz?.some(s => s.toLowerCase().includes(query)) || false
+        const pathMatch = item.pathUz.toLowerCase().includes(query)
+        return labelMatch || synonymsMatch || pathMatch
+      })
+    }
+    
+    return items
+  }, [selectedAudience, selectedSegment, itemSearchQuery])
   
   // Form data
   const [photos, setPhotos] = useState<string[]>([])
@@ -963,8 +1006,66 @@ export default function ClothingListingWizard({
                 </p>
               </div>
               
+              {/* Quick Selection: Recent & Popular (only when no selection) */}
+              {!selectedAudience && !selectedTaxonomy && (
+                <div className="space-y-4">
+                  {/* Recent Selections */}
+                  {recentSelections.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-white/60 text-xs font-medium">So'nggi tanlanganlar</p>
+                      <div className="flex flex-wrap gap-2">
+                        {recentSelections.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedTaxonomy(item)
+                              saveToRecent(item)
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/50 hover:border-purple-400/50 hover:bg-slate-700/60 transition-all text-white text-xs flex items-center gap-1.5"
+                          >
+                            <Icons8Icon name="tagWindow" size={12} className="opacity-90" />
+                            {item.labelUz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Popular Categories */}
+                  {popularItems.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-white/60 text-xs font-medium">Top kategoriyalar</p>
+                      <div className="flex flex-wrap gap-2">
+                        {popularItems.map(item => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedTaxonomy(item)
+                              saveToRecent(item)
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-slate-800/60 border border-slate-700/50 hover:border-purple-400/50 hover:bg-slate-700/60 transition-all text-white text-xs flex items-center gap-1.5"
+                          >
+                            <Icons8Icon name="tagWindow" size={12} className="opacity-90" />
+                            {item.labelUz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Divider */}
+                  {(recentSelections.length > 0 || popularItems.length > 0) && (
+                    <div className="flex items-center gap-3 my-4">
+                      <div className="flex-1 h-px bg-white/10"></div>
+                      <span className="text-white/40 text-xs">yoki</span>
+                      <div className="flex-1 h-px bg-white/10"></div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Step 1.1: Audience Selection */}
-              {!selectedAudience && (
+              {!selectedAudience && !selectedTaxonomy && (
                 <div className="space-y-3">
                   <p className="text-white/60 text-sm text-center mb-4">Kim uchun mo'ljallangan?</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -976,12 +1077,10 @@ export default function ClothingListingWizard({
                           setSelectedSegment(null)
                           setSelectedTaxonomy(null)
                         }}
-                        className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
+                        className="p-5 rounded-2xl bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 hover:border-purple-400/50 hover:bg-slate-700/60 transition-all flex flex-col items-center gap-2 shadow-lg"
                       >
-                        {option.iconName ? (
+                        {option.iconName && (
                           <Icons8Icon name={option.iconName} size={32} className="opacity-90" />
-                        ) : (
-                          <span className="text-4xl">{option.emoji}</span>
                         )}
                         <span className="text-white font-medium">{option.label}</span>
                       </button>
@@ -991,14 +1090,14 @@ export default function ClothingListingWizard({
               )}
               
               {/* Step 1.2: Segment Selection */}
-              {selectedAudience && !selectedSegment && (
+              {selectedAudience && !selectedSegment && !selectedTaxonomy && (
                 <div className="space-y-3">
                   <button 
                     onClick={() => setSelectedAudience(null)}
                     className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4"
                   >
                     <ArrowLeftIcon className="w-4 h-4" />
-                    {AUDIENCE_OPTIONS.find(a => a.value === selectedAudience)?.label}
+                    {AUDIENCE_OPTIONS.find(a => a.value === selectedAudience)?.label || 'Orqaga'}
                   </button>
                   
                   <p className="text-white/60 text-sm text-center mb-4">Qanday kiyim?</p>
@@ -1010,12 +1109,10 @@ export default function ClothingListingWizard({
                           setSelectedSegment(option.value)
                           setSelectedTaxonomy(null)
                         }}
-                        className="p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all flex flex-col items-center gap-2"
+                        className="p-5 rounded-2xl bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 hover:border-purple-400/50 hover:bg-slate-700/60 transition-all flex flex-col items-center gap-2 shadow-lg"
                       >
-                        {option.iconName ? (
+                        {option.iconName && (
                           <Icons8Icon name={option.iconName} size={28} className="opacity-90" />
-                        ) : (
-                          <span className="text-3xl">{option.emoji}</span>
                         )}
                         <span className="text-white font-medium text-sm">{option.label}</span>
                       </button>
@@ -1028,45 +1125,82 @@ export default function ClothingListingWizard({
               {selectedAudience && selectedSegment && !selectedTaxonomy && (
                 <div className="space-y-3">
                   <button 
-                    onClick={() => setSelectedSegment(null)}
+                    onClick={() => {
+                      setSelectedSegment(null)
+                      setItemSearchQuery('')
+                    }}
                     className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4"
                   >
                     <ArrowLeftIcon className="w-4 h-4" />
-                    {SEGMENT_OPTIONS.find(s => s.value === selectedSegment)?.label}
+                    {SEGMENT_OPTIONS.find(s => s.value === selectedSegment)?.label || 'Orqaga'}
                   </button>
                   
                   <p className="text-white/60 text-sm text-center mb-4">Aniq turini tanlang</p>
-                  <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pb-4">
-                    {availableItems.map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedTaxonomy(item)}
-                        className="p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:border-purple-400 hover:bg-white/20 transition-all text-left"
-                      >
-                        <span className="text-white font-medium text-sm">{item.labelUz}</span>
-                        {item.synonymsUz && item.synonymsUz.length > 0 && (
-                          <p className="text-white/40 text-xs mt-1 truncate">
-                            {item.synonymsUz.slice(0, 2).join(', ')}
-                          </p>
-                        )}
-                      </button>
-                    ))}
+                  
+                  {/* Search Input */}
+                  <div className="relative mb-4">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                    <input
+                      type="text"
+                      value={itemSearchQuery}
+                      onChange={(e) => setItemSearchQuery(e.target.value)}
+                      placeholder="Qidirish..."
+                      className="w-full pl-10 pr-4 py-3 bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400/50 transition-all text-sm"
+                    />
                   </div>
+                  
+                  {/* Items Grid */}
+                  {availableItems.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pb-4">
+                      {availableItems.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedTaxonomy(item)
+                            saveToRecent(item)
+                            setItemSearchQuery('')
+                          }}
+                          className="p-4 rounded-2xl bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 hover:border-purple-400/50 hover:bg-slate-700/60 transition-all text-left shadow-lg"
+                        >
+                          <span className="text-white font-medium text-sm block">{item.labelUz}</span>
+                          {/* Show pathUz for context */}
+                          <p className="text-white/50 text-xs mt-1 truncate">
+                            {item.pathUz.split(' / ').slice(-2).join(' / ')}
+                          </p>
+                          {item.synonymsUz && item.synonymsUz.length > 0 && (
+                            <p className="text-white/40 text-xs mt-1 truncate">
+                              {item.synonymsUz.slice(0, 2).join(', ')}
+                            </p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-white/60 text-sm">Hech narsa topilmadi</p>
+                      <p className="text-white/40 text-xs mt-1">Boshqa so'z bilan qidiring</p>
+                    </div>
+                  )}
                 </div>
               )}
               
               {/* Selected Taxonomy Display */}
               {selectedTaxonomy && (
                 <div className="space-y-4">
-                  <div className="p-6 rounded-3xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 border-2 border-purple-400/50 shadow-xl">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
                           <CheckIcon className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-white font-semibold">{selectedTaxonomy.labelUz}</p>
-                          <p className="text-white/60 text-xs">{selectedTaxonomy.pathUz}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-semibold">{selectedTaxonomy.labelUz}</p>
+                            <span className="px-2 py-0.5 rounded-full bg-green-500/20 border border-green-400/30 text-green-300 text-xs font-medium">
+                              Tanlandi
+                            </span>
+                          </div>
+                          <p className="text-white/70 text-xs mt-1">{selectedTaxonomy.pathUz}</p>
                         </div>
                       </div>
                       <button
@@ -1074,6 +1208,7 @@ export default function ClothingListingWizard({
                           setSelectedTaxonomy(null)
                           setSelectedSegment(null)
                           setSelectedAudience(null)
+                          setItemSearchQuery('')
                         }}
                         className="p-2 hover:bg-white/10 rounded-full transition-colors"
                       >
@@ -1085,29 +1220,21 @@ export default function ClothingListingWizard({
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         const audienceOption = AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)
-                        return (
-                          <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs flex items-center gap-1.5">
-                            {audienceOption?.iconName ? (
-                              <Icons8Icon name={audienceOption.iconName} size={14} className="opacity-90" />
-                            ) : (
-                              <span>{audienceOption?.emoji}</span>
-                            )}
-                            {audienceOption?.label}
+                        return audienceOption?.iconName ? (
+                          <span className="px-3 py-1 rounded-full bg-slate-800/60 border border-slate-700/50 text-white text-xs flex items-center gap-1.5">
+                            <Icons8Icon name={audienceOption.iconName} size={14} className="opacity-90" />
+                            {audienceOption.label}
                           </span>
-                        )
+                        ) : null
                       })()}
                       {(() => {
                         const segmentOption = SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)
-                        return (
-                          <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs flex items-center gap-1.5">
-                            {segmentOption?.iconName ? (
-                              <Icons8Icon name={segmentOption.iconName} size={14} className="opacity-90" />
-                            ) : (
-                              <span>{segmentOption?.emoji}</span>
-                            )}
-                            {segmentOption?.label}
+                        return segmentOption?.iconName ? (
+                          <span className="px-3 py-1 rounded-full bg-slate-800/60 border border-slate-700/50 text-white text-xs flex items-center gap-1.5">
+                            <Icons8Icon name={segmentOption.iconName} size={14} className="opacity-90" />
+                            {segmentOption.label}
                           </span>
-                        )
+                        ) : null
                       })()}
                     </div>
                   </div>
