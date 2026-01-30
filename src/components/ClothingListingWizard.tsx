@@ -248,6 +248,11 @@ export default function ClothingListingWizard({
   const [skipAI, setSkipAI] = useState(false)
   const [userHint, setUserHint] = useState('') // Optional hint for AI in Step 2
   
+  // Double-trigger protection & request management
+  const aiRequestInFlightRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const aiCacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map())
+  
   // Auto-set size type based on taxonomy (shoes = number, others = letter)
   useEffect(() => {
     if (selectedTaxonomy?.segment === 'oyoq_kiyim') {
@@ -390,6 +395,15 @@ export default function ClothingListingWizard({
     } catch {
       return false
     }
+  }, [])
+
+  // Generate hash for cache key
+  const generateCacheKey = useCallback((images: string[], taxonomyId: string, hint: string): string => {
+    // Simple hash: first 100 chars of each image + taxonomy + hint
+    const imageHash = images.slice(0, 3).map(img => img.substring(0, 100)).join('|')
+    const keyString = `${taxonomyId}|${hint}|${imageHash.substring(0, 200)}`
+    // Use simpleHash for consistent hashing
+    return simpleHash(keyString)
   }, [])
 
   // Optimize image for AI: compress to 512px and remove base64 prefix
