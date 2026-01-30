@@ -11,6 +11,8 @@ import { useUser } from '../contexts/UserContext'
 import { uploadImages } from '../lib/imageUpload'
 import { compressDataUrls } from '../lib/imageCompression'
 import { useEntityMutations } from '../hooks/useEntityMutations'
+import { getUser, createOrUpdateUser } from '../lib/supabase'
+import { getTelegramUser } from '../lib/telegram'
 import BannerCropper from './BannerCropper'
 import BannerCreator from './BannerCreator'
 import { 
@@ -350,8 +352,53 @@ export default function ClothingListingWizard({
 
   // Submit listing
   const handleSubmit = async () => {
-    if (!user) {
-      setError('Foydalanuvchi ma\'lumotlari topilmadi. Iltimos, qayta urinib ko\'ring.')
+    let currentUser = user
+    
+    // If user is not loaded, try to fetch it
+    if (!currentUser) {
+      try {
+        const telegramUser = getTelegramUser()
+        if (!telegramUser) {
+          setError('Telegram ma\'lumotlari topilmadi. Iltimos, ilovani qayta yuklang.')
+          return
+        }
+        
+        // Try to get user from database
+        let dbUser = await getUser(telegramUser.id)
+        
+        // Create user if doesn't exist
+        if (!dbUser) {
+          dbUser = await createOrUpdateUser({
+            telegram_user_id: telegramUser.id,
+            username: telegramUser.username,
+            first_name: telegramUser.first_name,
+            last_name: telegramUser.last_name,
+            profile_photo_url: telegramUser.photo_url,
+            search_radius_miles: 10,
+            is_premium: false,
+            rating_average: 0,
+            total_reviews: 0,
+            items_sold_count: 0,
+            created_at: new Date().toISOString(),
+            last_active: new Date().toISOString()
+          })
+        }
+        
+        if (!dbUser) {
+          setError('Foydalanuvchi yaratilmadi. Iltimos, qayta urinib ko\'ring.')
+          return
+        }
+        
+        currentUser = dbUser
+      } catch (err: any) {
+        console.error('Error fetching user:', err)
+        setError('Foydalanuvchi ma\'lumotlarini yuklashda xatolik. Iltimos, qayta urinib ko\'ring.')
+        return
+      }
+    }
+    
+    if (!currentUser || !currentUser.telegram_user_id) {
+      setError('Foydalanuvchi ma\'lumotlari to\'liq emas. Iltimos, qayta urinib ko\'ring.')
       return
     }
     
@@ -462,7 +509,7 @@ export default function ClothingListingWizard({
       }
       
       await createListing({
-        seller_telegram_id: user.telegram_user_id,
+        seller_telegram_id: currentUser.telegram_user_id,
         title: formData.title,
         description: formData.description,
         price: parsePrice(formData.price),
