@@ -18,8 +18,9 @@ import BannerCropper from './BannerCropper'
 import BannerCreator from './BannerCreator'
 import Icons8Icon from './Icons8Icon'
 import { TagIcon } from '@heroicons/react/24/outline'
-import { TaxonNode } from '../taxonomy/clothing.uz'
+import { CLOTHING_TAXONOMY, TaxonNode, Audience, Segment } from '../taxonomy/clothing.uz'
 import { buildTagsFromSelection } from '../taxonomy/clothing.utils'
+import { clothingTaxonomyRegistry, getPopularItems, getSegmentsForAudience } from '../taxonomy/clothingRegistry'
 
 // Step Components
 import Step1Taxonomy from './wizard/steps/Step1Taxonomy'
@@ -102,7 +103,10 @@ export default function ClothingListingWizard({
   const [currentStep, setCurrentStep] = useState(1)
   
   // Taxonomy selection state
+  const [selectedAudience, setSelectedAudience] = useState<Audience | null>(null)
+  const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null)
   const [selectedTaxonomy, setSelectedTaxonomy] = useState<TaxonNode | null>(initialTaxonomy || null)
+  const [itemSearchQuery, setItemSearchQuery] = useState('')
   
   // Photos state
   const [photos, setPhotos] = useState<string[]>([])
@@ -178,6 +182,34 @@ export default function ClothingListingWizard({
   })
   
   // Computed values
+  const availableSegments = useMemo(() => {
+    if (!selectedAudience) return []
+    return getSegmentsForAudience(clothingTaxonomyRegistry, selectedAudience)
+  }, [selectedAudience])
+  
+  const availableItems = useMemo(() => {
+    if (!selectedSegment) return []
+    const query = itemSearchQuery.toLowerCase().trim()
+    return CLOTHING_TAXONOMY.filter(item => 
+      item.audience === selectedAudience &&
+      item.segment === selectedSegment &&
+      item.leaf &&
+      (query === '' || 
+       item.labelUz.toLowerCase().includes(query) ||
+       item.synonymsUz?.some(s => s.toLowerCase().includes(query)) ||
+       item.pathUz.toLowerCase().includes(query))
+    )
+  }, [selectedAudience, selectedSegment, itemSearchQuery])
+  
+  const popularItems = useMemo(() => {
+    const items = getPopularItems(clothingTaxonomyRegistry)
+    // Filter by audience/segment if selected
+    if (selectedAudience) {
+      return items.filter(item => item.audience === selectedAudience)
+    }
+    return items
+  }, [selectedAudience])
+  
   const progressPercent = useMemo(() => (currentStep / STEPS.length) * 100, [currentStep])
   
   // Step validation
@@ -198,6 +230,27 @@ export default function ClothingListingWizard({
   }, [selectedTaxonomy, photos, formData, selectedColors, selectedSizes, photosByColor])
   
   const canProceed = isStepValid(currentStep - 1)
+  
+  // Recent selections from localStorage
+  const [recentSelections, setRecentSelections] = useState<TaxonNode[]>([])
+  
+  useEffect(() => {
+    const stored = localStorage.getItem('clothing_wizard_recent_selections')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setRecentSelections(parsed.slice(0, 5))
+      } catch (e) {
+        console.warn('Failed to parse recent selections:', e)
+      }
+    }
+  }, [])
+  
+  const saveToRecent = useCallback((item: TaxonNode) => {
+    const updated = [item, ...recentSelections.filter(i => i.id !== item.id)].slice(0, 5)
+    setRecentSelections(updated)
+    localStorage.setItem('clothing_wizard_recent_selections', JSON.stringify(updated))
+  }, [recentSelections])
   
   // Size type based on segment
   useEffect(() => {
@@ -611,8 +664,19 @@ export default function ClothingListingWizard({
           {/* Step 1: Taxonomy */}
           {currentStep === 1 && (
             <Step1Taxonomy
+              selectedAudience={selectedAudience}
+              setSelectedAudience={setSelectedAudience}
+              selectedSegment={selectedSegment}
+              setSelectedSegment={setSelectedSegment}
               selectedTaxonomy={selectedTaxonomy}
-              onTaxonomyChange={setSelectedTaxonomy}
+              setSelectedTaxonomy={setSelectedTaxonomy}
+              itemSearchQuery={itemSearchQuery}
+              setItemSearchQuery={setItemSearchQuery}
+              recentSelections={recentSelections}
+              saveToRecent={saveToRecent}
+              availableSegments={availableSegments}
+              availableItems={availableItems}
+              popularItems={popularItems}
             />
           )}
 
