@@ -780,12 +780,32 @@ export default function ClothingListingWizard({
                     
                     {/* Quick info */}
                     <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
-                        {AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)?.emoji} {AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)?.label}
-                      </span>
-                      <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs">
-                        {SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)?.emoji} {SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)?.label}
-                      </span>
+                      {(() => {
+                        const audienceOption = AUDIENCE_OPTIONS.find(a => a.value === selectedTaxonomy.audience)
+                        return (
+                          <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs flex items-center gap-1.5">
+                            {audienceOption?.iconName ? (
+                              <Icons8Icon name={audienceOption.iconName} size={14} className="opacity-90" />
+                            ) : (
+                              <span>{audienceOption?.emoji}</span>
+                            )}
+                            {audienceOption?.label}
+                          </span>
+                        )
+                      })()}
+                      {(() => {
+                        const segmentOption = SEGMENT_OPTIONS.find(s => s.value === selectedTaxonomy.segment)
+                        return (
+                          <span className="px-3 py-1 rounded-full bg-white/10 text-white text-xs flex items-center gap-1.5">
+                            {segmentOption?.iconName ? (
+                              <Icons8Icon name={segmentOption.iconName} size={14} className="opacity-90" />
+                            ) : (
+                              <span>{segmentOption?.emoji}</span>
+                            )}
+                            {segmentOption?.label}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
                   
