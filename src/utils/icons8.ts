@@ -69,6 +69,35 @@ export const Icons8 = {
   stationery2: '/icons/icons8-stationery-50-2.png',
   cursorInWindow: '/icons/icons8-cursor-in-window-50.png',
   laptopWithCursor: '/icons/icons8-laptop-with-cursor-50.png',
+  
+  // Premium Icons - New Additions
+  camera: '/icons/icons8-camera-50.png',
+  rocket: '/icons/icons8-rocket-50.png',
+  launch: '/icons/icons8-launch-50.png',
+  sparkles: '/icons/icons8-sparkles-50.png',
+  sparkling: '/icons/icons8-sparkling-50.png',
+  idea: '/icons/icons8-idea-50.png',
+  lightbulb: '/icons/icons8-light-50.png',
+  goal: '/icons/icons8-goal-50.png',
+  target: '/icons/icons8-goal-50.png', // Using goal as target
+  chart: '/icons/icons8-chart-50.png',
+  statistics: '/icons/icons8-statistics-50.png',
+  analytics: '/icons/icons8-analytics-50.png',
+  handshake: '/icons/icons8-handshake-50.png',
+  lightning: '/icons/icons8-lightning-bolt-50.png',
+  flash: '/icons/icons8-flash-on-50.png',
+  celebration: '/icons/icons8-sparkling-50.png', // Using sparkling as celebration
+  photo: '/icons/icons8-image-50.png',
+  photoGallery: '/icons/icons8-photo-gallery-50.png',
+  addImage: '/icons/icons8-add-image-50.png',
+  service: '/icons/icons8-online-support-50.png',
+  support: '/icons/icons8-technical-support-50.png',
+  user: '/icons/icons8-user-50.png',
+  account: '/icons/icons8-account-male-50.png',
+  profile: '/icons/icons8-profile-50.png',
+  info: '/icons/icons8-info-50.png',
+  information: '/icons/icons8-information-50.png',
+  faq: '/icons/icons8-faq-50.png',
 } as const
 
 /**

@@ -78,7 +78,7 @@ const STEPS: WizardStep[] = [
     key: 'photos', 
     title: 'Rasmlar', 
     subtitle: 'Eng yaxshi rasmlarni yuklang',
-    icon: <PhotoIcon className="w-6 h-6" />,
+    icon: <Icons8Icon name="camera" size={24} className="opacity-90" />,
     emoji: '📸'
   },
   { 
@@ -86,7 +86,7 @@ const STEPS: WizardStep[] = [
     key: 'details', 
     title: 'Ma\'lumotlar', 
     subtitle: 'Mahsulot haqida',
-    icon: <Icons8Icon name="product" size={24} className="opacity-90" />,
+    icon: <Icons8Icon name="sparkles" size={24} className="opacity-90" />,
     emoji: '✨'
   },
   { 
@@ -110,7 +110,7 @@ const STEPS: WizardStep[] = [
     key: 'publish', 
     title: 'Joylash', 
     subtitle: 'Tayyor!',
-    icon: <RocketLaunchIcon className="w-6 h-6" />,
+    icon: <Icons8Icon name="rocket" size={24} className="opacity-90" />,
     emoji: '🚀'
   }
 ]
@@ -654,8 +654,9 @@ export default function ClothingListingWizard({
           {currentStep === 1 && (
             <div className="space-y-4 animate-fadeIn">
               <div className="text-center mb-6">
-                <p className="text-white/80 text-sm">
-                  To'g'ri kategoriya = Tez topilish 🎯
+                <p className="text-white/80 text-sm flex items-center justify-center gap-2">
+                  <Icons8Icon name="goal" size={16} className="opacity-90" />
+                  To'g'ri kategoriya = Tez topilish
                 </p>
               </div>
               
@@ -790,7 +791,10 @@ export default function ClothingListingWizard({
                   
                   {/* Info about why this matters */}
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <p className="text-white/80 text-sm font-medium mb-2">✨ Nima uchun muhim?</p>
+                    <p className="text-white/80 text-sm font-medium mb-2 flex items-center gap-2">
+                      <Icons8Icon name="sparkles" size={16} className="opacity-90" />
+                      Nima uchun muhim?
+                    </p>
                     <ul className="text-white/60 text-xs space-y-1">
                       <li>• O'xshash e'lonlar orasida ko'rinadi</li>
                       <li>• Xaridorlar oson topadi</li>
@@ -806,8 +810,9 @@ export default function ClothingListingWizard({
           {currentStep === 2 && (
             <div className="space-y-4 animate-fadeIn">
               <div className="text-center mb-6">
-                <p className="text-white/80 text-sm">
-                  Yaxshi rasmlar = Tez sotish 📈
+                <p className="text-white/80 text-sm flex items-center justify-center gap-2">
+                  <Icons8Icon name="chart" size={16} className="opacity-90" />
+                  Yaxshi rasmlar = Tez sotish
                 </p>
               </div>
               
@@ -892,7 +897,10 @@ export default function ClothingListingWizard({
               
               {/* Tips */}
               <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10">
-                <p className="text-white/80 text-sm font-medium mb-2">💡 Maslahatlar:</p>
+                <p className="text-white/80 text-sm font-medium mb-2 flex items-center gap-2">
+                  <Icons8Icon name="idea" size={16} className="opacity-90" />
+                  Maslahatlar:
+                </p>
                 <ul className="text-white/60 text-xs space-y-1">
                   <li>• Yorug' joyda rasm oling</li>
                   <li>• Mahsulotni turli burchaklardan ko'rsating</li>
@@ -1031,7 +1039,10 @@ export default function ClothingListingWizard({
                     : 'border-white/10 bg-white/5'
                 }`}
               >
-                <span className="text-white font-medium">🤝 Narxni savdolashish mumkin</span>
+                <span className="text-white font-medium flex items-center gap-2">
+                  <Icons8Icon name="handshake" size={18} className="opacity-90" />
+                  Narxni savdolashish mumkin
+                </span>
                 <div className={`w-12 h-7 rounded-full transition-colors ${
                   formData.priceNegotiable ? 'bg-green-500' : 'bg-white/20'
                 }`}>
@@ -1050,7 +1061,10 @@ export default function ClothingListingWizard({
                     : 'border-white/10 bg-white/5'
                 }`}
               >
-                <span className="text-white font-medium">⚡ Aksiya qo'shish</span>
+                <span className="text-white font-medium flex items-center gap-2">
+                  <Icons8Icon name="lightning" size={18} className="opacity-90" />
+                  Aksiya qo'shish
+                </span>
                 <div className={`w-12 h-7 rounded-full transition-colors ${
                   formData.hasDiscount ? 'bg-orange-500' : 'bg-white/20'
                 }`}>
@@ -1083,8 +1097,9 @@ export default function ClothingListingWizard({
                       </span>
                     </div>
                     {formData.originalPrice && formData.price && parsePrice(formData.originalPrice) > parsePrice(formData.price) && (
-                      <p className="text-green-400 text-sm font-medium">
-                        🎉 Chegirma: {Math.round((1 - parsePrice(formData.price) / parsePrice(formData.originalPrice)) * 100)}%
+                      <p className="text-green-400 text-sm font-medium flex items-center gap-2">
+                        <Icons8Icon name="celebration" size={16} className="opacity-90" />
+                        Chegirma: {Math.round((1 - parsePrice(formData.price) / parsePrice(formData.originalPrice)) * 100)}%
                       </p>
                     )}
                   </div>
@@ -1451,7 +1466,8 @@ export default function ClothingListingWizard({
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  🚀 E'lonni joylash
+                  <Icons8Icon name="rocket" size={20} className="opacity-90" />
+                  E'lonni joylash
                 </span>
               )}
             </button>

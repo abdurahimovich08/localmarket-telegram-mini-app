@@ -31,7 +31,7 @@ export default function BottomNav() {
       emoji: '🛠',
       label: 'Xizmat ko\'rsataman',
       onClick: () => navigateWithCtx('/create-service-unified'),
-      iconName: 'shop' as keyof typeof import('../utils/icons8').Icons8,
+      iconName: 'service' as keyof typeof import('../utils/icons8').Icons8,
     },
   ]
 
