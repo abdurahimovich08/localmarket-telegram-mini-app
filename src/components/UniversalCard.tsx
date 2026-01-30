@@ -5,6 +5,7 @@ import { ShoppingBagIcon } from '@heroicons/react/24/outline'
 import type { UnifiedProduct } from '../types/unified'
 import { formatDistance } from '../lib/telegram'
 import { cn } from '../lib/cn'
+import Icons8Icon from './Icons8Icon'
 
 type CardVariant = 'marketplace' | 'store' | 'service'
 type CardLayout = 'grid' | 'list' | 'compact'
@@ -188,7 +189,7 @@ export default function UniversalCard({
           }}
           className="mt-2 w-full py-2 px-3 bg-white/20 backdrop-blur-sm text-white rounded-lg font-medium hover:bg-white/30 transition-colors flex items-center justify-center gap-2"
         >
-          <ShoppingBagIcon className="w-4 h-4" />
+          <Icons8Icon name="shoppingBag" size={16} className="opacity-90" />
           <span>Savatga</span>
         </button>
       )

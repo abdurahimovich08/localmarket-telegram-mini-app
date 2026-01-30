@@ -3,6 +3,7 @@ import { useUser } from '../contexts/UserContext'
 import { addToCart, removeFromCart, isInCart, getCart } from '../lib/supabase'
 import { ShoppingBagIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { ShoppingBagIcon as ShoppingBagIconSolid } from '@heroicons/react/24/solid'
+import Icons8Icon from './Icons8Icon'
 
 interface AddToCartButtonProps {
   listingId: string
@@ -99,7 +100,7 @@ export default function AddToCartButton({
               {inCart ? (
                 <CheckIcon className="w-5 h-5" />
               ) : (
-                <ShoppingBagIcon className="w-5 h-5" />
+                <Icons8Icon name="addShoppingCart" size={20} className="opacity-90" />
               )}
             </>
           )}

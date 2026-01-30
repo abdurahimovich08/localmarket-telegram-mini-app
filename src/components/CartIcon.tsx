@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
 import { getCartCount } from '../lib/supabase'
 import { ShoppingBagIcon } from '@heroicons/react/24/outline'
+import Icons8Icon from './Icons8Icon'
 
 export default function CartIcon() {
   const { user } = useUser()
@@ -37,7 +38,8 @@ export default function CartIcon() {
       className="relative p-2 text-gray-700 hover:text-primary transition-colors z-50 cursor-pointer touch-manipulation"
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <ShoppingBagIcon className="w-6 h-6 pointer-events-none" />
+      {/* Premium Icons8 icon */}
+      <Icons8Icon name="shoppingCart" size={24} className="pointer-events-none" />
       {count > 0 && (
         <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center pointer-events-none min-w-[20px]">
           {count > 9 ? '9+' : count}
