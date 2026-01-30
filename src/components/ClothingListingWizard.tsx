@@ -350,7 +350,50 @@ export default function ClothingListingWizard({
 
   // Submit listing
   const handleSubmit = async () => {
-    if (!user) return
+    if (!user) {
+      setError('Foydalanuvchi ma\'lumotlari topilmadi. Iltimos, qayta urinib ko\'ring.')
+      return
+    }
+    
+    // Validation
+    if (!formData.title.trim()) {
+      setError('Sarlavha kiritilishi shart')
+      return
+    }
+    
+    if (!formData.description.trim()) {
+      setError('Tavsif kiritilishi shart')
+      return
+    }
+    
+    if (photos.length === 0) {
+      setError('Kamida bitta rasm qo\'shilishi shart')
+      return
+    }
+    
+    if (selectedColors.length === 0) {
+      setError('Kamida bitta rang tanlanishi shart')
+      return
+    }
+    
+    if (selectedSizes.length === 0) {
+      setError('Kamida bitta o\'lcham tanlanishi shart')
+      return
+    }
+    
+    // Check that each color has at least one photo
+    const colorsWithoutPhotos = selectedColors.filter(color => 
+      (photosByColor[color] || []).length === 0
+    )
+    if (colorsWithoutPhotos.length > 0) {
+      setError(`Quyidagi ranglar uchun rasm qo'shing: ${colorsWithoutPhotos.join(', ')}`)
+      return
+    }
+    
+    if (!formData.price || parsePrice(formData.price) <= 0) {
+      setError('To\'g\'ri narx kiriting')
+      return
+    }
     
     setIsSubmitting(true)
     setError(null)
@@ -433,7 +476,8 @@ export default function ClothingListingWizard({
         stock_qty: Object.values(stockByVariant).reduce((sum, qty) => sum + qty, 0)
       })
     } catch (err: any) {
-      setError(err.message || 'Xatolik yuz berdi')
+      console.error('Error creating listing:', err)
+      setError(err.message || 'Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.')
       setIsSubmitting(false)
     }
   }
@@ -1295,7 +1339,7 @@ export default function ClothingListingWizard({
       {/* Bottom navigation */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
         <div className="max-w-lg mx-auto">
-          {currentStep < 5 ? (
+          {currentStep < 6 ? (
             <button
               onClick={goNext}
               disabled={!canProceed}
@@ -1313,14 +1357,14 @@ export default function ClothingListingWizard({
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading}
               className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all ${
-                isSubmitting
-                  ? 'bg-white/10 text-white/40'
+                isSubmitting || isLoading
+                  ? 'bg-white/10 text-white/40 cursor-not-allowed'
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40'
               }`}
             >
-              {isSubmitting ? (
+              {isSubmitting || isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
